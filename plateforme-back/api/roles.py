@@ -1,15 +1,22 @@
 from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from starlette import status
 
 from db.database import get_db
 from models.user import Utilisateur, Role, Permission
-from helpers.permissions import (
+from core.rbac import (
     get_current_user_with_role,
     check_user_has_permission,
     ROLE_SUPER_ADMIN
+)
+from schemas.permission import PermissionResponse
+from schemas.role import (
+    RoleResponse,
+    CreateRoleRequest,
+    UpdateRoleRequest,
+    AssignPermissionsRequest,
+    AssignRoleToUserRequest
 )
 
 router = APIRouter(
@@ -21,59 +28,20 @@ db_dependency = Annotated[Session, Depends(get_db)]
 user_dependency = Annotated[Utilisateur, Depends(get_current_user_with_role)]
 
 
-# ================= SCHEMAS =================
-class PermissionResponse(BaseModel):
-    id: int
-    nom: str
-    resource: str
-    action: str
-    description: str | None = None
-
-    class Config:
-        from_attributes = True
-
-
-class RoleResponse(BaseModel):
-    id: int
-    nom: str
-    code: str
-    description: str | None = None
-    niveau_acces: int
-    permissions: List[PermissionResponse] = []
-
-    class Config:
-        from_attributes = True
-
-
-class CreateRoleRequest(BaseModel):
-    nom: str
-    code: str
-    description: str | None = None
-    niveau_acces: int
-
-
-class UpdateRoleRequest(BaseModel):
-    nom: str | None = None
-    description: str | None = None
-    niveau_acces: int | None = None
-
-
-class AssignPermissionsRequest(BaseModel):
-    permission_ids: List[int]
-
-
-class AssignRoleToUserRequest(BaseModel):
-    user_id: int
-    role_id: int
-
-
 # ================= PERMISSIONS MANAGEMENT =================
 @router.get("/permissions", response_model=List[PermissionResponse])
 async def get_all_permissions(
     db: db_dependency,
     current_user: user_dependency
 ):
-    """Récupérer toutes les permissions (accessible à tous les utilisateurs authentifiés)"""
+    """Récupérer toutes les permissions (Super Admin uniquement)"""
+    # Vérifier que l'utilisateur est Super Admin
+    if not current_user.role or current_user.role.code != ROLE_SUPER_ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Seul le Super Admin peut consulter les permissions"
+        )
+    
     permissions = db.query(Permission).all()
     return permissions
 
@@ -127,7 +95,14 @@ async def get_all_roles(
     db: db_dependency,
     current_user: user_dependency
 ):
-    """Récupérer tous les rôles avec leurs permissions"""
+    """Récupérer tous les rôles avec leurs permissions (Super Admin uniquement)"""
+    # Vérifier que l'utilisateur est Super Admin
+    if not current_user.role or current_user.role.code != ROLE_SUPER_ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Seul le Super Admin peut consulter tous les rôles"
+        )
+    
     roles = db.query(Role).all()
     return roles
 
@@ -138,7 +113,14 @@ async def get_role_by_id(
     db: db_dependency,
     current_user: user_dependency
 ):
-    """Récupérer un rôle spécifique par ID"""
+    """Récupérer un rôle spécifique par ID (Super Admin uniquement)"""
+    # Vérifier que l'utilisateur est Super Admin
+    if not current_user.role or current_user.role.code != ROLE_SUPER_ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Seul le Super Admin peut consulter les détails des rôles"
+        )
+    
     role = db.query(Role).filter(Role.id == role_id).first()
     
     if not role:

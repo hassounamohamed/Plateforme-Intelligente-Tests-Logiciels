@@ -17,8 +17,8 @@ from models import (
 )
 
 # Import routes
-from routes.auth import router as auth_router
-from routes.roles import router as roles_router
+from api.auth import router as auth_router
+from api.roles import router as roles_router
 
 
 

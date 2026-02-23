@@ -233,7 +233,7 @@ Authorization: Bearer {token}
 ### Vérifier les permissions dans les routes
 
 ```python
-from helpers.permissions import get_current_user_with_role, ROLE_SUPER_ADMIN
+from core.rbac import get_current_user_with_role, ROLE_SUPER_ADMIN
 
 @router.post("/mon-endpoint")
 async def mon_endpoint(
@@ -251,7 +251,7 @@ async def mon_endpoint(
 ### Utiliser les helpers de vérification
 
 ```python
-from helpers.permissions import check_user_has_permission, check_user_has_role
+from core.rbac import check_user_has_permission, check_user_has_role
 
 # Vérifier une permission
 if check_user_has_permission(user, "projet", "create"):
