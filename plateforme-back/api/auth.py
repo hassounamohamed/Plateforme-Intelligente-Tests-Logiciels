@@ -7,17 +7,17 @@ from passlib.context import CryptContext
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import JWTError, jwt
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from starlette import status
 
 from db.database import get_db
 from models.user import Utilisateur
-
+from schemas.user import CreateUserRequest
+from schemas.auth import Token
+from core.security import create_access_token
+from core.config import SECRET_KEY, ALGORITHM
 # ================= CONFIG =================
-load_dotenv()
-SECRET_KEY = os.getenv("SECRET_KEY", "secret")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
+
 
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/sign_in")
@@ -26,18 +26,6 @@ router = APIRouter(
     prefix="/auth",
     tags=["auth"]
 )
-
-# ================= SCHEMAS =================
-class CreateUserRequest(BaseModel):
-    nom: str
-    email: str
-    motDePasse: str
-    telephone: str | None = None
-    role_id: int | None = None   # role optionnel
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
 
 db_dependency = Annotated[Session, Depends(get_db)]
 
@@ -86,12 +74,6 @@ def authenticate_user(email: str, password: str, db: db_dependency):
         return False
     return user
 
-def create_access_token(user_id: int, expires_delta: timedelta):
-    encode = {"sub": str(user_id)}
-    expire = datetime.utcnow() + expires_delta
-    encode.update({"exp": expire})
-    return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
-
 # ================= SIGN IN =================
 @router.post("/sign_in", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(),
@@ -104,7 +86,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(),
             detail="Email ou mot de passe incorrect"
         )
 
-    token = create_access_token(user.id, timedelta(days=30))
+    token = create_access_token({"sub": str(user.id)})
     return {"access_token": token, "token_type": "bearer"}
 
 # ================= CURRENT USER =================
@@ -124,10 +106,32 @@ async def get_me(db: db_dependency, user_id: Annotated[int, Depends(get_current_
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
 
-    return {
+    response = {
         "id": user.id,
         "nom": user.nom,
         "email": user.email,
         "telephone": user.telephone,
-        "role_id": user.role_id
+        "role_id": user.role_id,
+        "actif": user.actif
     }
+    
+    # Ajouter les informations du rôle si disponible
+    if user.role:
+        response["role"] = {
+            "id": user.role.id,
+            "nom": user.role.nom,
+            "code": user.role.code,
+            "description": user.role.description,
+            "niveau_acces": user.role.niveau_acces,
+            "permissions": [
+                {
+                    "id": p.id,
+                    "nom": p.nom,
+                    "resource": p.resource,
+                    "action": p.action
+                }
+                for p in user.role.permissions
+            ]
+        }
+    
+    return response

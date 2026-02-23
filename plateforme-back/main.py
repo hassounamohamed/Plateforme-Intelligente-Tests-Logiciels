@@ -17,7 +17,10 @@ from models import (
 )
 
 # Import routes
-from routes.auth import router as auth_router
+from api.auth import router as auth_router
+from api.roles import router as roles_router
+
+
 
 app = FastAPI(
     title="Plateforme Intelligente Tests Logiciels",
@@ -40,6 +43,7 @@ def startup():
         Base.metadata.create_all(bind=engine)
         print("✓ All database tables created successfully!")
         
+        
     except Exception as e:
         print(f"✗ Database initialization failed: {e}")
         raise
@@ -53,6 +57,7 @@ def read_root():
 
 # 🔹 Include routers
 app.include_router(auth_router)
+app.include_router(roles_router)
 
 # 🔹 Test DB route
 @app.get("/test-db")
