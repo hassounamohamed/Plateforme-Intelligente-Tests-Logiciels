@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from db.database import Base
 from db.associations import role_permission
+from core.encryption import EncryptedString
 
 
 class Utilisateur(Base):
@@ -12,7 +13,7 @@ class Utilisateur(Base):
     nom = Column(String)
     email = Column(String, unique=True)
     motDePasse = Column(String)
-    telephone = Column(String)
+    telephone = Column(EncryptedString)  # chiffre en base (Fernet)
     dateCreation = Column(DateTime, default=datetime.utcnow)
     derniereConnexion = Column(DateTime, nullable=True)
     actif = Column(Boolean, default=True)
