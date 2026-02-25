@@ -1,4 +1,4 @@
-"use client";
+import { LoginForm } from "@/features/auth/components/LoginForm";
 
 export default function LoginPage() {
     return (
@@ -28,49 +28,7 @@ export default function LoginPage() {
             </div>
             {/* Login Form */}
             <div className="mt-10">
-                <form className="flex flex-col gap-6">
-                    {/* Email Field */}
-                    <div>
-                        <label className="block text-sm font-semibold leading-normal text-slate-700 dark:text-slate-200 mb-3" htmlFor="email">
-                            Email Address
-                        </label>
-                        <div className="mt-1">
-                            <input autoComplete="email" className="block w-full rounded-xl border-0 h-12 px-4 text-slate-900 dark:text-white shadow-md ring-1 ring-inset ring-primary-200 dark:ring-primary-900/60 bg-white/90 dark:bg-[#1c2127] placeholder:text-slate-400 dark:placeholder:text-[#9dabb9] focus:outline-0 focus:ring-2 focus:ring-inset focus:ring-primary-600 text-sm font-normal leading-normal transition-all" id="email" name="email" placeholder="name@company.com" required={true} type="email" />
-                        </div>
-                    </div>
-                    {/* Password Field */}
-                    <div>
-                        <label className="block text-sm font-semibold leading-normal text-slate-700 dark:text-slate-200 mb-3" htmlFor="password">
-                            Password
-                        </label>
-                        <div className="mt-1">
-                            <input autoComplete="current-password" className="block w-full rounded-xl border-0 h-12 px-4 text-slate-900 dark:text-white shadow-md ring-1 ring-inset ring-primary-200 dark:ring-primary-900/60 bg-white/90 dark:bg-[#1c2127] placeholder:text-slate-400 dark:placeholder:text-[#9dabb9] focus:outline-0 focus:ring-2 focus:ring-inset focus:ring-primary-600 text-sm font-normal leading-normal transition-all" id="password" name="password" placeholder="Enter your password" required={true} type="password" />
-                        </div>
-                    </div>
-                    {/* Checkbox & Forgot Password */}
-                    <div className="flex items-center justify-between pt-2">
-                        <div className="flex items-center">
-                            <input className="h-5 w-5 rounded border-slate-300 dark:border-[#3b4754] text-primary focus:ring-primary-600 dark:bg-[#1c2127] accent-primary" id="remember-me" name="remember-me" type="checkbox" />
-                            <label className="ml-3 block text-sm font-medium text-slate-900 dark:text-white" htmlFor="remember-me">
-                                Remember me
-                            </label>
-                        </div>
-                        <div className="text-sm">
-                            <a className="font-semibold text-primary-700 hover:text-primary-600 transition-colors" href="/auth/forgot-password">
-                                Forgot password?
-                            </a>
-                        </div>
-                    </div>
-                    {/* Sign In Button */}
-                    <div className="pt-2">
-                        <button
-                        className="flex items-center justify-center w-full rounded-xl bg-primary h-12 px-6 text-base font-bold leading-normal tracking-[0.015em] text-primary-foreground shadow-lg hover:shadow-xl hover:bg-primary-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-all duration-300 active:scale-95"
-                        type="submit"
-                        >
-                        Sign in
-                        </button>
-                    </div>
-                </form>
+                <LoginForm />
                 {/* Divider */}
                 <div className="mt-10">
                     <div className="relative">
@@ -103,13 +61,6 @@ export default function LoginPage() {
                         </a>
                     </div>
                 </div>
-                {/* Footer */}
-                <p className="mt-12 text-center text-sm text-slate-600 dark:text-[#9dabb9]">
-                    Don't have an account?
-                    <a className="ml-1 font-semibold leading-6 text-primary-700 hover:text-primary-600 transition-colors" href="/auth/register">
-                        Sign up for free
-                    </a>
-                </p>
             </div>
         </div>
     </div>

@@ -1,5 +1,7 @@
 "use client";
 
+import { RegisterForm } from "@/features/auth/components/RegisterForm";
+
 export default function RegisterPage() {
 	return (
 		<div className="min-h-screen bg-linear-to-b from-primary-50 via-white to-primary-100 dark:from-primary-950 dark:via-[#151219] dark:to-[#0f0b13]">

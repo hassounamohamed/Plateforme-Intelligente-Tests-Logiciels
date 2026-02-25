@@ -1,4 +1,4 @@
-"use client";
+import { ForgotPasswordForm } from "@/features/auth/components/ForgotPasswordForm";
 
 export default function ForgotPasswordPage() {
   return (
@@ -51,32 +51,7 @@ export default function ForgotPasswordPage() {
                 </p>
               </div>
               {/* Form */}
-              <form className="flex flex-col gap-5" onSubmit={(event) => event.preventDefault()}>
-                {/* Email Input */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-slate-300 text-sm font-semibold leading-normal" htmlFor="email">
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-[20px] pointer-events-none">
-                      mail
-                    </span>
-                    <input
-                      className="form-input flex w-full min-w-0 resize-none overflow-hidden rounded-lg text-white focus:outline-0 focus:ring-2 focus:ring-primary-600/70 border border-white/10 bg-[#0f1218] focus:border-primary h-12 pl-11 pr-4 placeholder:text-slate-500 text-sm font-normal leading-normal transition-all"
-                      id="email"
-                      placeholder="name@company.com"
-                      required={true}
-                      type="email"
-                    />
-                  </div>
-                </div>
-                {/* Submit Button */}
-                <button className="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-primary text-primary-foreground hover:bg-primary-600 text-base font-bold leading-normal tracking-[0.015em] shadow-md shadow-primary/25 transition-colors duration-200">
-                  <span className="truncate">
-                    Send Reset Link
-                  </span>
-                </button>
-              </form>
+              <ForgotPasswordForm />
             </div>
             {/* Footer / Back Link */}
             <div className="border-t border-white/10 bg-[#141820] p-4 text-center">
