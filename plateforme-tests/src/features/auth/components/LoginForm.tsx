@@ -13,7 +13,8 @@ export function LoginForm() {
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    handleLogin({ email, password });
+    // Backend expects 'username' field (which is the email)
+    handleLogin({ username: email, password });
   };
 
   return (
@@ -22,7 +23,7 @@ export function LoginForm() {
       <div>
         <label
           htmlFor="email"
-          className="block text-sm font-semibold leading-normal text-slate-700 dark:text-slate-200 mb-3"
+          className="text-slate-700 dark:text-white text-sm font-medium pb-2 block"
         >
           Email Address
         </label>
@@ -35,7 +36,7 @@ export function LoginForm() {
           placeholder="name@company.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="block w-full rounded-xl border-0 h-12 px-4 text-slate-900 dark:text-white shadow-md ring-1 ring-inset ring-primary-200 dark:ring-primary-900/60 bg-white/90 dark:bg-[#1c2127] placeholder:text-slate-400 dark:placeholder:text-[#9dabb9] focus:outline-0 focus:ring-2 focus:ring-inset focus:ring-primary-600 text-sm transition-all"
+          className="form-input w-full rounded-lg text-slate-900 dark:text-white border border-slate-300 dark:border-[#3b4754] bg-white dark:bg-surface-dark h-12 px-4 text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
         />
       </div>
 
@@ -43,7 +44,7 @@ export function LoginForm() {
       <div>
         <label
           htmlFor="password"
-          className="block text-sm font-semibold leading-normal text-slate-700 dark:text-slate-200 mb-3"
+          className="text-slate-700 dark:text-white text-sm font-medium pb-2 block"
         >
           Password
         </label>
@@ -57,7 +58,7 @@ export function LoginForm() {
             placeholder="Enter your password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="block w-full rounded-xl border-0 h-12 px-4 pr-12 text-slate-900 dark:text-white shadow-md ring-1 ring-inset ring-primary-200 dark:ring-primary-900/60 bg-white/90 dark:bg-[#1c2127] placeholder:text-slate-400 dark:placeholder:text-[#9dabb9] focus:outline-0 focus:ring-2 focus:ring-inset focus:ring-primary-600 text-sm transition-all"
+            className="form-input w-full rounded-lg text-slate-900 dark:text-white border border-slate-300 dark:border-[#3b4754] bg-white dark:bg-surface-dark h-12 px-4 pr-10 text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
           />
           <button
             type="button"
@@ -97,10 +98,10 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={isLoading}
-        className="flex w-full items-center justify-center gap-2 h-12 rounded-xl bg-primary px-4 text-sm font-semibold text-white shadow-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+        className="w-full flex h-12 items-center justify-center rounded-lg bg-primary text-white text-base font-bold transition-all hover:shadow-lg hover:shadow-primary/30 disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {isLoading && (
-          <span className="material-symbols-outlined animate-spin text-lg">
+          <span className="material-symbols-outlined animate-spin text-lg mr-2">
             progress_activity
           </span>
         )}

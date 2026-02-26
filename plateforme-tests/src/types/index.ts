@@ -1,41 +1,84 @@
 // ─── Roles ───────────────────────────────────────────────────────────────────
 
 export type Role =
-  | "DEVELOPER"
+  | "DEVELOPPEUR"
   | "PRODUCT_OWNER"
-  | "QA"
+  | "TESTEUR_QA"
   | "SCRUM_MASTER"
   | "SUPER_ADMIN";
 
 // ─── User ────────────────────────────────────────────────────────────────────
 
+export interface Permission {
+  id: number;
+  nom: string;
+  resource: string;
+  action: string;
+}
+
+export interface RoleDetails {
+  id: number;
+  nom: string;
+  code: string;
+  description?: string;
+  niveau_acces: number;
+  permissions?: Permission[];
+}
+
 export interface User {
-  id: string;
+  id: number;
+  nom: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  role: Role;
-  createdAt: string;
-  updatedAt: string;
+  telephone?: string;
+  role_id?: number;
+  actif?: boolean;
+  role?: RoleDetails;
 }
 
 // ─── Auth payloads ───────────────────────────────────────────────────────────
 
 export interface AuthTokens {
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string; // Optional car le backend n'utilise pas de refresh token
 }
 
 export interface LoginPayload {
-  email: string;
+  username: string; // Backend utilise OAuth2PasswordRequestForm qui attend 'username'
   password: string;
 }
 
 export interface RegisterPayload {
+  nom: string;
   email: string;
+  motDePasse: string;
+  telephone?: string;
+  role_id?: number;
+}
+
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ResetPasswordPayload {
+  token: string;
   password: string;
-  firstName: string;
-  lastName: string;
+}
+
+// ─── Auth responses ──────────────────────────────────────────────────────────
+
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  user_id: number;
+  nom: string;
+  email: string;
+  role?: RoleDetails;
+}
+
+export interface RegisterResponse {
+  message: string;
+  user_id: number;
+  role_id?: number;
 }
 
 export interface ForgotPasswordPayload {
