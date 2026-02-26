@@ -28,9 +28,30 @@ async def create_user(
 ):
     return svc.register(request)
 
+# Alias pour compatibilité frontend
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+async def register_user(
+    request: CreateUserRequest,
+    svc: AuthService = Depends(get_auth_service),
+):
+    print(f"[DEBUG] Received registration request: {request.dict()}")
+    result = svc.register(request)
+    print(f"[DEBUG] Registration successful: {result}")
+    return result
+
 # ================= SIGN IN =================
 @router.post("/sign_in", response_model=Token)
 async def login(
+    request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    svc: AuthService = Depends(get_auth_service),
+):
+    ip = request.client.host if request.client else None
+    return svc.login(form_data.username, form_data.password, ip_address=ip)
+
+# Alias pour compatibilité frontend
+@router.post("/login", response_model=Token)
+async def login_user(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     svc: AuthService = Depends(get_auth_service),

@@ -1,5 +1,5 @@
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+  process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
 export const TOKEN_KEY = "access_token";
 export const REFRESH_TOKEN_KEY = "refresh_token";
@@ -18,9 +18,9 @@ export const ROUTES = {
 } as const;
 
 export const ROLES = {
-  DEVELOPER: "DEVELOPER",
+  DEVELOPPEUR: "DEVELOPPEUR",
   PRODUCT_OWNER: "PRODUCT_OWNER",
-  QA: "QA",
+  TESTEUR_QA: "TESTEUR_QA",
   SCRUM_MASTER: "SCRUM_MASTER",
   SUPER_ADMIN: "SUPER_ADMIN",
 } as const;

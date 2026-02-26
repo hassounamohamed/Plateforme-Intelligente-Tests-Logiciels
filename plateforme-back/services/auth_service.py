@@ -7,7 +7,7 @@ from starlette import status
 
 from core.config import SECRET_KEY, ALGORITHM
 from core.security import create_access_token
-from models.user import Utilisateur
+from models.user import Utilisateur, Role
 from repositories.user_repository import UserRepository
 from repositories.log_repository import AuditLogRepository
 from schemas.user import CreateUserRequest
@@ -41,7 +41,10 @@ class AuthService:
 
     def generate_token(self, user: Utilisateur) -> str:
         """Générer un JWT access token pour l'utilisateur."""
-        return create_access_token({"sub": str(user.id)})
+        token_data = {"sub": str(user.id)}
+        if user.role:
+            token_data["role"] = user.role.code
+        return create_access_token(token_data)
 
     def build_token_response(self, user: Utilisateur, token: str) -> dict:
         """Construire la réponse complète du login avec rôle."""
@@ -67,16 +70,32 @@ class AuthService:
         """
         Créer un nouvel utilisateur.
         - Vérifie l'unicité de l'email
+        - Vérifie que le rôle existe
         - Hache le mot de passe (72 bytes max)
         - Retourne l'id et le role_id du nouvel utilisateur
         """
+        print(f"[DEBUG] Starting registration for: {request.email}")
+        
         existing = self.user_repo.get_by_email(request.email)
         if existing:
+            print(f"[DEBUG] Email already exists: {request.email}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email déjà utilisé",
             )
-
+        
+        # Vérifier que le rôle existe
+        print(f"[DEBUG] Checking role_id: {request.role_id}")
+        role = self.db.query(Role).filter_by(id=request.role_id).first()
+        if not role:
+            print(f"[DEBUG] Role not found: {request.role_id}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Le rôle avec l'ID {request.role_id} n'existe pas",
+            )
+        
+        print(f"[DEBUG] Role found: {role.nom}")
+        
         new_user = Utilisateur(
             nom=request.nom,
             email=request.email,
@@ -85,17 +104,31 @@ class AuthService:
             role_id=request.role_id,
         )
 
-        self.db.add(new_user)
-        self.db.commit()
-        self.db.refresh(new_user)
+        print(f"[DEBUG] Adding user to database...")
+        try:
+            self.db.add(new_user)
+            self.db.commit()
+            self.db.refresh(new_user)
+            print(f"[DEBUG] User created with ID: {new_user.id}")
+        except Exception as e:
+            print(f"[ERROR] Database error: {str(e)}")
+            self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Erreur lors de la création de l'utilisateur: {str(e)}",
+            )
 
-        self.audit_repo.log_action(
-            user_id=new_user.id,
-            action="USER_CREATED",
-            entity_type="user",
-            entity_id=str(new_user.id),
-            changes=f"email={new_user.email}, role_id={new_user.role_id}",
-        )
+        try:
+            self.audit_repo.log_action(
+                user_id=new_user.id,
+                action="USER_CREATED",
+                entity_type="user",
+                entity_id=str(new_user.id),
+                changes=f"email={new_user.email}, role_id={new_user.role_id}",
+            )
+            print(f"[DEBUG] Audit log created")
+        except Exception as e:
+            print(f"[WARNING] Failed to create audit log: {str(e)}")
 
         return {
             "message": "Utilisateur créé avec succès",

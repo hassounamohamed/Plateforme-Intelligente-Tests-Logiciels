@@ -12,9 +12,9 @@ const PUBLIC_PATHS = [
 
 // ─── Role-gated paths ────────────────────────────────────────────────────────
 const ROLE_PATHS: Record<string, string[]> = {
-  [ROUTES.DEVELOPER]: ["DEVELOPER", "SUPER_ADMIN"],
+  [ROUTES.DEVELOPER]: ["DEVELOPPEUR", "SUPER_ADMIN"],
   [ROUTES.PRODUCT_OWNER]: ["PRODUCT_OWNER", "SUPER_ADMIN"],
-  [ROUTES.QA]: ["QA", "SUPER_ADMIN"],
+  [ROUTES.QA]: ["TESTEUR_QA", "SUPER_ADMIN"],
   [ROUTES.SCRUM_MASTER]: ["SCRUM_MASTER", "SUPER_ADMIN"],
   [ROUTES.SUPER_ADMIN]: ["SUPER_ADMIN"],
 };
@@ -71,8 +71,10 @@ export function middleware(request: NextRequest) {
   for (const [path, allowedRoles] of Object.entries(ROLE_PATHS)) {
     if (pathname.startsWith(path)) {
       if (!payload.role || !allowedRoles.includes(payload.role)) {
-        // Redirect to generic dashboard (access denied)
-        return NextResponse.redirect(new URL(ROUTES.DASHBOARD, request.url));
+        // Redirect to login (access denied)
+        const url = new URL(ROUTES.LOGIN, request.url);
+        const response = NextResponse.redirect(url);
+        return response;
       }
       break;
     }
