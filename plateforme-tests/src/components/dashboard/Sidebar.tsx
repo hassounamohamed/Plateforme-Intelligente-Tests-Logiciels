@@ -70,14 +70,8 @@ export function Sidebar({ title, subtitle, icon, links }: SidebarProps) {
             </Link>
           );
         })}
-        <div className="h-px bg-[#283039] my-2 mx-3"></div>
-        <Link
-          href="/settings"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#9dabb9] hover:text-white hover:bg-[#283039] transition-colors"
-        >
-          <span className="material-symbols-outlined">settings</span>
-          <span className="text-sm font-medium">Settings</span>
-        </Link>
+        
+
       </nav>
 
       {/* User Profile */}
