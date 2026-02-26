@@ -16,7 +16,7 @@ class Utilisateur(Base):
     telephone = Column(EncryptedString)  # chiffre en base (Fernet)
     dateCreation = Column(DateTime, default=datetime.utcnow)
     derniereConnexion = Column(DateTime, nullable=True)
-    actif = Column(Boolean, default=True)
+    actif = Column(Boolean, default=False)
 
     role_id = Column(Integer, ForeignKey("role.id"))
 
