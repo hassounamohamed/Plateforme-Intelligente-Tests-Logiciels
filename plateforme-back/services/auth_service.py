@@ -102,6 +102,7 @@ class AuthService:
             motDePasse=self.hash_password(request.motDePasse),
             telephone=request.telephone,
             role_id=request.role_id,
+            actif=False,
         )
 
         print(f"[DEBUG] Adding user to database...")
@@ -156,6 +157,7 @@ class AuthService:
         """
         Authentifier un utilisateur et retourner le token avec ses infos.
         Lève HTTP 401 si les identifiants sont invalides.
+        Lève HTTP 403 si le compte n'est pas activé.
         """
         user = self.authenticate(email, password)
         if not user:
@@ -164,7 +166,15 @@ class AuthService:
                 detail="Email ou mot de passe incorrect",
             )
 
+        # Vérifier si le compte est activé par le Super Administrateur
+        if not user.actif:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Compte en attente d'activation par le Super Administrateur",
+            )
+
         token = self.generate_token(user)
+        self.user_repo.update_last_login(user.id)
 
         self.audit_repo.log_action(
             user_id=user.id,
@@ -175,6 +185,84 @@ class AuthService:
         )
 
         return self.build_token_response(user, token)
+
+    def activate_user(self, user_id: int) -> dict:
+        """Active le compte d'un utilisateur (Super Admin uniquement)."""
+        user = self.user_repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur non trouvé")
+        self.user_repo.activate_user(user_id)
+        self.audit_repo.log_action(user_id=user_id, action="USER_ACTIVATED", entity_type="user", entity_id=str(user_id))
+        return {"message": "Compte activé avec succès", "user_id": user_id}
+
+    def deactivate_user(self, user_id: int) -> dict:
+        """Désactive le compte d'un utilisateur (Super Admin uniquement)."""
+        user = self.user_repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur non trouvé")
+        self.user_repo.deactivate_user(user_id)
+        self.audit_repo.log_action(user_id=user_id, action="USER_DEACTIVATED", entity_type="user", entity_id=str(user_id))
+        return {"message": "Compte désactivé avec succès", "user_id": user_id}
+
+    def get_all_users(self) -> list:
+        """Lister tous les utilisateurs avec leurs infos (Super Admin uniquement)."""
+        users = self.db.query(Utilisateur).all()
+        return [
+            {
+                "id": u.id,
+                "nom": u.nom,
+                "email": u.email,
+                "telephone": u.telephone,
+                "actif": u.actif,
+                "dateCreation": u.dateCreation,
+                "derniereConnexion": u.derniereConnexion,
+                "role": {"id": u.role.id, "nom": u.role.nom, "code": u.role.code} if u.role else None,
+            }
+            for u in users
+        ]
+
+    def get_pending_users(self) -> list:
+        """Lister les comptes en attente d'activation (Super Admin uniquement)."""
+        users = self.db.query(Utilisateur).filter(Utilisateur.actif == False).all()
+        return [
+            {
+                "id": u.id,
+                "nom": u.nom,
+                "email": u.email,
+                "telephone": u.telephone,
+                "actif": u.actif,
+                "dateCreation": u.dateCreation,
+                "derniereConnexion": u.derniereConnexion,
+                "role": {"id": u.role.id, "nom": u.role.nom, "code": u.role.code} if u.role else None,
+            }
+            for u in users
+        ]
+
+    def change_password(self, user_id: int, ancien_mot_de_passe: str, nouveau_mot_de_passe: str) -> dict:
+        """Changer le mot de passe de l'utilisateur connecté."""
+        user = self.user_repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur non trouvé")
+        if not self.verify_password(ancien_mot_de_passe, user.motDePasse):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ancien mot de passe incorrect")
+        user.motDePasse = self.hash_password(nouveau_mot_de_passe)
+        self.db.commit()
+        self.audit_repo.log_action(user_id=user_id, action="PASSWORD_CHANGED", entity_type="user", entity_id=str(user_id))
+        return {"message": "Mot de passe modifié avec succès"}
+
+    def update_profile(self, user_id: int, nom: Optional[str] = None, telephone: Optional[str] = None) -> dict:
+        """Mettre à jour le nom et/ou téléphone de l'utilisateur connecté."""
+        user = self.user_repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur non trouvé")
+        if nom is not None:
+            user.nom = nom
+        if telephone is not None:
+            user.telephone = telephone
+        self.db.commit()
+        self.db.refresh(user)
+        self.audit_repo.log_action(user_id=user_id, action="PROFILE_UPDATED", entity_type="user", entity_id=str(user_id))
+        return {"message": "Profil mis à jour avec succès", "id": user.id, "nom": user.nom, "email": user.email, "telephone": user.telephone}
 
     # =========================================================
     # PROFIL
