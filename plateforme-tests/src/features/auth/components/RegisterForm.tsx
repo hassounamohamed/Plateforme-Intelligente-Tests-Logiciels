@@ -13,7 +13,6 @@ export function RegisterForm() {
     phone: "",
     role: "2", // Default: Développeur (ID 2 dans la BD)
     password: "",
-    confirmPassword: "",
   });
   const [localError, setLocalError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -24,10 +23,6 @@ export function RegisterForm() {
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     setLocalError(null);
-    if (form.password !== form.confirmPassword) {
-      setLocalError("Passwords do not match.");
-      return;
-    }
     // Backend expects exact field names: nom, email, motDePasse, telephone, role_id
     const payload = {
       nom: form.nom.trim(),
@@ -183,55 +178,35 @@ export function RegisterForm() {
         </div>
       </div>
 
-      {/* Password Fields Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="flex flex-col">
-          <label
-            htmlFor="reg-password"
-            className="text-slate-700 dark:text-white text-sm font-medium pb-2"
-          >
-            Password
-          </label>
-          <div className="relative">
-            <input
-              id="reg-password"
-              type={showPassword ? "text" : "password"}
-              required
-              minLength={8}
-              autoComplete="new-password"
-              placeholder="Min. 8 characters"
-              value={form.password}
-              onChange={set("password")}
-              className="form-input w-full rounded-lg text-slate-900 dark:text-white border border-slate-300 dark:border-[#3b4754] bg-white dark:bg-surface-dark h-12 px-4 pr-10 text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600"
-            >
-              <span className="material-symbols-outlined text-xl">
-                {showPassword ? "visibility_off" : "visibility"}
-              </span>
-            </button>
-          </div>
-        </div>
-        <div className="flex flex-col">
-          <label
-            htmlFor="confirmPassword"
-            className="text-slate-700 dark:text-white text-sm font-medium pb-2"
-          >
-            Confirm Password
-          </label>
+      {/* Password Field */}
+      <div className="flex flex-col">
+        <label
+          htmlFor="reg-password"
+          className="text-slate-700 dark:text-white text-sm font-medium pb-2"
+        >
+          Password
+        </label>
+        <div className="relative">
           <input
-            id="confirmPassword"
+            id="reg-password"
             type={showPassword ? "text" : "password"}
             required
+            minLength={8}
             autoComplete="new-password"
-            placeholder="Repeat your password"
-            value={form.confirmPassword}
-            onChange={set("confirmPassword")}
-            className="form-input w-full rounded-lg text-slate-900 dark:text-white border border-slate-300 dark:border-[#3b4754] bg-white dark:bg-surface-dark h-12 px-4 text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+            placeholder="Min. 8 characters"
+            value={form.password}
+            onChange={set("password")}
+            className="form-input w-full rounded-lg text-slate-900 dark:text-white border border-slate-300 dark:border-[#3b4754] bg-white dark:bg-surface-dark h-12 px-4 pr-10 text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none"
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600"
+          >
+            <span className="material-symbols-outlined text-xl">
+              {showPassword ? "visibility_off" : "visibility"}
+            </span>
+          </button>
         </div>
       </div>
 
