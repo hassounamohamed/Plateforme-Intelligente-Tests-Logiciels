@@ -25,6 +25,7 @@ from api.auth import router as auth_router
 from api.roles import router as roles_router
 from api.logs import router as logs_router
 from api.users import router as users_router
+from api.projets import router as projets_router
 
 
 
@@ -84,6 +85,7 @@ app.include_router(auth_router)
 app.include_router(roles_router)
 app.include_router(logs_router)
 app.include_router(users_router)
+app.include_router(projets_router)
 
 # Test DB route
 @app.get("/test-db")

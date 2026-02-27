@@ -14,13 +14,13 @@ from core.rbac.constants import (
 def main():
     """Initialiser les 5 rôles de la plateforme"""
     print("=" * 60)
-    print("🔐 INITIALISATION DES RÔLES")
+    print(" INITIALISATION DES RÔLES")
     print("=" * 60)
     
     # Créer les tables
-    print("\n📦 Création des tables...")
+    print("\n Création des tables...")
     Base.metadata.create_all(bind=engine)
-    print("✓ Tables créées")
+    print(" Tables créées")
     
     # Créer une session
     db = SessionLocal()
@@ -68,15 +68,15 @@ def main():
             existing_role = role_repo.get_by_code(role_data["code"])
             
             if existing_role:
-                print(f"→ Rôle '{role_data['nom']}' existe déjà")
+                print(f" Rôle '{role_data['nom']}' existe déjà")
             else:
                 role = role_repo.create(role_data)
-                print(f"✓ Rôle '{role_data['nom']}' créé (code: {role_data['code']}, niveau: {role_data['niveau_acces']})")
+                print(f" Rôle '{role_data['nom']}' créé (code: {role_data['code']}, niveau: {role_data['niveau_acces']})")
         
         print("\n" + "=" * 60)
-        print("✅ INITIALISATION DES RÔLES TERMINÉE!")
+        print(" INITIALISATION DES RÔLES TERMINÉE!")
         print("=" * 60)
-        print(f"\n📋 Rôles disponibles:")
+        print(f"\n Rôles disponibles:")
         print(f"   1. Super Administrateur (SUPER_ADMIN) - Niveau 100")
         print(f"   4. Product Owner (PRODUCT_OWNER) - Niveau 80")
         print(f"   5. Scrum Master (SCRUM_MASTER) - Niveau 70")
@@ -84,7 +84,7 @@ def main():
         print(f"   2. Développeur (DEVELOPPEUR) - Niveau 50")
         
     except Exception as e:
-        print(f"\n❌ Erreur: {str(e)}")
+        print(f"\n Erreur: {str(e)}")
         db.rollback()
         raise
     finally:

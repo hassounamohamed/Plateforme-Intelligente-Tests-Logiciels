@@ -28,3 +28,12 @@ sprint_userstory = Table(
     Column("userstory_id", Integer, ForeignKey("userstory.id", ondelete="CASCADE"), primary_key=True),
 )
 
+
+# 🔗 Many-to-Many between Projet and Utilisateur (membres)
+projet_membre = Table(
+    "projet_membre",
+    Base.metadata,
+    Column("projet_id", Integer, ForeignKey("projet.id", ondelete="CASCADE"), primary_key=True),
+    Column("utilisateur_id", Integer, ForeignKey("utilisateur.id", ondelete="CASCADE"), primary_key=True),
+)
+
