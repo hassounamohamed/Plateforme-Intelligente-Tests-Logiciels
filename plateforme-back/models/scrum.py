@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Floa
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from db.database import Base
-from db.associations import sprint_userstory
+from db.associations import sprint_userstory, projet_membre
 
 
 class Projet(Base):
@@ -20,6 +20,7 @@ class Projet(Base):
     
     # Relations
     product_owner = relationship("Utilisateur", back_populates="projets", foreign_keys=[productOwnerId])
+    membres = relationship("Utilisateur", secondary=projet_membre, backref="projets_membres")
     modules = relationship("Module", back_populates="projet", cascade="all, delete-orphan")
     sprints = relationship("Sprint", back_populates="projet", cascade="all, delete-orphan")
 
