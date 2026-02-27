@@ -31,7 +31,9 @@ export interface User {
   email: string;
   telephone?: string;
   role_id?: number;
-  actif?: boolean;
+  actif: boolean;
+  dateCreation?: string;
+  derniereConnexion?: string;
   role?: RoleDetails;
 }
 

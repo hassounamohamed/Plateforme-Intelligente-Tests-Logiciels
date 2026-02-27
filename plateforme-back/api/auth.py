@@ -21,12 +21,6 @@ def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
     return AuthService(db)
 
 # ================= SIGN UP =================
-@router.post("/sign_up", status_code=status.HTTP_201_CREATED)
-async def create_user(
-    request: CreateUserRequest,
-    svc: AuthService = Depends(get_auth_service),
-):
-    return svc.register(request)
 
 # Alias pour compatibilité frontend
 @router.post("/register", status_code=status.HTTP_201_CREATED)

@@ -65,6 +65,17 @@ async def deactivate_user(
     return svc.deactivate_user(user_id)
 
 
+@router.delete("/{user_id}", status_code=status.HTTP_200_OK)
+@require_role(ROLE_SUPER_ADMIN)
+async def delete_user(
+    user_id: int,
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: AuthService = Depends(get_auth_service),
+):
+    """Supprime définitivement un utilisateur — Super Admin uniquement."""
+    return svc.delete_user(user_id)
+
+
 # =============================================================
 # UTILISATEUR CONNECTÉ — Profil & Mot de passe
 # =============================================================

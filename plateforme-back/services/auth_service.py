@@ -204,6 +204,30 @@ class AuthService:
         self.audit_repo.log_action(user_id=user_id, action="USER_DEACTIVATED", entity_type="user", entity_id=str(user_id))
         return {"message": "Compte désactivé avec succès", "user_id": user_id}
 
+    def delete_user(self, user_id: int) -> dict:
+        """Supprime définitivement un utilisateur (Super Admin uniquement)."""
+        user = self.user_repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur non trouvé")
+        
+        # Log avant suppression
+        self.audit_repo.log_action(
+            user_id=user_id,
+            action="USER_DELETED",
+            entity_type="user",
+            entity_id=str(user_id)
+        )
+        
+        # Supprimer l'utilisateur
+        success = self.user_repo.delete(user_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Erreur lors de la suppression de l'utilisateur"
+            )
+        
+        return {"message": "Utilisateur supprimé avec succès", "user_id": user_id}
+
     def get_all_users(self) -> list:
         """Lister tous les utilisateurs avec leurs infos (Super Admin uniquement)."""
         users = self.db.query(Utilisateur).all()

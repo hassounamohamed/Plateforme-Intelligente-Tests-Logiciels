@@ -2,6 +2,13 @@ import axios from "axios";
 import { API_URL } from "./constants";
 import { getToken, getRefreshToken, setToken, logout } from "./auth";
 
+// Extend Axios config to support custom suppressErrorLog flag
+declare module "axios" {
+  export interface AxiosRequestConfig {
+    suppressErrorLog?: boolean;
+  }
+}
+
 const axiosInstance = axios.create({
   baseURL: API_URL,
   headers: {
@@ -16,11 +23,10 @@ axiosInstance.interceptors.request.use(
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    // Log request for debugging
-    console.log('[Axios Request]', config.method?.toUpperCase(), config.url, {
-      headers: config.headers,
-      data: config.data,
-    });
+    // Log request for debugging (only in development)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Axios Request]', config.method?.toUpperCase(), config.url);
+    }
     return config;
   },
   (error) => {
@@ -32,15 +38,23 @@ axiosInstance.interceptors.request.use(
 // ─── Response: silent token refresh on 401 ──────────────────────────────────
 axiosInstance.interceptors.response.use(
   (response) => {
-    console.log('[Axios Response]', response.status, response.config.url);
+    // Log successful responses (only in development)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Axios Response]', response.status, response.config.url);
+    }
     return response;
   },
   async (error) => {
-    console.error('[Axios Response Error]', {
-      status: error.response?.status,
-      data: error.response?.data,
-      url: error.config?.url,
-    });
+    // Check if error logging should be suppressed for this request
+    const suppressErrorLog = error.config?.suppressErrorLog;
+    
+    if (!suppressErrorLog) {
+      console.error('[Axios Response Error]', {
+        status: error.response?.status,
+        data: error.response?.data,
+        url: error.config?.url,
+      });
+    }
 
     const original = error.config as typeof error.config & {
       _retry?: boolean;
