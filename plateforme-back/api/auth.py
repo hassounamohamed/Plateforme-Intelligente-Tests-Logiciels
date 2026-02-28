@@ -34,15 +34,6 @@ async def register_user(
     return result
 
 # ================= SIGN IN =================
-@router.post("/sign_in", response_model=Token)
-async def login(
-    request: Request,
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    svc: AuthService = Depends(get_auth_service),
-):
-    ip = request.client.host if request.client else None
-    return svc.login(form_data.username, form_data.password, ip_address=ip)
-
 # Alias pour compatibilité frontend
 @router.post("/login", response_model=Token)
 async def login_user(
