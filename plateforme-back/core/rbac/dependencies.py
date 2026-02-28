@@ -12,7 +12,7 @@ from db.database import get_db
 from models.user import Utilisateur
 from core.config import SECRET_KEY, ALGORITHM
 
-oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/sign_in")
+oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]) -> int:
