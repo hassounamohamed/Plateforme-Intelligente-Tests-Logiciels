@@ -20,7 +20,7 @@ export async function loginApi(payload: LoginPayload): Promise<LoginResponse> {
   formData.append("password", payload.password);
 
   const { data } = await axiosInstance.post<LoginResponse>(
-    "/auth/sign_in",
+    "/auth/login",
     formData,
     {
       headers: {

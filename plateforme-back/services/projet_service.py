@@ -6,16 +6,20 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from repositories.projet_repository import ProjetRepository
+from repositories.user_repository import UserRepository
 from schemas.projet import (
     CreateProjetRequest,
     UpdateProjetRequest,
     AssignerMembresRequest,
 )
+from core.rbac.constants import ROLE_SUPER_ADMIN
 
 
 class ProjetService:
     def __init__(self, db: Session):
         self.repo = ProjetRepository(db)
+        self.user_repo = UserRepository(db)
+        self.db = db
 
     # ── Création ────────────────────────────────────────────────────────────
 
@@ -74,6 +78,17 @@ class ProjetService:
         return self.repo.archiver(projet_id)
 
     # ── Membres ──────────────────────────────────────────────────────────────
+
+    def get_membres_disponibles(self):
+        """Récupérer la liste des utilisateurs disponibles pour assignation (actifs, sauf SUPER_ADMIN)."""
+        users = self.user_repo.get_active_users()
+        # Filtrer les SUPER_ADMIN et retourner directement les objets Utilisateur
+        membres_disponibles = [
+            user
+            for user in users
+            if user.role and user.role.code != ROLE_SUPER_ADMIN
+        ]
+        return membres_disponibles
 
     def assigner_membres(
         self,
