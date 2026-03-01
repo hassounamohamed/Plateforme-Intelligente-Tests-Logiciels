@@ -303,8 +303,8 @@ PILT/
 ### Endpoints Principaux
 
 #### Authentification
-- `POST /auth/sign_up` - Créer un compte
-- `POST /auth/sign_in` - Se connecter
+- `POST /auth/register` - Créer un compte
+- `POST /auth/login` - Se connecter
 - `GET /auth/me` - Obtenir les infos de l'utilisateur connecté
 
 #### Projets

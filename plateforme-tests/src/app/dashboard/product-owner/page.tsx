@@ -1,24 +1,99 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout, StatCard } from "@/components/dashboard/DashboardLayout";
 import { ROUTES } from "@/lib/constants";
+import { getMyProjects } from "@/features/projects/api";
+import { getModules } from "@/features/modules/api";
+import { Project } from "@/types";
 
 export default function ProductOwnerDashboard() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    totalProjects: 0,
+    activeProjects: 0,
+    totalModules: 0,
+    totalEpics: 0,
+  });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      console.log("🔄 Chargement des projets...");
+      const projectsData = await getMyProjects();
+      console.log("✅ Projets reçus:", projectsData);
+      setProjects(projectsData);
+
+      // Calculate stats
+      const activeProjects = projectsData.filter((p) => p.statut === "actif").length;
+      
+      // Calculate total modules and epics from all projects
+      let totalModules = 0;
+      let totalEpics = 0;
+      
+      // Fetch modules for each project to count them and their epics
+      for (const project of projectsData) {
+        try {
+          const modulesData = await getModules(project.id);
+          totalModules += modulesData.length;
+          
+          // Count epics in each module
+          modulesData.forEach((module) => {
+            if (module.epics && Array.isArray(module.epics)) {
+              totalEpics += module.epics.length;
+            }
+          });
+        } catch (err) {
+          console.warn(`Impossible de charger les modules pour le projet ${project.id}:`, err);
+        }
+      }
+      
+      setStats({
+        totalProjects: projectsData.length,
+        activeProjects,
+        totalModules: totalModules,
+        totalEpics: totalEpics,
+      });
+      
+      console.log("📊 Stats calculées:", {
+        totalProjects: projectsData.length,
+        activeProjects,
+        totalModules,
+        totalEpics,
+      });
+    } catch (error: any) {
+      console.error("❌ Erreur lors du chargement des projets:", error);
+      console.error("Détails de l'erreur:", error.response?.data || error.message);
+      setError(
+        error.response?.data?.detail || 
+        error.message || 
+        "Erreur lors du chargement des données"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const sidebarLinks = [
     { href: ROUTES.PRODUCT_OWNER, icon: "dashboard", label: "Dashboard" },
-    { href: `${ROUTES.PRODUCT_OWNER}/backlog`, icon: "list_alt", label: "Product Backlog" },
-    { href: `${ROUTES.PRODUCT_OWNER}/roadmap`, icon: "timeline", label: "Roadmap" },
-    { href: `${ROUTES.PRODUCT_OWNER}/releases`, icon: "rocket_launch", label: "Releases" },
+    { href: `${ROUTES.PRODUCT_OWNER}/projects`, icon: "folder", label: "Projets" },
+    { href: `${ROUTES.PRODUCT_OWNER}/epics`, icon: "content_cut", label: "Epics" },
+    { href: `${ROUTES.PRODUCT_OWNER}/sprints`, icon: "event", label: "Sprints" },
+    { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
+    { href: `${ROUTES.PRODUCT_OWNER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
+    { href: `${ROUTES.PRODUCT_OWNER}/roadmap`, icon: "map", label: "Roadmap" },
+    { href: `${ROUTES.PRODUCT_OWNER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
-
-  const headerActions = (
-    <button className="hidden sm:flex h-10 px-4 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg items-center gap-2 transition-colors shadow-lg shadow-primary/20">
-      <span className="material-symbols-outlined text-[18px]">add</span>
-      <span>New Story</span>
-    </button>
-  );
 
   return (
     <DashboardLayout
@@ -32,153 +107,255 @@ export default function ProductOwnerDashboard() {
       }
       headerContent={
         <DashboardHeader
-          title="Product Owner Dashboard"
-          subtitle="Manage backlog, priorities, and product roadmap."
-          actions={headerActions}
+          title="Tableau de Bord Product Owner"
+          subtitle="Bienvenue, voici un aperçu de vos projets et epics."
         />
       }
     >
-      <div className="max-w-350uto flex flex-col gap-6">
+      <div className="max-w-350 mx-auto flex flex-col gap-6">
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-start gap-3">
+            <span className="material-symbols-outlined text-red-400 text-xl">error</span>
+            <div className="flex-1">
+              <h3 className="text-red-400 font-semibold mb-1">Erreur de chargement</h3>
+              <p className="text-red-300 text-sm">{error}</p>
+              <button
+                onClick={loadData}
+                className="mt-3 text-sm text-red-400 hover:text-red-300 underline"
+              >
+                Réessayer
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Stats Section */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            title="Backlog Items"
-            value="128"
-            icon="list_alt"
-            trend={{ value: "+15", isPositive: true, label: "this sprint" }}
+            title="Projets Totaux"
+            value={isLoading ? "..." : stats.totalProjects.toString()}
+            icon="folder"
+            trend={{
+              value: `${stats.activeProjects} actifs`,
+              isPositive: true,
+              label: "projets",
+            }}
           />
           <StatCard
-            title="Story Points"
-            value="342"
+            title="Modules"
+            value={isLoading ? "..." : stats.totalModules.toString()}
+            icon="view_module"
+            trend={{
+              value: "Organisés",
+              isPositive: true,
+              label: "hiérarchie",
+            }}
+          />
+          <StatCard
+            title="Epics"
+            value={isLoading ? "..." : stats.totalEpics.toString()}
+            icon="content_cut"
+            trend={{
+              value: "Priorisés",
+              isPositive: true,
+              label: "backlog",
+            }}
+          />
+          <StatCard
+            title="Product Health"
+            value="98.5%"
             icon="trending_up"
-            trend={{ value: "78", isPositive: true, label: "completed" }}
-          />
-          <StatCard
-            title="Sprint Progress"
-            value="67%"
-            icon="donut_small"
-            trend={{ value: "On track", isPositive: true, label: "" }}
-          />
-          <StatCard
-            title="Team Velocity"
-            value="45"
-            icon="speed"
-            trend={{ value: "+8%", isPositive: true, label: "vs last sprint" }}
+            status={{
+              text: "Excellente progression",
+              color: "green",
+            }}
           />
         </div>
 
-        {/* Sprint Overview */}
-        <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
-          <div className="flex items-center justify-between mb-6">
+        {/* Activity Chart Section */}
+        <div className="w-full bg-surface-dark border border-[#3b4754] rounded-xl p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
-              <h3 className="text-white text-lg font-bold">Current Sprint - Sprint 24</h3>
-              <p className="text-[#9dabb9] text-sm">Feb 12 - Feb 26, 2026 • 5 days remaining</p>
+              <h3 className="text-white text-lg font-bold">
+                Progression des Projets
+              </h3>
+              <p className="text-[#9dabb9] text-sm">
+                Vue d&apos;ensemble de l&apos;avancement de vos projets actifs
+              </p>
             </div>
-            <button className="text-primary text-sm font-bold hover:underline">
-              View Details
-            </button>
+            <div className="flex bg-[#283039] rounded-lg p-1 self-start sm:self-auto">
+              <button className="px-3 py-1 bg-primary text-white text-xs font-bold rounded shadow-sm">
+                30 Jours
+              </button>
+              <button className="px-3 py-1 text-[#9dabb9] hover:text-white text-xs font-medium rounded transition-colors">
+                7 Jours
+              </button>
+              <button className="px-3 py-1 text-[#9dabb9] hover:text-white text-xs font-medium rounded transition-colors">
+                24 Heures
+              </button>
+            </div>
           </div>
-          
-          {/* Progress Bar */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[#9dabb9] text-sm">Sprint Completion</span>
-              <span className="text-white font-bold text-sm">67%</span>
-            </div>
-            <div className="w-full bg-[#283039] rounded-full h-3 overflow-hidden">
-              <div className="bg-linear-to-r from-primary to-blue-400 h-full rounded-full transition-all" style={{ width: "67%" }}></div>
-            </div>
-          </div>
-
-          {/* Sprint Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { label: "Total Stories", value: "18", color: "text-blue-400" },
-              { label: "Completed", value: "12", color: "text-[#0bda5b]" },
-              { label: "In Progress", value: "4", color: "text-yellow-500" },
-              { label: "Pending", value: "2", color: "text-[#9dabb9]" },
-            ].map((stat, idx) => (
-              <div key={idx} className="bg-[#283039] rounded-lg p-4 text-center">
-                <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-                <p className="text-[#9dabb9] text-xs mt-1">{stat.label}</p>
-              </div>
-            ))}
+          <div className="h-60 w-full flex items-center justify-center">
+            <p className="text-[#9dabb9]">
+              Graphique de progression en développement
+            </p>
           </div>
         </div>
 
-        {/* Backlog & Team Updates */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Priority Backlog Items */}
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Link href={`${ROUTES.PRODUCT_OWNER}/projects`}>
+            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
+              <div className="flex items-center gap-4 mb-3">
+                <div className="bg-primary/20 rounded-full h-12 w-12 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+                  <span className="material-symbols-outlined text-primary text-[28px]">
+                    folder
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-white text-lg font-bold">Projets</h3>
+                  <p className="text-[#9dabb9] text-xs">Gérer mes projets</p>
+                </div>
+              </div>
+              <p className="text-[#9dabb9] text-sm">
+                Créer, modifier et organiser vos projets et leurs modules
+              </p>
+            </div>
+          </Link>
+
+          <Link href={`${ROUTES.PRODUCT_OWNER}/epics`}>
+            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
+              <div className="flex items-center gap-4 mb-3">
+                <div className="bg-purple-500/20 rounded-full h-12 w-12 flex items-center justify-center group-hover:bg-purple-500/30 transition-colors">
+                  <span className="material-symbols-outlined text-purple-400 text-[28px]">
+                    content_cut
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-white text-lg font-bold">Epics</h3>
+                  <p className="text-[#9dabb9] text-xs">Gérer la priorisation</p>
+                </div>
+              </div>
+              <p className="text-[#9dabb9] text-sm">
+                Créer et prioriser les epics avec leur valeur métier
+              </p>
+            </div>
+          </Link>
+
+          <Link href={`${ROUTES.PRODUCT_OWNER}/roadmap`}>
+            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
+              <div className="flex items-center gap-4 mb-3">
+                <div className="bg-green-500/20 rounded-full h-12 w-12 flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
+                  <span className="material-symbols-outlined text-green-400 text-[28px]">
+                    map
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-white text-lg font-bold">Roadmap</h3>
+                  <p className="text-[#9dabb9] text-xs">Vision stratégique</p>
+                </div>
+              </div>
+              <p className="text-[#9dabb9] text-sm">
+                Visualiser la roadmap produit et les jalons clés
+              </p>
+            </div>
+          </Link>
+
+          <Link href={`${ROUTES.PRODUCT_OWNER}/sprints`}>
+            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
+              <div className="flex items-center gap-4 mb-3">
+                <div className="bg-orange-500/20 rounded-full h-12 w-12 flex items-center justify-center group-hover:bg-orange-500/30 transition-colors">
+                  <span className="material-symbols-outlined text-orange-400 text-[28px]">
+                    event
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-white text-lg font-bold">Sprints</h3>
+                  <p className="text-[#9dabb9] text-xs">Avancement des sprints</p>
+                </div>
+              </div>
+              <p className="text-[#9dabb9] text-sm">
+                Consulter l&apos;avancement et les métriques des sprints
+              </p>
+            </div>
+          </Link>
+
+          <Link href={`${ROUTES.PRODUCT_OWNER}/validation-tests`}>
+            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
+              <div className="flex items-center gap-4 mb-3">
+                <div className="bg-cyan-500/20 rounded-full h-12 w-12 flex items-center justify-center group-hover:bg-cyan-500/30 transition-colors">
+                  <span className="material-symbols-outlined text-cyan-400 text-[28px]">
+                    check_circle
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-white text-lg font-bold">Validation Tests</h3>
+                  <p className="text-[#9dabb9] text-xs">Livrables et tests</p>
+                </div>
+              </div>
+              <p className="text-[#9dabb9] text-sm">
+                Valider les livrables et les résultats de tests
+              </p>
+            </div>
+          </Link>
+
+          <Link href={`${ROUTES.PRODUCT_OWNER}/rapports-qa`}>
+            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
+              <div className="flex items-center gap-4 mb-3">
+                <div className="bg-pink-500/20 rounded-full h-12 w-12 flex items-center justify-center group-hover:bg-pink-500/30 transition-colors">
+                  <span className="material-symbols-outlined text-pink-400 text-[28px]">
+                    assessment
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-white text-lg font-bold">Rapports QA</h3>
+                  <p className="text-[#9dabb9] text-xs">Métriques qualité</p>
+                </div>
+              </div>
+              <p className="text-[#9dabb9] text-sm">
+                Accéder aux rapports QA globaux et recommandations
+              </p>
+            </div>
+          </Link>
+        </div>
+
+        {/* Recent Projects */}
+        {projects.length > 0 && (
           <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
-            <h3 className="text-white text-lg font-bold mb-4">High Priority Backlog</h3>
-            <div className="space-y-3">
-              {[
-                { id: "US-245", title: "Implement advanced search filters", points: "8", priority: "High" },
-                { id: "US-244", title: "Add export to Excel functionality", points: "5", priority: "High" },
-                { id: "US-243", title: "Improve dashboard loading speed", points: "13", priority: "Critical" },
-                { id: "US-242", title: "Mobile responsive design updates", points: "8", priority: "Medium" },
-              ].map((story, idx) => (
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white text-lg font-bold">Projets Récents</h3>
+              <Link
+                href={`${ROUTES.PRODUCT_OWNER}/projects`}
+                className="text-primary hover:text-blue-400 text-sm font-medium"
+              >
+                Voir tous
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {projects.slice(0, 3).map((project) => (
                 <div
-                  key={idx}
-                  className="bg-[#283039] border border-[#3b4754] rounded-lg p-4 hover:border-primary/50 transition-colors cursor-pointer"
+                  key={project.id}
+                  className="p-4 rounded-lg border border-[#3b4754] hover:border-primary/50 transition-all"
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-primary text-xs font-mono font-bold">{story.id}</span>
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            story.priority === "Critical"
-                              ? "bg-red-500/20 text-red-400"
-                              : story.priority === "High"
-                              ? "bg-orange-500/20 text-orange-400"
-                              : "bg-yellow-500/20 text-yellow-400"
-                          }`}
-                        >
-                          {story.priority}
-                        </span>
-                      </div>
-                      <h4 className="text-white text-sm font-medium">{story.title}</h4>
-                    </div>
-                    <div className="bg-primary/20 text-primary px-2.5 py-1 rounded-lg text-xs font-bold ml-3">
-                      {story.points} SP
-                    </div>
-                  </div>
+                  <h4 className="text-white font-bold mb-2">{project.nom}</h4>
+                  <p className="text-sm text-[#9dabb9] line-clamp-2 mb-2">
+                    {project.description || "Aucune description"}
+                  </p>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                      project.statut === "actif"
+                        ? "bg-green-500/20 text-green-400"
+                        : "bg-gray-500/20 text-gray-400"
+                    }`}
+                  >
+                    {project.statut}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
-
-          {/* Team Velocity Chart */}
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
-            <h3 className="text-white text-lg font-bold mb-4">Team Velocity</h3>
-            <p className="text-[#9dabb9] text-sm mb-6">Story points completed per sprint</p>
-            <div className="h-48 flex items-end justify-around gap-2">
-              {[38, 42, 35, 45, 41, 47].map((value, idx) => (
-                <div key={idx} className="flex-1 flex flex-col items-center gap-2">
-                  <div className="relative w-full">
-                    <div className="absolute -top-6 w-full text-center">
-                      <span className="text-white text-xs font-bold">{value}</span>
-                    </div>
-                  </div>
-                  <div className="w-full bg-[#283039] rounded-t-lg relative overflow-hidden" style={{ height: "150px" }}>
-                    <div
-                      className="absolute bottom-0 w-full bg-linear-to-t from-primary to-primary/60 rounded-t-lg transition-all"
-                      style={{ height: `${(value / 50) * 100}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-[#9dabb9] text-xs">S{19 + idx}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 flex items-center justify-center gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-primary rounded"></div>
-                <span className="text-[#9dabb9]">Avg: 41.3 SP</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </DashboardLayout>
   );

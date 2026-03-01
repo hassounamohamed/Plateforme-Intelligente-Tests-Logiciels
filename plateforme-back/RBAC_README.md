@@ -79,7 +79,7 @@ Content-Type: application/json
 
 #### Se connecter
 ```http
-POST /auth/sign_in
+POST /auth/login
 Content-Type: application/x-www-form-urlencoded
 
 username=john@example.com&password=securepassword

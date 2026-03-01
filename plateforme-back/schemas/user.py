@@ -42,3 +42,14 @@ class UserAdminResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class MembreDisponibleResponse(BaseModel):
+    """Schéma pour la liste des membres disponibles pour assignation"""
+    id: int
+    nom: str
+    email: str
+    role: Optional[RoleSimple] = None
+
+    class Config:
+        from_attributes = True

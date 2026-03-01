@@ -18,6 +18,7 @@ from schemas.projet import (
     ProjetResponse,
     ProjetStatistiquesResponse,
 )
+from schemas.user import MembreDisponibleResponse
 from services.projet_service import ProjetService
 
 router = APIRouter(prefix="/projets", tags=["projets"])
@@ -97,6 +98,16 @@ async def archiver_projet(
 
 
 # ─── Membres ──────────────────────────────────────────────────────────────────
+
+@router.get("/membres-disponibles", response_model=List[MembreDisponibleResponse])
+@require_role(ROLE_PRODUCT_OWNER)
+async def get_membres_disponibles(
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: ProjetService = Depends(get_projet_service),
+):
+    """Récupérer la liste des utilisateurs disponibles pour assignation — Product Owner uniquement."""
+    return svc.get_membres_disponibles()
+
 
 @router.post("/{projet_id}/membres", response_model=ProjetResponse)
 async def assigner_membres(
