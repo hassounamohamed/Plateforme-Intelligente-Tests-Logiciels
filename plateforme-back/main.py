@@ -28,6 +28,9 @@ from api.users import router as users_router
 from api.projets import router as projets_router
 from api.modules import router as modules_router
 from api.epics import router as epics_router
+from api.userstories import router as userstories_router
+from api.sprints import router as sprints_router
+from api.backlog import router as backlog_router
 
 
 
@@ -90,6 +93,9 @@ app.include_router(users_router)
 app.include_router(projets_router)
 app.include_router(modules_router)
 app.include_router(epics_router)
+app.include_router(userstories_router)
+app.include_router(sprints_router)
+app.include_router(backlog_router)
 
 # Test DB route
 @app.get("/test-db")

@@ -70,6 +70,7 @@ class UserStory(Base):
     points = Column(Integer)
     priorite = Column(String)
     statut = Column(String)
+    ordre = Column(Integer, default=0)   # position dans le backlog (drag & drop)
 
     epic_id = Column(Integer, ForeignKey("epic.id"))
     developerId = Column(Integer, ForeignKey("utilisateur.id"))
