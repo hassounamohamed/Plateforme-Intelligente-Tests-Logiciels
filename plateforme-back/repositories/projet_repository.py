@@ -23,6 +23,13 @@ class ProjetRepository(BaseRepository[Projet]):
             .all()
         )
 
+    def get_projets_by_membre(self, user_id: int) -> List[Projet]:
+        """Récupérer tous les projets dont l'utilisateur est membre"""
+        user = self.db.query(Utilisateur).filter(Utilisateur.id == user_id).first()
+        if not user:
+            return []
+        return user.projets_membres
+
     def get_by_statut(self, statut: str) -> List[Projet]:
         """Récupérer les projets par statut"""
         return self.db.query(Projet).filter(Projet.statut == statut).all()

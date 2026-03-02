@@ -189,6 +189,8 @@ export interface UserStorySummary {
   statut?: string;
   points?: number;
   priorite?: string;
+  developerId?: number;
+  developerNom?: string;
 }
 
 export interface Epic {
@@ -250,6 +252,111 @@ export interface CreateSprintPayload {
   dateFin?: string;
   objectifSprint?: string;
   capaciteEquipe?: number;
+}
+
+export interface UpdateSprintPayload {
+  nom?: string;
+  dateDebut?: string;
+  dateFin?: string;
+  objectifSprint?: string;
+  capaciteEquipe?: number;
+}
+
+export interface AddUserStoriesToSprintPayload {
+  userstory_ids: number[];
+}
+
+export interface RemoveUserStoriesFromSprintPayload {
+  userstory_ids: number[];
+}
+
+export interface SprintVelocite {
+  sprint_id: number;
+  nom: string;
+  statut: string;
+  velocite: number;
+  points_total: number;
+  points_termines: number;
+  nb_userstories: number;
+  nb_terminees: number;
+}
+
+// ─── User Stories ────────────────────────────────────────────────────────────
+
+export type PrioriteUS = "must_have" | "should_have" | "could_have" | "wont_have";
+export type StatutUS = "to_do" | "in_progress" | "done";
+
+export interface UserStory {
+  id: number;
+  titre: string;
+  description?: string; // "En tant que … je veux … afin de …"
+  criteresAcceptation?: string;
+  points?: number;
+  priorite: PrioriteUS;
+  statut: StatutUS;
+  epic_id: number;
+  developerId?: number;
+  developerNom?: string;
+}
+
+export interface CreateUserStoryPayload {
+  titre: string;
+  role: string;
+  action: string;
+  benefice?: string;
+  criteresAcceptation?: string;
+  points?: number;
+  priorite?: PrioriteUS;
+}
+
+export interface UpdateUserStoryPayload {
+  titre?: string;
+  role?: string;
+  action?: string;
+  benefice?: string;
+  criteresAcceptation?: string;
+  points?: number;
+  priorite?: PrioriteUS;
+}
+
+export interface ChangerStatutUSPayload {
+  statut: StatutUS;
+}
+
+export interface AssignerDeveloppeurPayload {
+  developeur_id: number;
+}
+
+export interface ValiderUserStoryPayload {
+  commentaire?: string;
+}
+
+// ─── Backlog ─────────────────────────────────────────────────────────────────
+
+export interface BacklogItem {
+  id: number;
+  titre: string;
+  description?: string;
+  type: "epic" | "user_story";
+  priorite: number | string;
+  points?: number;
+  statut: string;
+  ordre?: number;
+}
+
+export interface BacklogIndicateurs {
+  projet_id: number;
+  total_stories: number;
+  total_points: number;
+  points_done: number;
+  items_prioritaires: number;
+  items_non_estimes: number;
+  par_statut?: any;
+  par_epic?: any[];
+}
+
+export interface ReordonnancerBacklogPayload {
+  ordre_ids: number[];
 }
 
 // ─── Tests & Validation ──────────────────────────────────────────────────────

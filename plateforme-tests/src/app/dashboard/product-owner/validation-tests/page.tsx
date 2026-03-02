@@ -18,6 +18,7 @@ export default function ValidationTestsPage() {
   const sidebarLinks = [
     { href: ROUTES.PRODUCT_OWNER, icon: "dashboard", label: "Dashboard" },
     { href: `${ROUTES.PRODUCT_OWNER}/projects`, icon: "folder", label: "Projets" },
+    { href: `${ROUTES.PRODUCT_OWNER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.PRODUCT_OWNER}/epics`, icon: "content_cut", label: "Epics" },
     { href: `${ROUTES.PRODUCT_OWNER}/sprints`, icon: "event", label: "Sprints" },
     { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
