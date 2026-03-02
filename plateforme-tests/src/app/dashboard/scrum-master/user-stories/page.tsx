@@ -196,6 +196,15 @@ export default function UserStoriesPage() {
         <DashboardHeader
           title="Gestion des User Stories"
           subtitle="Décomposition des epics et affectation des tâches"
+          actions={
+            <Link
+              href={`${ROUTES.SCRUM_MASTER}/user-stories/new`}
+              className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors"
+            >
+              <span className="material-symbols-outlined text-[20px]">add</span>
+              <span className="hidden md:inline">Nouvelle User Story</span>
+            </Link>
+          }
         />
       }
     >
