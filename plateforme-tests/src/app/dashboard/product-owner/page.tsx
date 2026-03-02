@@ -29,9 +29,9 @@ export default function ProductOwnerDashboard() {
     setIsLoading(true);
     setError(null);
     try {
-      console.log("🔄 Chargement des projets...");
+      console.log("Chargement des projets...");
       const projectsData = await getMyProjects();
-      console.log("✅ Projets reçus:", projectsData);
+      console.log("Projets reçus:", projectsData);
       setProjects(projectsData);
 
       // Calculate stats

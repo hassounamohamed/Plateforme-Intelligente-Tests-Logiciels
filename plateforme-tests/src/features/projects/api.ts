@@ -16,6 +16,14 @@ export const getMyProjects = async (): Promise<Project[]> => {
 };
 
 /**
+ * Fetch all projects where the current user is a member (for Scrum Master, Developers, etc.)
+ */
+export const getMyProjectsAsMember = async (): Promise<Project[]> => {
+  const response = await axiosInstance.get<Project[]>(`${BASE_URL}/mes-projets-membre`);
+  return response.data;
+};
+
+/**
  * Fetch all projects (Super Admin only)
  */
 export const getAllProjects = async (): Promise<Project[]> => {

@@ -52,6 +52,15 @@ async def get_mes_projets(
     return svc.get_mes_projets(current_user.id)
 
 
+@router.get("/mes-projets-membre", response_model=List[ProjetResponse])
+async def get_mes_projets_membre(
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: ProjetService = Depends(get_projet_service),
+):
+    """Projets dont l'utilisateur connecté est membre (via table association projet_membre)."""
+    return svc.get_projets_membre(current_user.id)
+
+
 @router.get("", response_model=List[ProjetResponse])
 @require_role(ROLE_SUPER_ADMIN)
 async def get_all_projets(

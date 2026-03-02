@@ -52,6 +52,10 @@ class ProjetService:
         """Projets dont l'utilisateur connecté est le Product Owner."""
         return self.repo.get_by_product_owner(product_owner_id)
 
+    def get_projets_membre(self, user_id: int):
+        """Projets dont l'utilisateur est membre (pour Scrum Master, Developers, etc.)."""
+        return self.repo.get_projets_by_membre(user_id)
+
     def get_all_projets(self):
         return self.repo.get_all()
 

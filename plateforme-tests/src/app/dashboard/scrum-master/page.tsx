@@ -1,23 +1,130 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout, StatCard } from "@/components/dashboard/DashboardLayout";
 import { ROUTES } from "@/lib/constants";
+import { getMyProjectsAsMember } from "@/features/projects/api";
+import { getSprints, getActiveSprint } from "@/features/sprints/api";
+import { getBacklog, getBacklogIndicateurs } from "@/features/backlog/api";
+import { Project, Sprint, BacklogIndicateurs } from "@/types";
 
 export default function ScrumMasterDashboard() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [activeSprint, setActiveSprint] = useState<Sprint | null>(null);
+  const [backlogIndicateurs, setBacklogIndicateurs] = useState<BacklogIndicateurs | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    totalSprints: 0,
+    activeSprints: 0,
+    totalUserStories: 0,
+    completedUserStories: 0,
+  });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      console.log("Chargement des données Scrum Master...");
+      const projectsData = await getMyProjectsAsMember();
+      console.log("Projets reçus:", projectsData);
+      setProjects(projectsData);
+
+      let totalSprints = 0;
+      let activeSprints = 0;
+      let totalUS = 0;
+      let completedUS = 0;
+
+      // Récupérer les données de chaque projet
+      for (const project of projectsData) {
+        try {
+          // Récupérer les sprints du projet
+          const sprintsData = await getSprints(project.id);
+          totalSprints += sprintsData.length;
+          activeSprints += sprintsData.filter((s) => s.statut === "en_cours").length;
+
+          // Récupérer le sprint actif
+          try {
+            const activeSprintData = await getActiveSprint(project.id);
+            setActiveSprint(activeSprintData);
+            
+            // Compter les user stories du sprint actif
+            if (activeSprintData.userstories) {
+              totalUS += activeSprintData.userstories.length;
+              completedUS += activeSprintData.userstories.filter((us) => us.statut === "done").length;
+            }
+          } catch (err) {
+            console.warn(`Pas de sprint actif pour le projet ${project.id}`);
+          }
+
+          // Récupérer les indicateurs du backlog
+          try {
+            const indicateursData = await getBacklogIndicateurs(project.id);
+            setBacklogIndicateurs(indicateursData);
+          } catch (err) {
+            console.warn(`Impossible de charger les indicateurs du backlog pour le projet ${project.id}`);
+          }
+        } catch (err) {
+          console.warn(`Erreur lors du chargement des données pour le projet ${project.id}:`, err);
+        }
+      }
+
+      setStats({
+        totalSprints,
+        activeSprints,
+        totalUserStories: totalUS,
+        completedUserStories: completedUS,
+      });
+
+      console.log("📊 Stats calculées:", {
+        totalSprints,
+        activeSprints,
+        totalUserStories: totalUS,
+        completedUserStories: completedUS,
+      });
+    } catch (error: any) {
+      console.error("❌ Erreur lors du chargement des données:", error);
+      setError(
+        error.response?.data?.detail ||
+        error.message ||
+        "Erreur lors du chargement des données"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const sidebarLinks = [
     { href: ROUTES.SCRUM_MASTER, icon: "dashboard", label: "Dashboard" },
     { href: `${ROUTES.SCRUM_MASTER}/sprints`, icon: "calendar_month", label: "Sprints" },
-    { href: `${ROUTES.SCRUM_MASTER}/team`, icon: "groups", label: "Team Management" },
-    { href: `${ROUTES.SCRUM_MASTER}/retrospectives`, icon: "psychology", label: "Retrospectives" },
+    { href: `${ROUTES.SCRUM_MASTER}/backlog`, icon: "list", label: "Backlog" },
+    { href: `${ROUTES.SCRUM_MASTER}/user-stories`, icon: "description", label: "User Stories" },
+    { href: `${ROUTES.SCRUM_MASTER}/team`, icon: "groups", label: "Équipe" },
   ];
 
-  const headerActions = (
-    <button className="hidden sm:flex h-10 px-4 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg items-center gap-2 transition-colors shadow-lg shadow-primary/20">
+  const headerActions = activeSprint ? (
+    <Link
+      href={`${ROUTES.SCRUM_MASTER}/sprints/${activeSprint.id}`}
+      className="hidden sm:flex h-10 px-4 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg items-center gap-2 transition-colors shadow-lg shadow-primary/20"
+    >
+      <span className="material-symbols-outlined text-[18px]">event</span>
+      <span>Sprint Actif</span>
+    </Link>
+  ) : (
+    <Link
+      href={`${ROUTES.SCRUM_MASTER}/sprints/new`}
+      className="hidden sm:flex h-10 px-4 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg items-center gap-2 transition-colors shadow-lg shadow-primary/20"
+    >
       <span className="material-symbols-outlined text-[18px]">add</span>
-      <span>New Sprint</span>
-    </button>
+      <span>Nouveau Sprint</span>
+    </Link>
   );
 
   return (
@@ -32,204 +139,280 @@ export default function ScrumMasterDashboard() {
       }
       headerContent={
         <DashboardHeader
-          title="Scrum Master Dashboard"
-          subtitle="Facilitate sprints, remove blockers, and coach the team."
+          title="Tableau de Bord Scrum Master"
+          subtitle="Organisation et suivi du processus Scrum"
           actions={headerActions}
         />
       }
     >
       <div className="max-w-350 mx-auto flex flex-col gap-6">
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-start gap-3">
+            <span className="material-symbols-outlined text-red-400 text-xl">error</span>
+            <div className="flex-1">
+              <h3 className="text-red-400 font-semibold mb-1">Erreur de chargement</h3>
+              <p className="text-red-300 text-sm">{error}</p>
+              <button
+                onClick={loadData}
+                className="mt-3 text-sm text-red-400 hover:text-red-300 underline"
+              >
+                Réessayer
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Stats Section */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            title="Team Members"
-            value="12"
-            icon="groups"
-            status={{ text: "All active", color: "green" }}
+            title="Sprints Totaux"
+            value={isLoading ? "..." : stats.totalSprints.toString()}
+            icon="calendar_month"
+            status={{
+              text: `${stats.activeSprints} actifs`,
+              color: stats.activeSprints > 0 ? "green" : "red",
+            }}
           />
           <StatCard
-            title="Sprint Progress"
-            value="72%"
-            icon="donut_small"
-            trend={{ value: "On schedule", isPositive: true, label: "" }}
+            title="User Stories Sprint"
+            value={isLoading ? "..." : stats.totalUserStories.toString()}
+            icon="description"
+            trend={{
+              value: `${stats.completedUserStories} terminées`,
+              isPositive: true,
+              label: "stories",
+            }}
           />
           <StatCard
-            title="Active Blockers"
-            value="3"
-            icon="block"
-            trend={{ value: "-2", isPositive: true, label: "vs yesterday" }}
+            title="Backlog Items"
+            value={isLoading ? "..." : (backlogIndicateurs?.total_stories || 0).toString()}
+            icon="list"
+            trend={{
+              value: `${backlogIndicateurs?.total_points || 0} points`,
+              isPositive: true,
+              label: "story points",
+            }}
           />
           <StatCard
-            title="Team Satisfaction"
-            value="4.2/5"
-            icon="sentiment_satisfied"
-            trend={{ value: "+0.3", isPositive: true, label: "this month" }}
+            title="Vélocité Sprint"
+            value={isLoading ? "..." : (activeSprint?.velocite || 0).toString()}
+            icon="speed"
+            trend={{
+              value: activeSprint ? "En cours" : "Aucun sprint",
+              isPositive: !!activeSprint,
+              label: "",
+            }}
           />
         </div>
 
-        {/* Sprint Status & Burndown */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Current Sprint Info */}
-          <div className="lg:col-span-2 bg-surface-dark border border-[#3b4754] rounded-xl p-6">
+        {/* Sprint Actif */}
+        {activeSprint && (
+          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-white text-lg font-bold">Sprint 24 - Burndown Chart</h3>
-                <p className="text-[#9dabb9] text-sm">5 days remaining • Target: 45 SP</p>
+                <h3 className="text-white text-lg font-bold">{activeSprint.nom}</h3>
+                <p className="text-[#9dabb9] text-sm">
+                  {activeSprint.dateDebut
+                    ? new Date(activeSprint.dateDebut).toLocaleDateString("fr-FR")
+                    : "Non défini"}{" "}
+                  -{" "}
+                  {activeSprint.dateFin
+                    ? new Date(activeSprint.dateFin).toLocaleDateString("fr-FR")
+                    : "Non défini"}
+                </p>
               </div>
-              <button className="text-primary text-sm font-bold hover:underline">
-                View Details
-              </button>
+              <Link
+                href={`${ROUTES.SCRUM_MASTER}/sprints/${activeSprint.id}`}
+                className="text-primary text-sm font-bold hover:underline"
+              >
+                Voir Détails
+              </Link>
             </div>
-            
-            {/* Burndown Chart */}
-            <div className="h-60 w-full relative">
-              <svg className="w-full h-full" viewBox="0 0 1000 240" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="idealGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#9dabb9" stopOpacity="0.1" />
-                    <stop offset="100%" stopColor="#9dabb9" stopOpacity="0" />
-                  </linearGradient>
-                  <linearGradient id="actualGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#137fec" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#137fec" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                {/* Grid */}
-                {[0, 60, 120, 180, 240].map((y) => (
-                  <line key={y} x1="0" y1={y} x2="1000" y2={y} stroke="#283039" strokeWidth="1" strokeDasharray="4" />
-                ))}
-                {/* Ideal line */}
-                <path d="M0,20 L1000,240" fill="none" stroke="#9dabb9" strokeWidth="2" strokeDasharray="8" />
-                {/* Actual line */}
-                <path d="M0,20 L200,60 L400,100 L600,150 L800,180 L1000,200" fill="none" stroke="#137fec" strokeWidth="3" strokeLinecap="round" />
-              </svg>
-            </div>
-            
-            <div className="flex items-center justify-center gap-6 mt-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-[#9dabb9] rounded"></div>
-                <span className="text-[#9dabb9] text-sm">Ideal Burndown</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-primary rounded"></div>
-                <span className="text-white text-sm">Actual Progress</span>
-              </div>
-            </div>
-          </div>
 
-          {/* Daily Standup Notes */}
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
-            <h3 className="text-white text-lg font-bold mb-4">Today's Standup</h3>
-            <div className="space-y-4">
-              <div>
-                <p className="text-[#9dabb9] text-xs font-bold uppercase mb-2">Time</p>
-                <p className="text-white text-sm">9:00 AM - 9:15 AM</p>
+            {activeSprint.objectifSprint && (
+              <div className="mb-4">
+                <p className="text-[#9dabb9] text-xs font-bold uppercase mb-2">Objectif</p>
+                <p className="text-white text-sm">{activeSprint.objectifSprint}</p>
               </div>
+            )}
+
+            {/* User Stories du Sprint */}
+            {activeSprint.userstories && activeSprint.userstories.length > 0 && (
               <div>
-                <p className="text-[#9dabb9] text-xs font-bold uppercase mb-2">Attendees</p>
-                <p className="text-white text-sm">12/12 present</p>
+                <p className="text-[#9dabb9] text-xs font-bold uppercase mb-3">
+                  User Stories ({activeSprint.userstories.length})
+                </p>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {activeSprint.userstories.map((us) => (
+                    <div
+                      key={us.id}
+                      className="bg-[#283039] border border-[#3b4754] rounded-lg p-3 hover:border-primary/50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="text-white font-medium text-sm mb-1">{us.titre}</h4>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span
+                              className={`px-2 py-0.5 rounded text-xs font-bold ${
+                                us.statut === "done"
+                                  ? "bg-[#0bda5b]/20 text-[#0bda5b]"
+                                  : us.statut === "in_progress"
+                                  ? "bg-primary/20 text-primary"
+                                  : "bg-[#9dabb9]/20 text-[#9dabb9]"
+                              }`}
+                            >
+                              {us.statut === "done"
+                                ? "Terminée"
+                                : us.statut === "in_progress"
+                                ? "En cours"
+                                : "À faire"}
+                            </span>
+                            {us.points && (
+                              <span className="text-[#9dabb9] text-xs">{us.points} pts</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div>
-                <p className="text-[#9dabb9] text-xs font-bold uppercase mb-2">Key Points</p>
-                <ul className="space-y-2 mt-2">
-                  <li className="flex items-start gap-2">
-                    <span className="material-symbols-outlined text-[#0bda5b] text-[16px] mt-0.5">check_circle</span>
-                    <span className="text-white text-sm">Payment feature deployed</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="material-symbols-outlined text-yellow-500 text-[16px] mt-0.5">warning</span>
-                    <span className="text-white text-sm">API rate limit blocker</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="material-symbols-outlined text-primary text-[16px] mt-0.5">info</span>
-                    <span className="text-white text-sm">Design review at 2 PM</span>
-                  </li>
-                </ul>
+            )}
+          </div>
+        )}
+
+        {/* Backlog & Projets */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Indicateurs Backlog */}
+          {backlogIndicateurs && (
+            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
+              <h3 className="text-white text-lg font-bold mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">list</span>
+                Indicateurs Backlog
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[#9dabb9] text-sm">Total Stories</span>
+                  <span className="text-white font-bold">{backlogIndicateurs.total_stories}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#9dabb9] text-sm">Total Points</span>
+                  <span className="text-white font-bold">{backlogIndicateurs.total_points}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#9dabb9] text-sm">Points Terminés</span>
+                  <span className="text-[#0bda5b] font-bold">{backlogIndicateurs.points_done}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#9dabb9] text-sm">Items Prioritaires</span>
+                  <span className="text-yellow-400 font-bold">
+                    {backlogIndicateurs.items_prioritaires}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#9dabb9] text-sm">Items Non Estimés</span>
+                  <span className="text-red-400 font-bold">
+                    {backlogIndicateurs.items_non_estimes}
+                  </span>
+                </div>
               </div>
+              <Link
+                href={`${ROUTES.SCRUM_MASTER}/backlog`}
+                className="mt-4 text-primary text-sm font-bold hover:underline flex items-center gap-1"
+              >
+                Voir le Backlog
+                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+              </Link>
             </div>
+          )}
+
+          {/* Projets */}
+          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
+            <h3 className="text-white text-lg font-bold mb-4">Mes Projets</h3>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : projects.length === 0 ? (
+              <p className="text-[#9dabb9] text-sm text-center py-4">
+                Aucun projet disponible
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {projects.slice(0, 5).map((project) => (
+                  <Link
+                    key={project.id}
+                    href={`${ROUTES.SCRUM_MASTER}/projects/${project.id}`}
+                    className="block bg-[#283039] border border-[#3b4754] rounded-lg p-4 hover:border-primary/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="text-white font-medium text-sm mb-1">{project.nom}</h4>
+                        {project.description && (
+                          <p className="text-[#9dabb9] text-xs line-clamp-2">
+                            {project.description}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-2 mt-2">
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs font-bold ${
+                              project.statut === "actif"
+                                ? "bg-[#0bda5b]/20 text-[#0bda5b]"
+                                : project.statut === "en_cours"
+                                ? "bg-primary/20 text-primary"
+                                : "bg-[#9dabb9]/20 text-[#9dabb9]"
+                            }`}
+                          >
+                            {project.statut}
+                          </span>
+                          {project.membres && (
+                            <span className="text-[#9dabb9] text-xs">
+                              {project.membres.length} membre{project.membres.length > 1 ? "s" : ""}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Team Activity & Blockers */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Active Blockers */}
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
-            <h3 className="text-white text-lg font-bold mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-red-400">block</span>
-              Active Blockers
-            </h3>
-            <div className="space-y-3">
-              {[
-                { title: "API rate limit exceeded", team: "Backend Team", severity: "High", duration: "2 hours" },
-                { title: "Waiting for design approval", team: "Frontend Team", severity: "Medium", duration: "1 day" },
-                { title: "Database migration pending", team: "DevOps", severity: "High", duration: "4 hours" },
-              ].map((blocker, idx) => (
-                <div
-                  key={idx}
-                  className="bg-[#283039] border border-[#3b4754] rounded-lg p-4 hover:border-red-400/50 transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <h4 className="text-white font-medium text-sm mb-1">{blocker.title}</h4>
-                      <p className="text-[#9dabb9] text-xs">{blocker.team}</p>
-                    </div>
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap ml-2 ${
-                        blocker.severity === "High"
-                          ? "bg-red-500/20 text-red-400"
-                          : "bg-yellow-500/20 text-yellow-400"
-                      }`}
-                    >
-                      {blocker.severity}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="material-symbols-outlined text-[#9dabb9] text-[14px]">schedule</span>
-                    <span className="text-[#9dabb9] text-xs">Blocked for {blocker.duration}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Team Capacity */}
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
-            <h3 className="text-white text-lg font-bold mb-4">Team Capacity</h3>
-            <div className="space-y-4">
-              {[
-                { name: "Michael Chen", role: "Developer", capacity: 85, avatar: "M" },
-                { name: "Sarah Wilson", role: "Developer", capacity: 92, avatar: "S" },
-                { name: "David Kim", role: "QA Engineer", capacity: 70, avatar: "D" },
-                { name: "Emma Rodriguez", role: "Designer", capacity: 95, avatar: "E" },
-              ].map((member, idx) => (
-                <div key={idx} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-primary/20 rounded-full h-8 w-8 flex items-center justify-center text-primary font-bold text-sm">
-                        {member.avatar}
-                      </div>
-                      <div>
-                        <p className="text-white text-sm font-medium">{member.name}</p>
-                        <p className="text-[#9dabb9] text-xs">{member.role}</p>
-                      </div>
-                    </div>
-                    <span className="text-white font-bold text-sm">{member.capacity}%</span>
-                  </div>
-                  <div className="w-full bg-[#283039] rounded-full h-2 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${
-                        member.capacity >= 90
-                          ? "bg-red-500"
-                          : member.capacity >= 75
-                          ? "bg-yellow-500"
-                          : "bg-[#0bda5b]"
-                      }`}
-                      style={{ width: `${member.capacity}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
+        {/* Actions Rapides */}
+        <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
+          <h3 className="text-white text-lg font-bold mb-4">Actions Rapides</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Link
+              href={`${ROUTES.SCRUM_MASTER}/sprints/new`}
+              className="bg-[#283039] border border-[#3b4754] rounded-lg p-4 hover:border-primary/50 transition-colors flex flex-col items-center gap-2 text-center"
+            >
+              <span className="material-symbols-outlined text-primary text-2xl">add_circle</span>
+              <span className="text-white text-sm font-medium">Créer Sprint</span>
+            </Link>
+            <Link
+              href={`${ROUTES.SCRUM_MASTER}/user-stories/new`}
+              className="bg-[#283039] border border-[#3b4754] rounded-lg p-4 hover:border-primary/50 transition-colors flex flex-col items-center gap-2 text-center"
+            >
+              <span className="material-symbols-outlined text-primary text-2xl">description</span>
+              <span className="text-white text-sm font-medium">Nouvelle User Story</span>
+            </Link>
+            <Link
+              href={`${ROUTES.SCRUM_MASTER}/backlog`}
+              className="bg-[#283039] border border-[#3b4754] rounded-lg p-4 hover:border-primary/50 transition-colors flex flex-col items-center gap-2 text-center"
+            >
+              <span className="material-symbols-outlined text-primary text-2xl">reorder</span>
+              <span className="text-white text-sm font-medium">Gérer Backlog</span>
+            </Link>
+            <Link
+              href={`${ROUTES.SCRUM_MASTER}/team`}
+              className="bg-[#283039] border border-[#3b4754] rounded-lg p-4 hover:border-primary/50 transition-colors flex flex-col items-center gap-2 text-center"
+            >
+              <span className="material-symbols-outlined text-primary text-2xl">groups</span>
+              <span className="text-white text-sm font-medium">Gérer Équipe</span>
+            </Link>
           </div>
         </div>
       </div>
