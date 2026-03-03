@@ -147,8 +147,8 @@ export default function SprintsPage() {
     >
       <div className="max-w-7xl mx-auto flex flex-col gap-6">
         {/* Project Selector */}
-        <div className="bg-gradient-to-r from-surface-dark to-[#1e2936] border border-[#3b4754] rounded-xl p-6 shadow-lg">
-          <label className="block text-sm font-bold text-white mb-3 flex items-center gap-2">
+        <div className="bg-linear-to-r from-surface-dark to-[#1e2936] border border-[#3b4754] rounded-xl p-6 shadow-lg">
+          <label className="block text-sm font-bold text-white mb-3 items-center gap-2">
             <span className="material-symbols-outlined text-primary">folder_open</span>
             Sélectionner un projet
           </label>
@@ -169,7 +169,7 @@ export default function SprintsPage() {
         {!isLoadingSprints && sprints.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {/* Total Sprints */}
-            <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/30 rounded-xl p-5 hover:shadow-lg hover:shadow-blue-500/20 transition-all">
+            <div className="bg-linear-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/30 rounded-xl p-5 hover:shadow-lg hover:shadow-blue-500/20 transition-all">
               <div className="flex items-center justify-between mb-3">
                 <span className="material-symbols-outlined text-blue-400 text-3xl">
                   event_note
@@ -180,7 +180,7 @@ export default function SprintsPage() {
             </div>
 
             {/* Active Sprints */}
-            <div className="bg-gradient-to-br from-green-500/10 to-green-600/5 border border-green-500/30 rounded-xl p-5 hover:shadow-lg hover:shadow-green-500/20 transition-all">
+            <div className="bg-linear-to-br from-green-500/10 to-green-600/5 border border-green-500/30 rounded-xl p-5 hover:shadow-lg hover:shadow-green-500/20 transition-all">
               <div className="flex items-center justify-between mb-3">
                 <span className="material-symbols-outlined text-green-400 text-3xl">
                   play_circle
@@ -191,7 +191,7 @@ export default function SprintsPage() {
             </div>
 
             {/* Completed Sprints */}
-            <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/30 rounded-xl p-5 hover:shadow-lg hover:shadow-purple-500/20 transition-all">
+            <div className="bg-linear-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/30 rounded-xl p-5 hover:shadow-lg hover:shadow-purple-500/20 transition-all">
               <div className="flex items-center justify-between mb-3">
                 <span className="material-symbols-outlined text-purple-400 text-3xl">
                   check_circle
@@ -202,7 +202,7 @@ export default function SprintsPage() {
             </div>
 
             {/* Planned Sprints */}
-            <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 border border-yellow-500/30 rounded-xl p-5 hover:shadow-lg hover:shadow-yellow-500/20 transition-all">
+            <div className="bg-linear-to-br from-yellow-500/10 to-yellow-600/5 border border-yellow-500/30 rounded-xl p-5 hover:shadow-lg hover:shadow-yellow-500/20 transition-all">
               <div className="flex items-center justify-between mb-3">
                 <span className="material-symbols-outlined text-yellow-400 text-3xl">
                   schedule
@@ -213,7 +213,7 @@ export default function SprintsPage() {
             </div>
 
             {/* Average Velocity */}
-            <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/30 rounded-xl p-5 hover:shadow-lg hover:shadow-primary/20 transition-all">
+            <div className="bg-linear-to-br from-primary/10 to-primary/5 border border-primary/30 rounded-xl p-5 hover:shadow-lg hover:shadow-primary/20 transition-all">
               <div className="flex items-center justify-between mb-3">
                 <span className="material-symbols-outlined text-primary text-3xl">
                   speed
@@ -227,7 +227,7 @@ export default function SprintsPage() {
 
       {/* Sprints List */}
       {isLoadingSprints ? (
-        <div className="bg-gradient-to-r from-primary-500/10 to-primary-600/5 border-2 border-primary-500/30 rounded-xl p-12 flex flex-col items-center justify-center gap-4 shadow-lg">
+        <div className="bg-linear-to-r from-primary-500/10 to-primary-600/5 border-2 border-primary-500/30 rounded-xl p-12 flex flex-col items-center justify-center gap-4 shadow-lg">
           <div className="relative">
             <div className="w-16 h-16 border-4 border-primary-500/20 rounded-full"></div>
             <div className="absolute top-0 left-0 w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
@@ -238,7 +238,7 @@ export default function SprintsPage() {
           </div>
         </div>
       ) : sprints.length === 0 ? (
-        <div className="bg-gradient-to-br from-gray-500/10 to-gray-600/5 border-2 border-gray-500/30 rounded-xl p-16 text-center shadow-lg">
+        <div className="bg-linear-to-br from-gray-500/10 to-gray-600/5 border-2 border-gray-500/30 rounded-xl p-16 text-center shadow-lg">
           <div className="flex justify-center mb-6">
             <div className="w-24 h-24 bg-gray-500/10 rounded-full flex items-center justify-center">
               <span className="material-symbols-outlined text-gray-400 text-6xl">
@@ -269,7 +269,7 @@ export default function SprintsPage() {
             return (
               <div
                 key={sprint.id}
-                className="bg-gradient-to-br from-surface-dark to-[#1e2936] border-2 border-[#3b4754] rounded-2xl p-6 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300"
+                className="bg-linear-to-br from-surface-dark to-[#1e2936] border-2 border-[#3b4754] rounded-2xl p-6 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300"
               >
                 {/* Sprint Header */}
                 <div className="flex items-start justify-between mb-6">
@@ -297,7 +297,7 @@ export default function SprintsPage() {
                     )}
                   </div>
                   {sprint.statut === "en_cours" && daysLeft !== null && (
-                    <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500/40 rounded-xl px-6 py-4 text-center ml-4">
+                    <div className="bg-linear-to-br from-blue-500/20 to-blue-600/10 border-2 border-blue-500/40 rounded-xl px-6 py-4 text-center ml-4">
                       <div className="text-4xl font-black text-blue-400">{daysLeft}</div>
                       <div className="text-xs text-blue-300 font-semibold uppercase tracking-wide mt-1">jours restants</div>
                     </div>
@@ -483,7 +483,7 @@ export default function SprintsPage() {
 
                 {/* QA Report - Enhanced Design */}
                 {sprint.rapport_qa && (
-                  <div className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-2 border-green-500/30 rounded-xl p-6 shadow-lg">
+                  <div className="bg-linear-to-br from-green-500/10 to-green-600/5 border-2 border-green-500/30 rounded-xl p-6 shadow-lg">
                     <div className="flex items-center gap-3 mb-5">
                       <div className="flex items-center justify-center w-12 h-12 bg-green-500/20 rounded-full">
                         <span className="material-symbols-outlined text-green-400 text-2xl">
@@ -551,8 +551,8 @@ export default function SprintsPage() {
 
       {/* Error Message */}
       {error && (
-        <div className="bg-gradient-to-r from-red-500/10 to-red-600/5 border-2 border-red-500/40 rounded-xl p-6 flex items-start gap-4 shadow-lg">
-          <div className="flex items-center justify-center w-12 h-12 bg-red-500/20 rounded-full flex-shrink-0">
+        <div className="bg-linear-to-r from-red-500/10 to-red-600/5 border-2 border-red-500/40 rounded-xl p-6 flex items-start gap-4 shadow-lg">
+          <div className="flex items-center justify-center w-12 h-12 bg-red-500/20 rounded-full shrink-0">
             <span className="material-symbols-outlined text-red-400 text-2xl">error</span>
           </div>
           <div className="flex-1">

@@ -118,6 +118,7 @@ export interface MemberSimple {
   id: number;
   nom: string;
   email: string;
+  actif: boolean;
 }
 
 export interface Project {
