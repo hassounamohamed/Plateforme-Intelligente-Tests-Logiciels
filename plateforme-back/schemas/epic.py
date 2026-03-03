@@ -47,6 +47,7 @@ class UserStorySummary(BaseModel):
 
 class EpicResponse(BaseModel):
     id: int
+    reference: Optional[str] = None
     titre: str
     description: Optional[str] = None
     priorite: int

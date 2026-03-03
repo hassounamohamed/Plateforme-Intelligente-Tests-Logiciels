@@ -27,6 +27,7 @@ class Utilisateur(Base):
     projets = relationship("Projet", back_populates="product_owner", foreign_keys="Projet.productOwnerId")
     epics = relationship("Epic", back_populates="product_owner", foreign_keys="Epic.productOwnerId")
     userstories = relationship("UserStory", back_populates="developer", foreign_keys="UserStory.developerId")
+    userstories_tester = relationship("UserStory", back_populates="tester", foreign_keys="UserStory.testerId")
     sprints_scrum_master = relationship("Sprint", back_populates="scrum_master", foreign_keys="Sprint.scrumMasterId")
     
     # Validations

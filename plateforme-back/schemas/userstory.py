@@ -1,5 +1,6 @@
 from typing import Optional, List, Literal
-from pydantic import BaseModel, Field
+from datetime import datetime
+from pydantic import BaseModel, Field, model_validator
 
 # MoSCoW priorités
 PrioriteUS = Literal["must_have", "should_have", "could_have", "wont_have"]
@@ -40,7 +41,22 @@ class CreateUserStoryRequest(BaseModel):
         None,
         description="Story points Fibonacci : 1, 2, 3, 5, 8, 13, 21",
     )
+    duree_estimee: Optional[float] = Field(
+        None,
+        gt=0,
+        description="Durée estimée en heures (ex: 2.5). Obligatoire si points absent.",
+    )
+    start_date: Optional[datetime] = Field(None, description="Date de début de la user story")
+    due_date: Optional[datetime] = Field(None, description="Date d'échéance de la user story")
     priorite: PrioriteUS = Field("should_have", description="Priorité MoSCoW")
+
+    @model_validator(mode='after')
+    def verifier_estimation(self):
+        if self.points is None and self.duree_estimee is None:
+            raise ValueError(
+                "Au moins un des champs 'points' ou 'duree_estimee' est obligatoire."
+            )
+        return self
 
 
 class UpdateUserStoryRequest(BaseModel):
@@ -50,6 +66,9 @@ class UpdateUserStoryRequest(BaseModel):
     benefice: Optional[str] = Field(None, description="Mise à jour du 'Afin de'")
     criteresAcceptation: Optional[str] = None
     points: Optional[int] = Field(None)
+    duree_estimee: Optional[float] = Field(None, gt=0, description="Durée estimée en heures")
+    start_date: Optional[datetime] = Field(None, description="Date de début")
+    due_date: Optional[datetime] = Field(None, description="Date d'échéance")
     priorite: Optional[PrioriteUS] = None
 
 
@@ -61,6 +80,10 @@ class AssignerDeveloppeurRequest(BaseModel):
     developeur_id: int = Field(..., description="ID du développeur à assigner")
 
 
+class AssignerTesteurRequest(BaseModel):
+    testeur_id: int = Field(..., description="ID du testeur QA à assigner")
+
+
 class ValiderUserStoryRequest(BaseModel):
     commentaire: Optional[str] = Field(None, description="Commentaire de validation")
 
@@ -69,14 +92,19 @@ class ValiderUserStoryRequest(BaseModel):
 
 class UserStoryResponse(BaseModel):
     id: int
+    reference: Optional[str] = None
     titre: str
     description: Optional[str] = None   # "En tant que … je veux … afin de …"
     criteresAcceptation: Optional[str] = None
     points: Optional[int] = None
+    duree_estimee: Optional[float] = None
+    start_date: Optional[datetime] = None
+    due_date: Optional[datetime] = None
     priorite: str
     statut: str
     epic_id: int
     developerId: Optional[int] = None
+    testerId: Optional[int] = None
 
     class Config:
         from_attributes = True
