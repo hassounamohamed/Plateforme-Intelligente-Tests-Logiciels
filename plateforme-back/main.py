@@ -12,6 +12,7 @@ from db.database import engine, get_db, Base
 from models import (
     Utilisateur, Role, Permission,
     Projet, Module, Epic, UserStory, Sprint,
+    Attachment,
     CahierDeTests, Test, TestUnitaire, TestAutomatise, TestManuel, ScenarioTest, ValidationTest,
     ExecutionTest, ResultatTest,
     Anomalie,
@@ -31,6 +32,7 @@ from api.epics import router as epics_router
 from api.userstories import router as userstories_router
 from api.sprints import router as sprints_router
 from api.backlog import router as backlog_router
+from api.attachments import router as attachments_router
 
 
 
@@ -96,6 +98,7 @@ app.include_router(epics_router)
 app.include_router(userstories_router)
 app.include_router(sprints_router)
 app.include_router(backlog_router)
+app.include_router(attachments_router)
 
 # Test DB route
 @app.get("/test-db")

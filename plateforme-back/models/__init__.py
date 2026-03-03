@@ -1,6 +1,7 @@
 # Import all models for easy access
 from models.user import Utilisateur, Role, Permission
 from models.scrum import Projet, Module, Epic, UserStory, Sprint
+from models.attachment import Attachment
 from models.tests import CahierDeTests, Test, TestUnitaire, TestAutomatise, TestManuel, ScenarioTest, ValidationTest
 from models.execution import ExecutionTest, ResultatTest
 from models.anomalie import Anomalie
@@ -19,6 +20,8 @@ __all__ = [
     "Epic",
     "UserStory",
     "Sprint",
+    # Attachment
+    "Attachment",
     # Test models
     "CahierDeTests",
     "Test",

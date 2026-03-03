@@ -14,6 +14,7 @@ from schemas.userstory import (
     UpdateUserStoryRequest,
     ChangerStatutUSRequest,
     AssignerDeveloppeurRequest,
+    AssignerTesteurRequest,
     STORY_POINTS_VALIDES,
 )
 
@@ -88,17 +89,26 @@ class UserStoryService:
         current_user_id: int,
     ):
         """Décomposer un epic en user story — Scrum Master ou Product Owner."""
+        projet = self._verifier_projet(projet_id)
         self._verifier_module(module_id, projet_id)
         self._verifier_epic(epic_id, module_id)
         self._valider_points(data.points)
 
         description = _assembler_description(data.role, data.action, data.benefice)
 
+        # Incrémenter le compteur global du projet pour obtenir la référence
+        numero = self.projet_repo.next_issue_number(projet_id)
+        reference = f"{projet.key}-{numero}"
+
         return self.repo.create({
+            "reference": reference,
             "titre": data.titre,
             "description": description,
             "criteresAcceptation": data.criteresAcceptation,
             "points": data.points,
+            "duree_estimee": data.duree_estimee,
+            "start_date": data.start_date,
+            "due_date": data.due_date,
             "priorite": data.priorite,
             "statut": "to_do",
             "epic_id": epic_id,
@@ -206,6 +216,33 @@ class UserStoryService:
         self._verifier_epic(epic_id, module_id)
         self._get_us_ou_404(us_id, epic_id)
         return self.repo.update(us_id, {"developerId": data.developeur_id})
+
+    def assigner_testeur(
+        self,
+        projet_id: int,
+        module_id: int,
+        epic_id: int,
+        us_id: int,
+        data: AssignerTesteurRequest,
+        current_user_id: int,
+    ):
+        """Assigner un testeur QA à une user story — Scrum Master uniquement."""
+        from models.user import Utilisateur
+        from core.rbac.constants import ROLE_TESTEUR_QA
+        self._verifier_module(module_id, projet_id)
+        self._verifier_epic(epic_id, module_id)
+        self._get_us_ou_404(us_id, epic_id)
+        # Vérifier que l'utilisateur assigné a bien le rôle TESTEUR_QA
+        testeur = self.db.query(Utilisateur).filter(Utilisateur.id == data.testeur_id).first()
+        if not testeur:
+            from fastapi import HTTPException, status
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail=f"Utilisateur {data.testeur_id} introuvable.")
+        if not testeur.role or testeur.role.code != ROLE_TESTEUR_QA:
+            from fastapi import HTTPException, status
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                                detail="L'utilisateur assigné doit avoir le rôle TESTEUR_QA.")
+        return self.repo.update(us_id, {"testerId": data.testeur_id})
 
     # ── Valider ──────────────────────────────────────────────────────────────
 

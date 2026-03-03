@@ -1,16 +1,44 @@
+import re
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ─── Requêtes ─────────────────────────────────────────────────────────────────
 
+def _generer_key(nom: str) -> str:
+    """Génère la clé projet à partir des initiales du nom (max 10 chars, majuscules)."""
+    mots = re.sub(r'[^\w\s]', '', nom).split()
+    if len(mots) >= 2:
+        key = "".join(m[0] for m in mots if m)
+    else:
+        key = nom[:4] if len(nom) >= 4 else nom
+    return key.upper()[:10]
+
+
 class CreateProjetRequest(BaseModel):
     nom: str = Field(..., min_length=1, description="Nom du projet")
+    key: Optional[str] = Field(
+        None,
+        description="Clé projet unique (ex: PROJ, CRM). Auto-générée à partir du nom si absente."
+    )
     description: Optional[str] = Field(None, description="Description du projet")
     dateDebut: Optional[datetime] = Field(None, description="Date de début")
     dateFin: Optional[datetime] = Field(None, description="Date de fin prévue")
     objectif: Optional[str] = Field(None, description="Objectif principal du projet")
+
+    @field_validator('key', mode='before')
+    @classmethod
+    def normaliser_key(cls, v):
+        if v is None:
+            return v
+        # Mettre en majuscules + garder uniquement lettres et chiffres
+        cleaned = re.sub(r'[^A-Z0-9]', '', str(v).upper())
+        if len(cleaned) < 2:
+            raise ValueError('La clé projet doit contenir au moins 2 caractères alphanumériques.')
+        if len(cleaned) > 10:
+            raise ValueError('La clé projet ne peut pas dépasser 10 caractères.')
+        return cleaned
 
 
 class UpdateProjetRequest(BaseModel):
@@ -41,6 +69,7 @@ class MembreSimple(BaseModel):
 class ProjetResponse(BaseModel):
     id: int
     nom: str
+    key: str
     description: Optional[str] = None
     dateDebut: Optional[datetime] = None
     dateFin: Optional[datetime] = None

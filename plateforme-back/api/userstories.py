@@ -16,6 +16,7 @@ from schemas.userstory import (
     UpdateUserStoryRequest,
     ChangerStatutUSRequest,
     AssignerDeveloppeurRequest,
+    AssignerTesteurRequest,
     UserStoryResponse,
 )
 from services.userstory_service import UserStoryService
@@ -151,6 +152,23 @@ async def assigner_developpeur(
 ):
     """Assigner un développeur à une user story — Scrum Master uniquement."""
     return svc.assigner_developpeur(projet_id, module_id, epic_id, us_id, data, current_user.id)
+
+
+# ─── Assigner testeur ─────────────────────────────────────────────────────────
+
+@router.patch("/{us_id}/assigner-testeur", response_model=UserStoryResponse)
+@require_role(ROLE_SCRUM_MASTER)
+async def assigner_testeur(
+    projet_id: int,
+    module_id: int,
+    epic_id: int,
+    us_id: int,
+    data: AssignerTesteurRequest,
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: UserStoryService = Depends(get_us_service),
+):
+    """Assigner un testeur QA à une user story — Scrum Master uniquement."""
+    return svc.assigner_testeur(projet_id, module_id, epic_id, us_id, data, current_user.id)
 
 
 # ─── Validation PO ────────────────────────────────────────────────────────────

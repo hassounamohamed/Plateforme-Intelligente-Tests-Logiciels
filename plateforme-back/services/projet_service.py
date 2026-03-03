@@ -11,6 +11,7 @@ from schemas.projet import (
     CreateProjetRequest,
     UpdateProjetRequest,
     AssignerMembresRequest,
+    _generer_key,
 )
 from core.rbac.constants import ROLE_SUPER_ADMIN
 
@@ -25,9 +26,28 @@ class ProjetService:
 
     def creer_projet(self, data: CreateProjetRequest, product_owner_id: int):
         """Créer un nouveau projet (réservé au Product Owner)."""
+        # Résolution de la clé projet
+        key = data.key.upper() if data.key else _generer_key(data.nom)
+
+        # Garantir l'unicité — si la clé auto générée est déjà prise, ajouter un suffixe
+        if not data.key:
+            base_key = key
+            suffix = 1
+            while self.repo.get_by_key(key):
+                key = f"{base_key}{suffix}"[:10]
+                suffix += 1
+        else:
+            if self.repo.get_by_key(key):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"La clé projet '{key}' est déjà utilisée. Choisissez une clé unique.",
+                )
+
         return self.repo.create(
             {
                 "nom": data.nom,
+                "key": key,
+                "issue_counter": 0,
                 "description": data.description,
                 "dateDebut": data.dateDebut,
                 "dateFin": data.dateFin,

@@ -66,3 +66,16 @@ class ProjetRepository(BaseRepository[Projet]):
             "nb_modules": len(projet.modules),
             "statut": projet.statut,
         }
+
+    def get_by_key(self, key: str) -> Optional[Projet]:
+        """Récupérer un projet par sa clé unique (ex: PROJ, CRM)."""
+        return self.db.query(Projet).filter(Projet.key == key.upper()).first()
+
+    def next_issue_number(self, projet_id: int) -> int:
+        """Incrémenter le compteur global du projet et retourner la nouvelle valeur."""
+        projet = self.get_by_id(projet_id)
+        if not projet:
+            raise ValueError(f"Projet {projet_id} introuvable.")
+        projet.issue_counter += 1
+        self.db.flush()   # flush sans commit pour rester dans la même transaction
+        return projet.issue_counter

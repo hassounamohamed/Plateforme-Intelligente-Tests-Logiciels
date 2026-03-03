@@ -61,14 +61,7 @@ async def get_mes_projets_membre(
     return svc.get_projets_membre(current_user.id)
 
 
-@router.get("", response_model=List[ProjetResponse])
-@require_role(ROLE_SUPER_ADMIN)
-async def get_all_projets(
-    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
-    svc: ProjetService = Depends(get_projet_service),
-):
-    """Lister tous les projets — Super Admin uniquement."""
-    return svc.get_all_projets()
+
 
 
 @router.get("/membres-disponibles", response_model=List[MembreDisponibleResponse])

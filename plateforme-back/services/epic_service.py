@@ -68,10 +68,16 @@ class EpicService:
         current_user_id: int,
     ):
         """Créer un epic dans un module — Product Owner uniquement."""
-        self._verifier_ownership(projet_id, current_user_id)
+        projet = self._verifier_ownership(projet_id, current_user_id)
         self._verifier_module(module_id, projet_id)
+
+        # Incrémenter le compteur global du projet
+        numero = self.projet_repo.next_issue_number(projet_id)
+        reference = f"{projet.key}-{numero}"
+
         return self.repo.create(
             {
+                "reference": reference,
                 "titre": data.titre,
                 "description": data.description,
                 "priorite": data.priorite,
