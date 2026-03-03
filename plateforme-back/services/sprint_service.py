@@ -69,11 +69,7 @@ class SprintService:
 
     def get_sprint_actif(self, projet_id: int):
         self._verifier_projet(projet_id)
-        sprint = self.repo.get_actif(projet_id)
-        if not sprint:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail="Aucun sprint 'en_cours' pour ce projet.")
-        return sprint
+        return self.repo.get_actif(projet_id)
 
     # ── Modification ─────────────────────────────────────────────────────────
 

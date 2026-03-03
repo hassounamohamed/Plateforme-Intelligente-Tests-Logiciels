@@ -32,6 +32,7 @@ class MembreSimple(BaseModel):
     id: int
     nom: str
     email: str
+    actif: bool = True
 
     class Config:
         from_attributes = True

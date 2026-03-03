@@ -63,13 +63,13 @@ async def get_sprints(
     return svc.get_sprints(projet_id)
 
 
-@router.get("/actif", response_model=SprintResponse)
+@router.get("/actif", response_model=SprintResponse | None)
 async def get_sprint_actif(
     projet_id: int,
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: SprintService = Depends(get_sprint_service),
 ):
-    """Récupérer le sprint actuellement en cours pour le projet."""
+    """Récupérer le sprint actuellement en cours pour le projet (ou null si aucun)."""
     return svc.get_sprint_actif(projet_id)
 
 
