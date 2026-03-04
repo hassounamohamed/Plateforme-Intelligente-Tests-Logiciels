@@ -451,9 +451,16 @@ export default function SprintsPage() {
                             
                             {/* Story Title */}
                             <div className="flex-1">
-                              <span className="text-sm text-white font-medium group-hover:text-primary transition-colors">
-                                {us.titre}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                {us.reference && (
+                                  <span className="text-[#9dabb9] text-xs font-mono bg-[#283039] px-1.5 py-0.5 rounded">
+                                    {us.reference}
+                                  </span>
+                                )}
+                                <span className="text-sm text-white font-medium group-hover:text-primary transition-colors">
+                                  {us.titre}
+                                </span>
+                              </div>
                               <div className="flex items-center gap-2 mt-1">
                                 <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
                                   us.statut === "done"

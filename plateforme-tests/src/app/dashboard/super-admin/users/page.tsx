@@ -53,7 +53,6 @@ export default function UsersPage() {
     { href: ROUTES.SUPER_ADMIN, icon: "dashboard", label: "Dashboard" },
     { href: `${ROUTES.SUPER_ADMIN}/users`, icon: "group", label: "Utilisateurs" },
     { href: `${ROUTES.SUPER_ADMIN}/roles`, icon: "shield", label: "Rôles" },
-    { href: `${ROUTES.SUPER_ADMIN}/projects`, icon: "view_kanban", label: "Projets" },
     { href: `${ROUTES.SUPER_ADMIN}/logs`, icon: "terminal", label: "Logs" },
     { href: `${ROUTES.SUPER_ADMIN}/profile`, icon: "account_circle", label: "Mon Profil" },
     { href: `${ROUTES.SUPER_ADMIN}/settings`, icon: "settings", label: "Paramètres" },

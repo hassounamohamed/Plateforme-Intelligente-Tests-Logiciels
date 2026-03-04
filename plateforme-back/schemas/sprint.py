@@ -46,6 +46,7 @@ class RetirerUserStoriesRequest(BaseModel):
 class UserStorySprint(BaseModel):
     """Résumé d'une user story dans le sprint."""
     id: int
+    reference: Optional[str] = None
     titre: str
     statut: str
     points: Optional[int] = None

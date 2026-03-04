@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { AttachmentList } from "@/components/AttachmentList";
 import { ROUTES } from "@/lib/constants";
 import { ProjectManagementModal, ModuleManagementModal, AssignMembersModal } from "@/components/product-owner";
 import {
@@ -20,6 +21,11 @@ import {
   updateModule,
   deleteModule,
 } from "@/features/modules/api";
+import {
+  uploadProjectAttachment,
+  downloadAttachment,
+  deleteAttachment,
+} from "@/features/attachments/api";
 import {
   Project,
   Module,
@@ -45,6 +51,9 @@ export default function ProjectsManagementPage() {
 
   const [assignMembersModalOpen, setAssignMembersModalOpen] = useState(false);
   const [projectForAssignment, setProjectForAssignment] = useState<Project | null>(null);
+
+  const [showAttachments, setShowAttachments] = useState(false);
+  const [attachmentsProject, setAttachmentsProject] = useState<Project | null>(null);
 
   const sidebarLinks = [
     { href: ROUTES.PRODUCT_OWNER, icon: "dashboard", label: "Dashboard" },
@@ -199,6 +208,54 @@ export default function ProjectsManagementPage() {
     }
   };
 
+  const handleOpenAttachments = (project: Project) => {
+    setAttachmentsProject(project);
+    setShowAttachments(true);
+  };
+
+  const handleUploadAttachment = async (file: File) => {
+    if (!attachmentsProject) return;
+    try {
+      await uploadProjectAttachment(attachmentsProject.id, file);
+      // Refresh projects to get updated attachments
+      await fetchProjects();
+      // Update the attachmentsProject with fresh data
+      const updated = await getMyProjects();
+      const updatedProject = updated.find(p => p.id === attachmentsProject.id);
+      if (updatedProject) {
+        setAttachmentsProject(updatedProject);
+      }
+    } catch (err) {
+      console.error("Erreur lors de l'upload:", err);
+      throw err;
+    }
+  };
+
+  const handleDownloadAttachment = (attachmentId: number, filename: string) => {
+    downloadAttachment(attachmentId).catch((err) => {
+      console.error("Erreur lors du téléchargement:", err);
+      alert("Erreur lors du téléchargement");
+    });
+  };
+
+  const handleDeleteAttachment = async (attachmentId: number) => {
+    try {
+      await deleteAttachment(attachmentId);
+      await fetchProjects();
+      // Update the attachmentsProject with fresh data
+      if (attachmentsProject) {
+        const updated = await getMyProjects();
+        const updatedProject = updated.find(p => p.id === attachmentsProject.id);
+        if (updatedProject) {
+          setAttachmentsProject(updatedProject);
+        }
+      }
+    } catch (err) {
+      console.error("Erreur lors de la suppression:", err);
+      alert("Erreur lors de la suppression");
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "actif":
@@ -281,12 +338,29 @@ export default function ProjectsManagementPage() {
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex-1">
-                        <h3 className="text-white font-bold">{project.nom}</h3>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-1 ${getStatusColor(project.statut)}`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          {project.key && (
+                            <span className="text-[#9dabb9] text-xs font-mono bg-[#283039] px-2 py-0.5 rounded">
+                              {project.key}
+                            </span>
+                          )}
+                          <h3 className="text-white font-bold">{project.nom}</h3>
+                        </div>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(project.statut)}`}>
                           {project.statut}
                         </span>
                       </div>
                       <div className="flex gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenAttachments(project);
+                          }}
+                          className="p-1 hover:bg-purple-500/10 rounded"
+                          title="Pièces jointes"
+                        >
+                          <span className="material-symbols-outlined text-[18px] text-purple-400">attach_file</span>
+                        </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -433,6 +507,38 @@ export default function ProjectsManagementPage() {
         projectName={projectForAssignment?.nom || ""}
         currentMemberIds={projectForAssignment?.membres?.map(m => m.id) || []}
       />
+
+      {/* Attachments Modal */}
+      {showAttachments && attachmentsProject && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-white text-xl font-bold">
+                  Pièces jointes
+                </h2>
+                <p className="text-[#9dabb9] text-sm mt-1">
+                  {attachmentsProject.nom}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAttachments(false)}
+                className="p-2 hover:bg-[#283039] rounded-lg transition-colors"
+              >
+                <span className="material-symbols-outlined text-[#9dabb9]">
+                  close
+                </span>
+              </button>
+            </div>
+            <AttachmentList
+              attachments={attachmentsProject.attachments || []}
+              onUpload={handleUploadAttachment}
+              onDownload={handleDownloadAttachment}
+              onDelete={handleDeleteAttachment}
+            />
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

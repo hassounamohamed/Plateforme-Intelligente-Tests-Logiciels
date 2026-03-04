@@ -8,7 +8,12 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { ROUTES } from "@/lib/constants";
 import { getMyProjectsAsMember } from "@/features/projects/api";
-import { getSprintById, updateSprint } from "@/features/sprints/api";
+import { 
+  getSprintById, 
+  updateSprint, 
+  addUserStoriesToSprint,
+  removeUserStoriesFromSprint 
+} from "@/features/sprints/api";
 import { getUserStories } from "@/features/userstories/api";
 import { getModules } from "@/features/modules/api";
 import { getEpics } from "@/features/epics/api";
@@ -25,6 +30,7 @@ export default function EditSprintPage() {
   const [epics, setEpics] = useState<Epic[]>([]);
   const [availableStories, setAvailableStories] = useState<UserStory[]>([]);
   const [selectedStories, setSelectedStories] = useState<number[]>([]);
+  const [initialStories, setInitialStories] = useState<number[]>([]); // Track original stories
 
   // Form fields
   const [nom, setNom] = useState("");
@@ -88,6 +94,13 @@ export default function EditSprintPage() {
       setObjectifSprint(sprintData.objectifSprint || "");
       setCapaciteEquipe(sprintData.capaciteEquipe || 0);
       setStatut(sprintData.statut);
+
+      // Pre-select existing user stories in sprint
+      if (sprintData.userstories && sprintData.userstories.length > 0) {
+        const existingIds = sprintData.userstories.map((us) => us.id);
+        setSelectedStories(existingIds);
+        setInitialStories(existingIds); // Store initial state
+      }
 
       // Calculate duration
       if (sprintData.dateDebut && sprintData.dateFin) {
@@ -198,6 +211,7 @@ export default function EditSprintPage() {
     setError(null);
 
     try {
+      // Update sprint basic info
       await updateSprint(selectedProject, sprintId, {
         nom: nom.trim(),
         dateDebut,
@@ -205,6 +219,24 @@ export default function EditSprintPage() {
         objectifSprint: objectifSprint.trim() || undefined,
         capaciteEquipe,
       });
+
+      // Calculate which stories to add and remove
+      const storiesToAdd = selectedStories.filter((id) => !initialStories.includes(id));
+      const storiesToRemove = initialStories.filter((id) => !selectedStories.includes(id));
+
+      // Remove deselected user stories
+      if (storiesToRemove.length > 0) {
+        await removeUserStoriesFromSprint(selectedProject, sprintId, {
+          userstory_ids: storiesToRemove,
+        });
+      }
+
+      // Add newly selected user stories
+      if (storiesToAdd.length > 0) {
+        await addUserStoriesToSprint(selectedProject, sprintId, {
+          userstory_ids: storiesToAdd,
+        });
+      }
 
       router.push(`${ROUTES.SCRUM_MASTER}/sprints/${sprintId}`);
     } catch (error: any) {
@@ -225,6 +257,7 @@ export default function EditSprintPage() {
     { href: `${ROUTES.SCRUM_MASTER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.SCRUM_MASTER}/user-stories`, icon: "description", label: "User Stories" },
     { href: `${ROUTES.SCRUM_MASTER}/team`, icon: "groups", label: "Équipe" },
+    { href: `${ROUTES.SCRUM_MASTER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
   if (isLoading) {

@@ -1,9 +1,11 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class AttachmentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     filename: str
     filepath: str
@@ -13,6 +15,3 @@ class AttachmentResponse(BaseModel):
     projet_id: Optional[int] = None
     epic_id: Optional[int] = None
     userstory_id: Optional[int] = None
-
-    class Config:
-        from_attributes = True

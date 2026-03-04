@@ -106,6 +106,7 @@ export default function SprintsPage() {
     { href: `${ROUTES.SCRUM_MASTER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.SCRUM_MASTER}/user-stories`, icon: "description", label: "User Stories" },
     { href: `${ROUTES.SCRUM_MASTER}/team`, icon: "groups", label: "Équipe" },
+    { href: `${ROUTES.SCRUM_MASTER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
   const getStatusColor = (statut: string) => {
@@ -276,6 +277,8 @@ export default function SprintsPage() {
                       href={`${ROUTES.SCRUM_MASTER}/sprints/${sprint.id}`}
                       className="p-2 hover:bg-primary/20 rounded-lg transition-colors"
                       title="Voir détails"
+                      target="_blank"
+                      rel="noopener noreferrer"
                     >
                       <span className="material-symbols-outlined text-primary">visibility</span>
                     </Link>
@@ -283,6 +286,8 @@ export default function SprintsPage() {
                       href={`${ROUTES.SCRUM_MASTER}/sprints/${sprint.id}/edit`}
                       className="p-2 hover:bg-primary/20 rounded-lg transition-colors"
                       title="Modifier"
+                      target="_blank"
+                      rel="noopener noreferrer"
                     >
                       <span className="material-symbols-outlined text-primary">edit</span>
                     </Link>

@@ -309,6 +309,11 @@ export default function EpicsManagementPage() {
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
+                        {epic.reference && (
+                          <span className="text-[#9dabb9] text-xs font-mono">
+                            {epic.reference}
+                          </span>
+                        )}
                         <h3 className="text-white font-bold">{epic.titre}</h3>
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(

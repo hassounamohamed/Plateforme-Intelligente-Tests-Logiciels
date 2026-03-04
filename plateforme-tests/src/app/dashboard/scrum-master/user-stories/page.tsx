@@ -138,6 +138,7 @@ export default function UserStoriesPage() {
     { href: `${ROUTES.SCRUM_MASTER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.SCRUM_MASTER}/user-stories`, icon: "description", label: "User Stories" },
     { href: `${ROUTES.SCRUM_MASTER}/team`, icon: "groups", label: "Équipe" },
+    { href: `${ROUTES.SCRUM_MASTER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
   const getStatusColor = (statut: string) => {
@@ -379,7 +380,11 @@ export default function UserStoriesPage() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className="text-[#9dabb9] text-xs font-mono">#{us.id}</span>
+                      {us.reference && (
+                        <span className="px-2 py-1 bg-primary/20 text-primary text-xs font-mono font-bold rounded">
+                          {us.reference}
+                        </span>
+                      )}
                       <h3 className="text-white text-lg font-bold">{us.titre}</h3>
                     </div>
                     
@@ -406,8 +411,15 @@ export default function UserStoriesPage() {
                         {getPriorityLabel(us.priorite)}
                       </span>
                       {us.points !== null && us.points !== undefined && (
-                        <span className="px-2 py-1 bg-[#283039] rounded text-xs font-bold text-white">
+                        <span className="px-2 py-1 bg-[#283039] rounded text-xs font-bold text-white flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">speed</span>
                           {us.points} pts
+                        </span>
+                      )}
+                      {us.duree_estimee !== null && us.duree_estimee !== undefined && (
+                        <span className="px-2 py-1 bg-[#283039] rounded text-xs font-bold text-white flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">schedule</span>
+                          {us.duree_estimee}h
                         </span>
                       )}
                       {us.developerId && (
@@ -424,6 +436,8 @@ export default function UserStoriesPage() {
                       href={`${ROUTES.SCRUM_MASTER}/user-stories/${us.id}`}
                       className="p-2 hover:bg-primary/20 rounded-lg transition-colors"
                       title="Voir détails"
+                      target="_blank"
+                      rel="noopener noreferrer"
                     >
                       <span className="material-symbols-outlined text-primary">visibility</span>
                     </Link>
@@ -431,6 +445,8 @@ export default function UserStoriesPage() {
                       href={`${ROUTES.SCRUM_MASTER}/user-stories/${us.id}/edit?project=${selectedProject}&module=${selectedModule}&epic=${selectedEpic}`}
                       className="p-2 hover:bg-primary/20 rounded-lg transition-colors"
                       title="Modifier"
+                      target="_blank"
+                      rel="noopener noreferrer"
                     >
                       <span className="material-symbols-outlined text-primary">edit</span>
                     </Link>

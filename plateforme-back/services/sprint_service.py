@@ -35,11 +35,14 @@ class SprintService:
         return self._verifier_projet(projet_id)
 
     def _get_sprint_ou_404(self, sprint_id: int, projet_id: int):
+        # First verify the sprint belongs to the project
         sprint = self.repo.get_by_id_in_projet(sprint_id, projet_id)
         if not sprint:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail=f"Sprint {sprint_id} introuvable dans le projet {projet_id}.")
-        return sprint
+        # Then load it with userstories
+        sprint_with_stories = self.repo.get_with_userstories(sprint_id)
+        return sprint_with_stories
 
     # ── Création ────────────────────────────────────────────────────────────
 

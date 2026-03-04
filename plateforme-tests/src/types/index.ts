@@ -121,9 +121,22 @@ export interface MemberSimple {
   actif: boolean;
 }
 
+export interface Attachment {
+  id: number;
+  filename: string;
+  filepath: string;
+  content_type: string;
+  uploaded_at: string;
+  uploaded_by_id?: number;
+  projet_id?: number;
+  epic_id?: number;
+  userstory_id?: number;
+}
+
 export interface Project {
   id: number;
   nom: string;
+  key?: string;
   description?: string;
   dateDebut?: string;
   dateFin?: string;
@@ -131,6 +144,7 @@ export interface Project {
   statut: string;
   productOwnerId: number;
   membres?: MemberSimple[];
+  attachments?: Attachment[];
 }
 
 export interface CreateProjectPayload {
@@ -186,16 +200,30 @@ export type EpicStatus = "to_do" | "in_progress" | "done";
 
 export interface UserStorySummary {
   id: number;
+  reference?: string;
   titre: string;
   statut?: string;
   points?: number;
+  duree_estimee?: number;
   priorite?: string;
   developerId?: number;
   developerNom?: string;
+  epic_id?: number;
+  sprint?: {
+    id: number;
+    nom: string;
+  };
+  developpeur?: {
+    id: number;
+    nom: string;
+    prenom: string;
+    email: string;
+  };
 }
 
 export interface Epic {
   id: number;
+  reference?: string;
   titre: string;
   description?: string;
   priorite: number;
@@ -289,15 +317,31 @@ export type StatutUS = "to_do" | "in_progress" | "done";
 
 export interface UserStory {
   id: number;
+  reference?: string;
   titre: string;
   description?: string; // "En tant que … je veux … afin de …"
   criteresAcceptation?: string;
   points?: number;
+  duree_estimee?: number; // Durée estimée en heures
+  start_date?: string;
+  due_date?: string;
   priorite: PrioriteUS;
   statut: StatutUS;
   epic_id: number;
   developerId?: number;
   developerNom?: string;
+  sprint?: {
+    id: number;
+    nom: string;
+    dateDebut?: string;
+    dateFin?: string;
+  };
+  developpeur?: {
+    id: number;
+    nom: string;
+    prenom: string;
+    email: string;
+  };
 }
 
 export interface CreateUserStoryPayload {
@@ -307,6 +351,9 @@ export interface CreateUserStoryPayload {
   benefice?: string;
   criteresAcceptation?: string;
   points?: number;
+  duree_estimee?: number;
+  start_date?: string;
+  due_date?: string;
   priorite?: PrioriteUS;
 }
 
@@ -314,6 +361,9 @@ export interface UpdateUserStoryPayload {
   titre?: string;
   role?: string;
   action?: string;
+  duree_estimee?: number;
+  start_date?: string;
+  due_date?: string;
   benefice?: string;
   criteresAcceptation?: string;
   points?: number;
@@ -336,6 +386,7 @@ export interface ValiderUserStoryPayload {
 
 export interface BacklogItem {
   id: number;
+  reference?: string;
   titre: string;
   description?: string;
   type: "epic" | "user_story";

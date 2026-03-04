@@ -339,7 +339,14 @@ export default function ProductOwnerDashboard() {
                   key={project.id}
                   className="p-4 rounded-lg border border-[#3b4754] hover:border-primary/50 transition-all"
                 >
-                  <h4 className="text-white font-bold mb-2">{project.nom}</h4>
+                  <div className="flex items-center gap-2 mb-2">
+                    {project.key && (
+                      <span className="text-[#9dabb9] text-xs font-mono bg-[#283039] px-2 py-0.5 rounded">
+                        {project.key}
+                      </span>
+                    )}
+                    <h4 className="text-white font-bold">{project.nom}</h4>
+                  </div>
                   <p className="text-sm text-[#9dabb9] line-clamp-2 mb-2">
                     {project.description || "Aucune description"}
                   </p>
