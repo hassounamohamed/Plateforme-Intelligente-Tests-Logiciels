@@ -5,6 +5,8 @@ import {
   UpdateUserStoryPayload,
   ChangerStatutUSPayload,
   AssignerDeveloppeurPayload,
+  AssignerTesteurPayload,
+  AssignerAssigneePayload,
   ValiderUserStoryPayload,
   StatutUS,
 } from "@/types";
@@ -138,6 +140,23 @@ export const assignDeveloper = async (
 };
 
 /**
+ * Assigner un testeur QA à une user story
+ */
+export const assignTester = async (
+  projectId: number,
+  moduleId: number,
+  epicId: number,
+  userStoryId: number,
+  payload: AssignerTesteurPayload
+): Promise<UserStory> => {
+  const response = await axiosInstance.patch<UserStory>(
+    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}/userstories/${userStoryId}/assigner-testeur`,
+    payload
+  );
+  return response.data;
+};
+
+/**
  * Valider une user story
  */
 export const validateUserStory = async (
@@ -150,6 +169,38 @@ export const validateUserStory = async (
   const response = await axiosInstance.patch<UserStory>(
     `/projets/${projectId}/modules/${moduleId}/epics/${epicId}/userstories/${userStoryId}/valider`,
     payload
+  );
+  return response.data;
+};
+
+/**
+ * Assigner un assignee (responsable) à une user story
+ */
+export const assignAssignee = async (
+  projectId: number,
+  moduleId: number,
+  epicId: number,
+  userStoryId: number,
+  payload: AssignerAssigneePayload
+): Promise<UserStory> => {
+  const response = await axiosInstance.patch<UserStory>(
+    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}/userstories/${userStoryId}/assigner-assignee`,
+    payload
+  );
+  return response.data;
+};
+
+/**
+ * Retirer l'assignee d'une user story
+ */
+export const removeAssignee = async (
+  projectId: number,
+  moduleId: number,
+  epicId: number,
+  userStoryId: number
+): Promise<UserStory> => {
+  const response = await axiosInstance.delete<UserStory>(
+    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}/userstories/${userStoryId}/assigner-assignee`
   );
   return response.data;
 };

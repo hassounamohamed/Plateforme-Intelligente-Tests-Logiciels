@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
-from typing import Optional, List, TYPE_CHECKING
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from typing import Optional, List, TYPE_CHECKING, Any
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 
 if TYPE_CHECKING:
     from schemas.attachment import AttachmentResponse

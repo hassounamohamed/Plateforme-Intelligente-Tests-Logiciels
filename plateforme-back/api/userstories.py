@@ -17,6 +17,7 @@ from schemas.userstory import (
     ChangerStatutUSRequest,
     AssignerDeveloppeurRequest,
     AssignerTesteurRequest,
+    AssignerAssigneeRequest,
     UserStoryResponse,
 )
 from services.userstory_service import UserStoryService
@@ -170,6 +171,38 @@ async def assigner_testeur(
     """Assigner un testeur QA à une user story — Scrum Master uniquement."""
     return svc.assigner_testeur(projet_id, module_id, epic_id, us_id, data, current_user.id)
 
+# ─── Assigner / retirer assignee ─────────────────────────────────────────────────────────────────
+
+@router.patch("/{us_id}/assigner-assignee", response_model=UserStoryResponse)
+@require_role(ROLE_SCRUM_MASTER)
+async def assigner_assignee(
+    projet_id: int,
+    module_id: int,
+    epic_id: int,
+    us_id: int,
+    data: AssignerAssigneeRequest,
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: UserStoryService = Depends(get_us_service),
+):
+    """
+    Désigner le responsable (**assignee**) d'une user story.
+    L'assignee doit être un membre du projet. — Scrum Master uniquement.
+    """
+    return svc.assigner_assignee(projet_id, module_id, epic_id, us_id, data, current_user.id)
+
+
+@router.delete("/{us_id}/assigner-assignee", response_model=UserStoryResponse)
+@require_role(ROLE_SCRUM_MASTER)
+async def retirer_assignee(
+    projet_id: int,
+    module_id: int,
+    epic_id: int,
+    us_id: int,
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: UserStoryService = Depends(get_us_service),
+):
+    """Retirer l'assignee d'une user story — Scrum Master uniquement."""
+    return svc.retirer_assignee(projet_id, module_id, epic_id, us_id, current_user.id)
 
 # ─── Validation PO ────────────────────────────────────────────────────────────
 

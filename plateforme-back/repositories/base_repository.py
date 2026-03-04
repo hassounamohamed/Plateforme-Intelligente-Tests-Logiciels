@@ -37,7 +37,7 @@ class BaseRepository(Generic[ModelType]):
         db_obj = self.get_by_id(id)
         if db_obj:
             for field, value in obj_in.items():
-                if hasattr(db_obj, field) and value is not None:
+                if hasattr(db_obj, field):
                     setattr(db_obj, field, value)
             self.db.commit()
             self.db.refresh(db_obj)

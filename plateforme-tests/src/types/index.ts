@@ -330,17 +330,28 @@ export interface UserStory {
   epic_id: number;
   developerId?: number;
   developerNom?: string;
+  testerId?: number;
+  assigneeId?: number;
+  developer?: {
+    id: number;
+    nom: string;
+    email: string;
+  };
+  tester?: {
+    id: number;
+    nom: string;
+    email: string;
+  };
+  assignee?: {
+    id: number;
+    nom: string;
+    email: string;
+  };
   sprint?: {
     id: number;
     nom: string;
     dateDebut?: string;
     dateFin?: string;
-  };
-  developpeur?: {
-    id: number;
-    nom: string;
-    prenom: string;
-    email: string;
   };
 }
 
@@ -376,6 +387,14 @@ export interface ChangerStatutUSPayload {
 
 export interface AssignerDeveloppeurPayload {
   developeur_id: number;
+}
+
+export interface AssignerTesteurPayload {
+  testeur_id: number;
+}
+
+export interface AssignerAssigneePayload {
+  assignee_id: number;
 }
 
 export interface ValiderUserStoryPayload {

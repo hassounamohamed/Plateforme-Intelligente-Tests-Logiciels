@@ -9,8 +9,9 @@ import { ROUTES } from "@/lib/constants";
 import { getMyProjectsAsMember } from "@/features/projects/api";
 import { getModules } from "@/features/modules/api";
 import { getEpics } from "@/features/epics/api";
-import { getUserStories, changeUserStoryStatus, assignDeveloper } from "@/features/userstories/api";
-import { Project, Module, Epic, UserStory, User } from "@/types";
+import { getUserStories, changeUserStoryStatus, assignDeveloper, assignTester, assignAssignee, removeAssignee } from "@/features/userstories/api";
+import { getProjectById } from "@/features/projects/api";
+import { Project, Module, Epic, UserStory, User, MemberSimple } from "@/types";
 
 export default function UserStoriesPage() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -24,6 +25,11 @@ export default function UserStoriesPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   
+  const [projectMembers, setProjectMembers] = useState<MemberSimple[]>([]);
+  const [assigneeLoading, setAssigneeLoading] = useState<number | null>(null);
+  const [developerLoading, setDeveloperLoading] = useState<number | null>(null);
+  const [testerLoading, setTesterLoading] = useState<number | null>(null);
+
   const [filters, setFilters] = useState({
     statut: "",
     priorite: "",
@@ -36,6 +42,7 @@ export default function UserStoriesPage() {
   useEffect(() => {
     if (selectedProject) {
       loadModules(selectedProject);
+      loadProjectMembers(selectedProject);
     }
   }, [selectedProject]);
 
@@ -50,6 +57,16 @@ export default function UserStoriesPage() {
       loadUserStories(selectedProject, selectedModule, selectedEpic);
     }
   }, [selectedProject, selectedModule, selectedEpic, filters]);
+
+  const loadProjectMembers = async (projectId: number) => {
+    try {
+      const project = await getProjectById(projectId);
+      setProjectMembers(project.membres || []);
+    } catch (error: any) {
+      console.error("Erreur chargement membres du projet:", error);
+      setProjectMembers([]);
+    }
+  };
 
   const loadProjects = async () => {
     setIsLoading(true);
@@ -129,6 +146,58 @@ export default function UserStoriesPage() {
       alert("Erreur lors du changement de statut: " + (error.response?.data?.detail || error.message));
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleAssignAssignee = async (usId: number, memberId: number) => {
+    if (!selectedProject || !selectedModule || !selectedEpic) return;
+    setAssigneeLoading(usId);
+    try {
+      await assignAssignee(selectedProject, selectedModule, selectedEpic, usId, { assignee_id: memberId });
+      await loadUserStories(selectedProject, selectedModule, selectedEpic);
+    } catch (error: any) {
+      alert("Erreur lors de l'assignation: " + (error.response?.data?.detail || error.message));
+    } finally {
+      setAssigneeLoading(null);
+    }
+  };
+
+  const handleRemoveAssignee = async (usId: number) => {
+    if (!selectedProject || !selectedModule || !selectedEpic) return;
+    setAssigneeLoading(usId);
+    try {
+      await removeAssignee(selectedProject, selectedModule, selectedEpic, usId);
+      await loadUserStories(selectedProject, selectedModule, selectedEpic);
+    } catch (error: any) {
+      alert("Erreur lors du retrait de l'assignee: " + (error.response?.data?.detail || error.message));
+    } finally {
+      setAssigneeLoading(null);
+    }
+  };
+
+  const handleAssignDeveloper = async (usId: number, memberId: number) => {
+    if (!selectedProject || !selectedModule || !selectedEpic) return;
+    setDeveloperLoading(usId);
+    try {
+      await assignDeveloper(selectedProject, selectedModule, selectedEpic, usId, { developeur_id: memberId });
+      await loadUserStories(selectedProject, selectedModule, selectedEpic);
+    } catch (error: any) {
+      alert("Erreur lors de l'assignation du développeur: " + (error.response?.data?.detail || error.message));
+    } finally {
+      setDeveloperLoading(null);
+    }
+  };
+
+  const handleAssignTester = async (usId: number, memberId: number) => {
+    if (!selectedProject || !selectedModule || !selectedEpic) return;
+    setTesterLoading(usId);
+    try {
+      await assignTester(selectedProject, selectedModule, selectedEpic, usId, { testeur_id: memberId });
+      await loadUserStories(selectedProject, selectedModule, selectedEpic);
+    } catch (error: any) {
+      alert("Erreur lors de l'assignation du testeur: " + (error.response?.data?.detail || error.message));
+    } finally {
+      setTesterLoading(null);
     }
   };
 
@@ -422,10 +491,16 @@ export default function UserStoriesPage() {
                           {us.duree_estimee}h
                         </span>
                       )}
-                      {us.developerId && (
+                      {us.developer && (
                         <span className="px-2 py-1 bg-primary/20 text-primary rounded text-xs font-bold flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[14px]">person</span>
-                          Assignée
+                          <span className="material-symbols-outlined text-[14px]">code</span>
+                          {us.developer.nom}
+                        </span>
+                      )}
+                      {us.tester && (
+                        <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-xs font-bold flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">bug_report</span>
+                          {us.tester.nom}
                         </span>
                       )}
                     </div>
@@ -450,6 +525,122 @@ export default function UserStoriesPage() {
                     >
                       <span className="material-symbols-outlined text-primary">edit</span>
                     </Link>
+                  </div>
+                </div>
+
+                {/* Developer & Tester Assignment */}
+                <div className="pt-4 border-t border-[#3b4754] grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Développeur */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[#9dabb9] text-xs font-bold">Développeur:</span>
+                    {us.developer ? (
+                      <span className="flex items-center gap-1 px-2 py-1 bg-primary/20 text-primary rounded text-xs font-bold">
+                        <span className="material-symbols-outlined text-[14px]">code</span>
+                        {us.developer.nom}
+                      </span>
+                    ) : (
+                      <span className="text-[#9dabb9] text-xs italic">Non assigné</span>
+                    )}
+                    {projectMembers.length > 0 && (
+                      <select
+                        value=""
+                        disabled={developerLoading === us.id}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val) handleAssignDeveloper(us.id, Number(val));
+                        }}
+                        className="bg-[#283039] border border-[#3b4754] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-primary disabled:opacity-50"
+                      >
+                        <option value="">
+                          {us.developer ? "Changer" : "Assigner"}
+                        </option>
+                        {projectMembers.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.nom} ({m.email})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  {/* Testeur QA */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[#9dabb9] text-xs font-bold">Testeur QA:</span>
+                    {us.tester ? (
+                      <span className="flex items-center gap-1 px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-xs font-bold">
+                        <span className="material-symbols-outlined text-[14px]">bug_report</span>
+                        {us.tester.nom}
+                      </span>
+                    ) : (
+                      <span className="text-[#9dabb9] text-xs italic">Non assigné</span>
+                    )}
+                    {projectMembers.length > 0 && (
+                      <select
+                        value=""
+                        disabled={testerLoading === us.id}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val) handleAssignTester(us.id, Number(val));
+                        }}
+                        className="bg-[#283039] border border-[#3b4754] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-emerald-400 disabled:opacity-50"
+                      >
+                        <option value="">
+                          {us.tester ? "Changer" : "Assigner"}
+                        </option>
+                        {projectMembers.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.nom} ({m.email})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </div>
+
+                {/* Assignee Section */}
+                <div className="pt-4 border-t border-[#3b4754]">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-[#9dabb9] text-xs font-bold">Responsable (Assignee):</span>
+                    {us.assignee ? (
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1 px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-xs font-bold">
+                          <span className="material-symbols-outlined text-[14px]">manage_accounts</span>
+                          {us.assignee.nom}
+                        </span>
+                        <button
+                          onClick={() => handleRemoveAssignee(us.id)}
+                          disabled={assigneeLoading === us.id}
+                          className="p-1 hover:bg-red-500/20 rounded transition-colors"
+                          title="Retirer l'assignee"
+                        >
+                          <span className="material-symbols-outlined text-red-400 text-[16px]">
+                            {assigneeLoading === us.id ? "hourglass_empty" : "person_remove"}
+                          </span>
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-[#9dabb9] text-xs italic">Non assigné</span>
+                    )}
+                    {projectMembers.length > 0 && (
+                      <select
+                        value=""
+                        disabled={assigneeLoading === us.id}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val) handleAssignAssignee(us.id, Number(val));
+                        }}
+                        className="bg-[#283039] border border-[#3b4754] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-purple-400 disabled:opacity-50"
+                      >
+                        <option value="">
+                          {us.assignee ? "Changer l'assignee" : "Assigner un responsable"}
+                        </option>
+                        {projectMembers.map((member) => (
+                          <option key={member.id} value={member.id}>
+                            {member.nom} ({member.email})
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
 

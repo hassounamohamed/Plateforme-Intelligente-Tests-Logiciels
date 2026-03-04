@@ -15,6 +15,7 @@ from schemas.userstory import (
     ChangerStatutUSRequest,
     AssignerDeveloppeurRequest,
     AssignerTesteurRequest,
+    AssignerAssigneeRequest,
     STORY_POINTS_VALIDES,
 )
 
@@ -29,6 +30,7 @@ def _assembler_description(role: str, action: str, benefice: Optional[str]) -> s
 
 class UserStoryService:
     def __init__(self, db: Session):
+        self.db = db
         self.repo = UserStoryRepository(db)
         self.epic_repo = EpicRepository(db)
         self.module_repo = ModuleRepository(db)
@@ -56,6 +58,23 @@ class UserStoryService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail=f"Epic {epic_id} introuvable dans le module {module_id}.")
         return epic
+
+    def _verifier_membre_projet(self, projet_id: int, user_id: int):
+        """Vérifier que l'utilisateur est membre (ou Product Owner) du projet."""
+        from models.user import Utilisateur
+        projet = self._verifier_projet(projet_id)
+        est_po = projet.productOwnerId == user_id
+        est_membre = any(m.id == user_id for m in projet.membres)
+        if not est_po and not est_membre:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"L'utilisateur {user_id} n'est pas membre du projet {projet_id}.",
+            )
+        user = self.db.query(Utilisateur).filter(Utilisateur.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail=f"Utilisateur {user_id} introuvable.")
+        return user
 
     def _verifier_po(self, projet_id: int, current_user_id: int):
         projet = self._verifier_projet(projet_id)
@@ -113,6 +132,7 @@ class UserStoryService:
             "statut": "to_do",
             "epic_id": epic_id,
             "developerId": None,
+            "assigneeId": self._valider_assignee_optionnel(projet_id, data.assignee_id),
         })
 
     # ── Lecture ─────────────────────────────────────────────────────────────
@@ -163,6 +183,13 @@ class UserStoryService:
 
         fields = data.model_dump(exclude_none=True)
 
+        # Traiter assignee_id séparément (peut être explicitement None pour retirer l'assignee)
+        if "assignee_id" in data.model_fields_set:
+            fields["assigneeId"] = self._valider_assignee_optionnel(projet_id, data.assignee_id)
+            fields.pop("assignee_id", None)
+        else:
+            fields.pop("assignee_id", None)
+
         # Reassembler la description si au moins un des champs narratifs est fourni
         role = fields.pop("role", None)
         action = fields.pop("action", None)
@@ -184,7 +211,37 @@ class UserStoryService:
 
         return self.repo.update(us_id, fields)
 
-    # ── Statut ───────────────────────────────────────────────────────────────
+    # ── Assigner assignee ─────────────────────────────────────────────────────
+
+    def assigner_assignee(
+        self,
+        projet_id: int,
+        module_id: int,
+        epic_id: int,
+        us_id: int,
+        data: AssignerAssigneeRequest,
+        current_user_id: int,
+    ):
+        """Désigner le responsable (assignee) d'une user story — doit être membre du projet."""
+        self._verifier_module(module_id, projet_id)
+        self._verifier_epic(epic_id, module_id)
+        self._get_us_ou_404(us_id, epic_id)
+        self._verifier_membre_projet(projet_id, data.assignee_id)
+        return self.repo.update(us_id, {"assigneeId": data.assignee_id})
+
+    def retirer_assignee(
+        self,
+        projet_id: int,
+        module_id: int,
+        epic_id: int,
+        us_id: int,
+        current_user_id: int,
+    ):
+        """Retirer l'assignee d'une user story."""
+        self._verifier_module(module_id, projet_id)
+        self._verifier_epic(epic_id, module_id)
+        self._get_us_ou_404(us_id, epic_id)
+        return self.repo.update(us_id, {"assigneeId": None})    # ── Statut ───────────────────────────────────────────────────────────────
 
     def changer_statut(
         self,

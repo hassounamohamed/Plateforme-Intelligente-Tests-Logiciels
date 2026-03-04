@@ -49,6 +49,7 @@ class CreateUserStoryRequest(BaseModel):
     start_date: Optional[datetime] = Field(None, description="Date de début de la user story")
     due_date: Optional[datetime] = Field(None, description="Date d'échéance de la user story")
     priorite: PrioriteUS = Field("should_have", description="Priorité MoSCoW")
+    assignee_id: Optional[int] = Field(None, description="ID du responsable (membre du projet)")
 
     @model_validator(mode='after')
     def verifier_estimation(self):
@@ -70,6 +71,7 @@ class UpdateUserStoryRequest(BaseModel):
     start_date: Optional[datetime] = Field(None, description="Date de début")
     due_date: Optional[datetime] = Field(None, description="Date d'échéance")
     priorite: Optional[PrioriteUS] = None
+    assignee_id: Optional[int] = Field(None, description="ID du responsable (membre du projet). Passer null pour retirer l'assignee.")
 
 
 class ChangerStatutUSRequest(BaseModel):
@@ -84,11 +86,27 @@ class AssignerTesteurRequest(BaseModel):
     testeur_id: int = Field(..., description="ID du testeur QA à assigner")
 
 
+class AssignerAssigneeRequest(BaseModel):
+    assignee_id: int = Field(..., description="ID du responsable (doit être membre du projet)")
+
+
 class ValiderUserStoryRequest(BaseModel):
     commentaire: Optional[str] = Field(None, description="Commentaire de validation")
 
 
 # ─── Réponses ─────────────────────────────────────────────────────────────────
+
+class AssigneeInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    nom: str
+    email: str
+
+
+DeveloperInfo = AssigneeInfo
+TesterInfo = AssigneeInfo
+
 
 class UserStoryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -107,3 +125,7 @@ class UserStoryResponse(BaseModel):
     epic_id: int
     developerId: Optional[int] = None
     testerId: Optional[int] = None
+    assigneeId: Optional[int] = None
+    developer: Optional[DeveloperInfo] = None
+    tester: Optional[TesterInfo] = None
+    assignee: Optional[AssigneeInfo] = None
