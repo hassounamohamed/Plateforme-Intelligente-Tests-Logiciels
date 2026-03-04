@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 # Statuts autorisés (To Do / In Progress / Done)
 StatutEpic = Literal["to_do", "in_progress", "done"]
@@ -35,17 +35,18 @@ class ChangerPrioriteRequest(BaseModel):
 
 class UserStorySummary(BaseModel):
     """Résumé d'une user-story pour l'affichage hiérarchique."""
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     titre: str
     statut: Optional[str] = None
     points: Optional[int] = None
     priorite: Optional[str] = None
 
-    class Config:
-        from_attributes = True
-
 
 class EpicResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     reference: Optional[str] = None
     titre: str
@@ -57,25 +58,18 @@ class EpicResponse(BaseModel):
     module_id: int
     productOwnerId: int
 
-    class Config:
-        from_attributes = True
-
 
 class EpicHierarchieResponse(EpicResponse):
     """Epic avec ses user-stories (hiérarchie complète)."""
     userstories: List[UserStorySummary] = []
 
-    class Config:
-        from_attributes = True
-
 
 class EpicProgressionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     epic_id: int
     titre: str
     statut: str
     total_userstories: int
     userstories_terminees: int
     pourcentage_completion: int
-
-    class Config:
-        from_attributes = True

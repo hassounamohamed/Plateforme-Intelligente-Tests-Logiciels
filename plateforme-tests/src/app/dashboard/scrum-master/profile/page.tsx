@@ -32,12 +32,12 @@ export default function ProfilePage() {
   }, [profile]);
 
   const sidebarLinks = [
-    { href: ROUTES.SUPER_ADMIN, icon: "dashboard", label: "Dashboard" },
-    { href: `${ROUTES.SUPER_ADMIN}/users`, icon: "group", label: "Utilisateurs" },
-    { href: `${ROUTES.SUPER_ADMIN}/roles`, icon: "shield", label: "Rôles" },
-    { href: `${ROUTES.SUPER_ADMIN}/logs`, icon: "terminal", label: "Logs" },
-    { href: `${ROUTES.SUPER_ADMIN}/profile`, icon: "account_circle", label: "Mon Profil" },
-    { href: `${ROUTES.SUPER_ADMIN}/settings`, icon: "settings", label: "Paramètres" },
+    { href: ROUTES.SCRUM_MASTER, icon: "dashboard", label: "Dashboard" },
+    { href: `${ROUTES.SCRUM_MASTER}/sprints`, icon: "calendar_month", label: "Sprints" },
+    { href: `${ROUTES.SCRUM_MASTER}/backlog`, icon: "list", label: "Backlog" },
+    { href: `${ROUTES.SCRUM_MASTER}/user-stories`, icon: "description", label: "User Stories" },
+    { href: `${ROUTES.SCRUM_MASTER}/team`, icon: "groups", label: "Équipe" },
+    { href: `${ROUTES.SCRUM_MASTER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -91,9 +91,9 @@ export default function ProfilePage() {
     <DashboardLayout
       sidebarContent={
         <Sidebar
-          title="Super Admin"
+          title="Scrum Master"
           subtitle="Agile & QA Platform"
-          icon="admin_panel_settings"
+          icon="groups"
           links={sidebarLinks}
         />
       }
@@ -130,8 +130,8 @@ export default function ProfilePage() {
               </h3>
               <p className="text-[#9dabb9] text-sm mb-4">{profile.email}</p>
               {profile.role && (
-                <div className="inline-flex px-3 py-1 rounded-full bg-red-500/20 text-red-400 text-xs font-bold mb-4">
-                  {profile.role.code.replace("_", " ")}
+                <div className="inline-flex px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-bold mb-4">
+                  {profile.role.nom}
                 </div>
               )}
               <div className="border-t border-[#283039] pt-4 mt-4 space-y-2 text-left">

@@ -1,7 +1,10 @@
 import re
 from datetime import datetime
-from typing import Optional, List
-from pydantic import BaseModel, Field, field_validator
+from typing import Optional, List, TYPE_CHECKING
+from pydantic import BaseModel, Field, field_validator, ConfigDict
+
+if TYPE_CHECKING:
+    from schemas.attachment import AttachmentResponse
 
 
 # ─── Requêtes ─────────────────────────────────────────────────────────────────
@@ -57,19 +60,20 @@ class AssignerMembresRequest(BaseModel):
 # ─── Réponses ─────────────────────────────────────────────────────────────────
 
 class MembreSimple(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     nom: str
     email: str
     actif: bool = True
 
-    class Config:
-        from_attributes = True
-
 
 class ProjetResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     nom: str
-    key: str
+    key: Optional[str] = None
     description: Optional[str] = None
     dateDebut: Optional[datetime] = None
     dateFin: Optional[datetime] = None
@@ -77,9 +81,15 @@ class ProjetResponse(BaseModel):
     statut: str
     productOwnerId: int
     membres: List[MembreSimple] = []
+    attachments: List["AttachmentResponse"] = []  # Forward reference to avoid circular import
 
-    class Config:
-        from_attributes = True
+    @field_validator('key', mode='before')
+    @classmethod
+    def default_key(cls, v, info):
+        """Générer une clé si elle est None (pour les projets existants)"""
+        if v is None and info.data.get('nom'):
+            return _generer_key(info.data['nom'])
+        return v or "PROJ"
 
 
 class ProjetStatistiquesResponse(BaseModel):
@@ -88,3 +98,8 @@ class ProjetStatistiquesResponse(BaseModel):
     nb_sprints: int
     nb_modules: int
     statut: str
+
+# Rebuild ProjetResponse to resolve forward references
+# This is done at the end to avoid circular import issues
+from schemas.attachment import AttachmentResponse
+ProjetResponse.model_rebuild()

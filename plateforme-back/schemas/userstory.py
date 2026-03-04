@@ -1,6 +1,6 @@
 from typing import Optional, List, Literal
 from datetime import datetime
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 
 # MoSCoW priorités
 PrioriteUS = Literal["must_have", "should_have", "could_have", "wont_have"]
@@ -91,6 +91,8 @@ class ValiderUserStoryRequest(BaseModel):
 # ─── Réponses ─────────────────────────────────────────────────────────────────
 
 class UserStoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     reference: Optional[str] = None
     titre: str
@@ -105,6 +107,3 @@ class UserStoryResponse(BaseModel):
     epic_id: int
     developerId: Optional[int] = None
     testerId: Optional[int] = None
-
-    class Config:
-        from_attributes = True

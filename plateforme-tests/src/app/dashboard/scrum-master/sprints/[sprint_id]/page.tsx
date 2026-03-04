@@ -64,6 +64,7 @@ export default function SprintDetailsPage() {
     { href: `${ROUTES.SCRUM_MASTER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.SCRUM_MASTER}/user-stories`, icon: "description", label: "User Stories" },
     { href: `${ROUTES.SCRUM_MASTER}/team`, icon: "groups", label: "Équipe" },
+    { href: `${ROUTES.SCRUM_MASTER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
   const getStatusColor = (statut: string) => {
@@ -172,6 +173,8 @@ export default function SprintDetailsPage() {
             <Link
               href={`${ROUTES.SCRUM_MASTER}/sprints/${sprintId}/edit`}
               className="hidden sm:flex h-10 px-4 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg items-center gap-2 transition-colors shadow-lg shadow-primary/20"
+              target="_blank"
+              rel="noopener noreferrer"
             >
               <span className="material-symbols-outlined text-[18px]">edit</span>
               <span>Modifier</span>
@@ -270,13 +273,21 @@ export default function SprintDetailsPage() {
           ) : (
             <div className="space-y-3">
               {sprint.userstories.map((us) => (
-                <div
+                <Link
                   key={us.id}
-                  className="bg-[#283039] border border-[#3b4754] rounded-lg p-4 hover:border-primary/50 transition-colors"
+                  href={`${ROUTES.SCRUM_MASTER}/user-stories/${us.id}`}
+                  className="group block bg-[#283039] border border-[#3b4754] rounded-lg p-4 hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/10 cursor-pointer"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="text-white font-medium text-sm mb-2">{us.titre}</h4>
+                      <div className="flex items-center gap-2 mb-2">
+                        {us.reference && (
+                          <span className="text-[#9dabb9] text-xs font-mono bg-[#1c2229] px-2 py-0.5 rounded">
+                            {us.reference}
+                          </span>
+                        )}
+                        <h4 className="text-white font-medium text-sm group-hover:text-primary transition-colors">{us.titre}</h4>
+                      </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={`px-2 py-0.5 rounded text-xs font-bold ${getStatusColor(us.statut || "to_do")}`}>
                           {getStatusLabel(us.statut || "to_do")}
@@ -291,8 +302,11 @@ export default function SprintDetailsPage() {
                         )}
                       </div>
                     </div>
+                    <span className="material-symbols-outlined text-[#9dabb9] text-[18px] opacity-0 group-hover:opacity-100 transition-opacity">
+                      arrow_forward
+                    </span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}

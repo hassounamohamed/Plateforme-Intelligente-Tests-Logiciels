@@ -1,37 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, useParams } from "next/navigation";
 import Link from "next/link";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { ROUTES } from "@/lib/constants";
-import { getMyProjectsAsMember } from "@/features/projects/api";
-import { getModules } from "@/features/modules/api";
-import { getEpics } from "@/features/epics/api";
-import { createUserStory } from "@/features/userstories/api";
-import { Project, Module, Epic, PrioriteUS } from "@/types";
+import { getUserStoryById, updateUserStory } from "@/features/userstories/api";
+import { PrioriteUS } from "@/types";
 
-export default function NewUserStoryPage() {
+export default function EditUserStoryPage() {
   const router = useRouter();
+  const params = useParams();
   const searchParams = useSearchParams();
-  const projectIdParam = searchParams.get("project_id");
-  const moduleIdParam = searchParams.get("module_id");
-  const epicIdParam = searchParams.get("epic_id");
-
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProject, setSelectedProject] = useState<number | null>(
-    projectIdParam ? parseInt(projectIdParam) : null
-  );
-  const [modules, setModules] = useState<Module[]>([]);
-  const [selectedModule, setSelectedModule] = useState<number | null>(
-    moduleIdParam ? parseInt(moduleIdParam) : null
-  );
-  const [epics, setEpics] = useState<Epic[]>([]);
-  const [selectedEpic, setSelectedEpic] = useState<number | null>(
-    epicIdParam ? parseInt(epicIdParam) : null
-  );
+  
+  const userStoryId = parseInt(params.id as string);
+  const projectId = parseInt(searchParams.get("project") || "0");
+  const moduleId = parseInt(searchParams.get("module") || "0");
+  const epicId = parseInt(searchParams.get("epic") || "0");
 
   const [titre, setTitre] = useState("");
   const [role, setRole] = useState("");
@@ -41,8 +28,9 @@ export default function NewUserStoryPage() {
   const [dureeEstimee, setDureeEstimee] = useState<number | null>(null);
   const [priorite, setPriorite] = useState<PrioriteUS>("must_have");
   const [criteresAcceptation, setCriteresAcceptation] = useState("");
+  const [reference, setReference] = useState("");
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,76 +43,46 @@ export default function NewUserStoryPage() {
   ];
 
   useEffect(() => {
-    loadProjects();
-  }, []);
-
-  useEffect(() => {
-    if (selectedProject) {
-      loadModules(selectedProject);
+    if (projectId && moduleId && epicId && userStoryId) {
+      loadUserStory();
     }
-  }, [selectedProject]);
+  }, [projectId, moduleId, epicId, userStoryId]);
 
-  useEffect(() => {
-    if (selectedProject && selectedModule) {
-      loadEpics(selectedProject, selectedModule);
-    }
-  }, [selectedProject, selectedModule]);
-
-  const loadProjects = async () => {
+  const loadUserStory = async () => {
     setIsLoading(true);
     try {
-      const projectsData = await getMyProjectsAsMember();
-      setProjects(projectsData);
-      if (!selectedProject && projectsData.length > 0) {
-        setSelectedProject(projectsData[0].id);
+      const us = await getUserStoryById(projectId, moduleId, epicId, userStoryId);
+      setTitre(us.titre);
+      setReference(us.reference || "");
+      
+      // Parse description to extract role, action, benefice
+      if (us.description) {
+        const regex = /En tant que\s+(.+?),\s*je veux\s+(.+?)(?:,\s*afin de\s+(.+))?\.?$/i;
+        const match = us.description.match(regex);
+        if (match) {
+          setRole(match[1] || "");
+          setAction(match[2] || "");
+          setBenefice(match[3] || "");
+        }
       }
+      
+      setPoints(us.points || null);
+      setDureeEstimee(us.duree_estimee || null);
+      setPriorite(us.priorite || "must_have");
+      setCriteresAcceptation(us.criteresAcceptation || "");
     } catch (error: any) {
-      console.error("Erreur chargement projets:", error);
-      setError("Impossible de charger les projets");
+      console.error("Erreur chargement user story:", error);
+      setError("Impossible de charger la user story");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const loadModules = async (projectId: number) => {
-    try {
-      const modulesData = await getModules(projectId);
-      setModules(modulesData);
-      if (!selectedModule && modulesData.length > 0) {
-        setSelectedModule(modulesData[0].id);
-      }
-    } catch (error: any) {
-      console.error("Erreur chargement modules:", error);
-    }
-  };
-
-  const loadEpics = async (projectId: number, moduleId: number) => {
-    try {
-      const epicsData = await getEpics(projectId, moduleId);
-      setEpics(epicsData);
-      if (!selectedEpic && epicsData.length > 0) {
-        setSelectedEpic(epicsData[0].id);
-      }
-    } catch (error: any) {
-      console.error("Erreur chargement epics:", error);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!selectedProject || !selectedModule || !selectedEpic) {
-      setError("Veuillez sélectionner un projet, module et epic");
-      return;
-    }
 
     if (!titre.trim() || !role.trim() || !action.trim()) {
       setError("Veuillez remplir tous les champs obligatoires");
-      return;
-    }
-
-    if (!points && !dureeEstimee) {
-      setError("Veuillez fournir soit les points d'effort, soit la durée estimée");
       return;
     }
 
@@ -132,10 +90,11 @@ export default function NewUserStoryPage() {
     setError(null);
 
     try {
-      await createUserStory(
-        selectedProject,
-        selectedModule,
-        selectedEpic,
+      await updateUserStory(
+        projectId,
+        moduleId,
+        epicId,
+        userStoryId,
         {
           titre: titre.trim(),
           role: role.trim(),
@@ -148,12 +107,13 @@ export default function NewUserStoryPage() {
         }
       );
 
-      router.push(`${ROUTES.SCRUM_MASTER}/user-stories`);
+      // Close window after update
+      window.close();
     } catch (error: any) {
-      console.error("Erreur création user story:", error);
+      console.error("Erreur modification user story:", error);
       setError(
         error.response?.data?.detail ||
-          "Erreur lors de la création de la user story"
+          "Erreur lors de la modification de la user story"
       );
     } finally {
       setIsSubmitting(false);
@@ -169,6 +129,31 @@ export default function NewUserStoryPage() {
     { href: `${ROUTES.SCRUM_MASTER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
+  if (isLoading) {
+    return (
+      <DashboardLayout
+        sidebarContent={
+          <Sidebar
+            title="Scrum Master"
+            subtitle="Agile & QA Platform"
+            icon="groups"
+            links={sidebarLinks}
+          />
+        }
+        headerContent={
+          <DashboardHeader
+            title="Modifier User Story"
+            subtitle="Chargement..."
+          />
+        }
+      >
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout
       sidebarContent={
@@ -181,8 +166,8 @@ export default function NewUserStoryPage() {
       }
       headerContent={
         <DashboardHeader
-          title="Nouvelle User Story"
-          subtitle="Créer une nouvelle user story pour un epic"
+          title={`Modifier User Story ${reference || `#${userStoryId}`}`}
+          subtitle="Modifier une user story existante"
         />
       }
     >
@@ -198,82 +183,6 @@ export default function NewUserStoryPage() {
               </div>
             </div>
           )}
-
-          {/* Project/Module/Epic Selection */}
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 space-y-4">
-            <h3 className="text-white text-lg font-bold mb-4">Sélection de l'Epic</h3>
-            
-            {/* Project Selector */}
-            <div>
-              <label className="text-[#9dabb9] text-sm font-bold mb-2 block">
-                Projet <span className="text-red-400">*</span>
-              </label>
-              <select
-                value={selectedProject || ""}
-                onChange={(e) => {
-                  setSelectedProject(Number(e.target.value));
-                  setSelectedModule(null);
-                  setSelectedEpic(null);
-                }}
-                className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary"
-                required
-              >
-                <option value="">Sélectionner un projet</option>
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.nom}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Module Selector */}
-            {modules.length > 0 && (
-              <div>
-                <label className="text-[#9dabb9] text-sm font-bold mb-2 block">
-                  Module <span className="text-red-400">*</span>
-                </label>
-                <select
-                  value={selectedModule || ""}
-                  onChange={(e) => {
-                    setSelectedModule(Number(e.target.value));
-                    setSelectedEpic(null);
-                  }}
-                  className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary"
-                  required
-                >
-                  <option value="">Sélectionner un module</option>
-                  {modules.map((module) => (
-                    <option key={module.id} value={module.id}>
-                      {module.nom}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Epic Selector */}
-            {epics.length > 0 && (
-              <div>
-                <label className="text-[#9dabb9] text-sm font-bold mb-2 block">
-                  Epic <span className="text-red-400">*</span>
-                </label>
-                <select
-                  value={selectedEpic || ""}
-                  onChange={(e) => setSelectedEpic(Number(e.target.value))}
-                  className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary"
-                  required
-                >
-                  <option value="">Sélectionner un epic</option>
-                  {epics.map((epic) => (
-                    <option key={epic.id} value={epic.id}>
-                      {epic.reference ? `[${epic.reference}] ` : ''}${epic.titre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
 
           {/* User Story Definition */}
           <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 space-y-4">
@@ -396,7 +305,7 @@ export default function NewUserStoryPage() {
                 className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2.5 text-white placeholder-[#9dabb9]/50 focus:outline-none focus:border-primary"
               />
               <p className="text-[#9dabb9] text-xs mt-2">
-                Alternative aux points d'effort. Vous devez fournir soit les points, soit la durée estimée.
+                Alternative aux points d'effort. Vous pouvez fournir soit les points, soit la durée estimée, ou les deux.
               </p>
             </div>
 
@@ -445,12 +354,13 @@ export default function NewUserStoryPage() {
 
           {/* Actions */}
           <div className="flex gap-3 justify-end">
-            <Link
-              href={`${ROUTES.SCRUM_MASTER}/user-stories`}
+            <button
+              type="button"
+              onClick={() => window.close()}
               className="px-6 py-2.5 bg-[#283039] border border-[#3b4754] text-white text-sm font-bold rounded-lg hover:bg-[#3b4754] transition-colors"
             >
               Annuler
-            </Link>
+            </button>
             <button
               type="submit"
               disabled={isSubmitting}
@@ -459,7 +369,7 @@ export default function NewUserStoryPage() {
               {isSubmitting && (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
               )}
-              <span>{isSubmitting ? "Création..." : "Créer la User Story"}</span>
+              <span>{isSubmitting ? "Enregistrement..." : "Enregistrer les modifications"}</span>
             </button>
           </div>
         </form>

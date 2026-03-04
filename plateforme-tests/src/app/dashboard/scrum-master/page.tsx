@@ -107,6 +107,7 @@ export default function ScrumMasterDashboard() {
     { href: `${ROUTES.SCRUM_MASTER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.SCRUM_MASTER}/user-stories`, icon: "description", label: "User Stories" },
     { href: `${ROUTES.SCRUM_MASTER}/team`, icon: "groups", label: "Équipe" },
+    { href: `${ROUTES.SCRUM_MASTER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
   const headerActions = activeSprint ? (
@@ -251,7 +252,14 @@ export default function ScrumMasterDashboard() {
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h4 className="text-white font-medium text-sm mb-1">{us.titre}</h4>
+                          <div className="flex items-center gap-2 mb-1">
+                            {us.id && (
+                              <span className="text-[#9dabb9] text-xs font-mono bg-[#1c2229] px-1.5 py-0.5 rounded">
+                                #{us.id}
+                              </span>
+                            )}
+                            <h4 className="text-white font-medium text-sm">{us.titre}</h4>
+                          </div>
                           <div className="flex items-center gap-2 mt-2">
                             <span
                               className={`px-2 py-0.5 rounded text-xs font-bold ${
@@ -348,7 +356,14 @@ export default function ScrumMasterDashboard() {
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="text-white font-medium text-sm mb-1">{project.nom}</h4>
+                        <div className="flex items-center gap-2 mb-1">
+                          {project.key && (
+                            <span className="text-[#9dabb9] text-xs font-mono bg-[#1c2229] px-1.5 py-0.5 rounded">
+                              {project.key}
+                            </span>
+                          )}
+                          <h4 className="text-white font-medium text-sm">{project.nom}</h4>
+                        </div>
                         {project.description && (
                           <p className="text-[#9dabb9] text-xs line-clamp-2">
                             {project.description}

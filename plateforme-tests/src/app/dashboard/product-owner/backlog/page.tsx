@@ -213,7 +213,7 @@ export default function BacklogPage() {
             >
               {projects.map((project) => (
                 <option key={project.id} value={project.id}>
-                  {project.nom}
+                  {project.key ? `[${project.key}] ` : ""}{project.nom}
                 </option>
               ))}
             </select>
@@ -273,7 +273,7 @@ export default function BacklogPage() {
                 <option value="">Toutes les epics</option>
                 {epics.map((epic) => (
                   <option key={epic.id} value={epic.id}>
-                    {epic.titre}
+                    {epic.reference ? `[${epic.reference}] ` : ''}${epic.titre}
                   </option>
                 ))}
               </select>
@@ -376,7 +376,14 @@ export default function BacklogPage() {
                   {/* Content */}
                   <div className="flex-1">
                     <div className="flex items-start justify-between mb-2">
-                      <h4 className="text-white font-medium">{item.titre}</h4>
+                      <div className="flex items-center gap-2">
+                        {item.reference && (
+                          <span className="text-[#9dabb9] text-xs font-mono">
+                            {item.reference}
+                          </span>
+                        )}
+                        <h4 className="text-white font-medium">{item.titre}</h4>
+                      </div>
                       <div className="flex items-center gap-2">
                         {item.points && (
                           <span className="px-2 py-1 bg-primary/20 text-primary rounded text-xs font-bold">

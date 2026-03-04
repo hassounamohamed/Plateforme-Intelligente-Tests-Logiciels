@@ -32,7 +32,6 @@ export default function SuperAdminDashboard() {
     { href: ROUTES.SUPER_ADMIN, icon: "dashboard", label: "Dashboard" },
     { href: `${ROUTES.SUPER_ADMIN}/users`, icon: "group", label: "Utilisateurs" },
     { href: `${ROUTES.SUPER_ADMIN}/roles`, icon: "shield", label: "Rôles" },
-    { href: `${ROUTES.SUPER_ADMIN}/projects`, icon: "view_kanban", label: "Projets" },
     { href: `${ROUTES.SUPER_ADMIN}/logs`, icon: "terminal", label: "Logs" },
     { href: `${ROUTES.SUPER_ADMIN}/profile`, icon: "account_circle", label: "Mon Profil" },
     { href: `${ROUTES.SUPER_ADMIN}/settings`, icon: "settings", label: "Paramètres" },
@@ -168,26 +167,6 @@ export default function SuperAdminDashboard() {
               </p>
             </div>
           </Link>
-
-          <Link href={`${ROUTES.SUPER_ADMIN}/projects`}>
-            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
-              <div className="flex items-center gap-4 mb-3">
-                <div className="bg-yellow-500/20 rounded-full h-12 w-12 flex items-center justify-center group-hover:bg-yellow-500/30 transition-colors">
-                  <span className="material-symbols-outlined text-yellow-400 text-[28px]">
-                    view_kanban
-                  </span>
-                </div>
-                <div>
-                  <h3 className="text-white text-lg font-bold">Projets</h3>
-                  <p className="text-[#9dabb9] text-xs">Administration</p>
-                </div>
-              </div>
-              <p className="text-[#9dabb9] text-sm">
-                Gérer et superviser tous les projets de test
-              </p>
-            </div>
-          </Link>
-
 
           <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 flex items-center justify-center">
             <div className="text-center">
