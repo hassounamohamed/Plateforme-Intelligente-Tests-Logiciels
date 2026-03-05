@@ -1,6 +1,9 @@
 import os
+from dotenv import load_dotenv
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://taha:npg_MZJYVl5SzDr2@ep-super-moon-ag8uanbl-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require")
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg://neondb_owner:npg_o6avbkAJyWY8@ep-super-moon-ag8uanbl-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require")
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecret")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -13,3 +16,7 @@ ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "7no5-U0UKJfchPw69MmORHrP8z3YLNZbWS
 # Environnement : development | production
 # En production, HTTPS est enforced via HTTPSRedirectMiddleware
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+
+# ── Configuration IA (Google AI Studio) ─────────────────────────────────────
+AI_API_KEY = os.getenv("ai_api_key", "")
+AI_MODEL   = os.getenv("ai_model",   "gemini-2.0-flash")

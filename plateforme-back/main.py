@@ -18,7 +18,8 @@ from models import (
     Anomalie,
     RapportQA, IndicateurQualite, RecommandationQualite,
     Notification, TypeNotification,
-    LogSystems, AuditLog
+    LogSystems, AuditLog,
+    AIGeneration, AILog, AIGeneratedItem,
 )
 
 # Import routes
@@ -33,6 +34,7 @@ from api.userstories import router as userstories_router
 from api.sprints import router as sprints_router
 from api.backlog import router as backlog_router
 from api.attachments import router as attachments_router
+from api.ai_generation import router as ai_generation_router
 
 
 
@@ -99,6 +101,7 @@ app.include_router(userstories_router)
 app.include_router(sprints_router)
 app.include_router(backlog_router)
 app.include_router(attachments_router)
+app.include_router(ai_generation_router)
 
 # Test DB route
 @app.get("/test-db")
