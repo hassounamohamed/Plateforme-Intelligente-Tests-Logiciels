@@ -127,3 +127,37 @@ class ApplyGenerationResponse(BaseModel):
     modules_created: int
     epics_created: int
     stories_created: int
+
+
+# ─── AIPromptLog ──────────────────────────────────────────────────────────────
+
+AIPromptStatus = Literal["success", "failed", "timeout", "rate_limited"]
+
+
+class AIPromptLogCreate(BaseModel):
+    """Payload pour enregistrer un échange prompt↔réponse."""
+    projet_id:     Optional[int]   = Field(None, description="Projet concerné")
+    user_id:       Optional[int]   = Field(None, description="Utilisateur déclencheur")
+    action_type:   str             = Field(...,  description="Type de tâche IA (generate_scrum, generate_tests, …)")
+    prompt:        str             = Field(...,  description="Texte envoyé au modèle")
+    response:      Optional[str]   = Field(None, description="Réponse brute du modèle")
+    model_used:    Optional[str]   = Field(None, description="Identifiant du modèle (ex: gpt-4o)")
+    tokens_used:   Optional[int]   = Field(None, ge=0, description="Nombre total de tokens consommés")
+    response_time: Optional[float] = Field(None, ge=0, description="Durée de la requête en secondes")
+    status:        AIPromptStatus  = Field("success", description="Résultat de l'appel IA")
+
+
+class AIPromptLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id:            int
+    projet_id:     Optional[int]
+    user_id:       Optional[int]
+    action_type:   str
+    prompt:        str
+    response:      Optional[str]
+    model_used:    Optional[str]
+    tokens_used:   Optional[int]
+    response_time: Optional[float]
+    status:        str
+    created_at:    datetime

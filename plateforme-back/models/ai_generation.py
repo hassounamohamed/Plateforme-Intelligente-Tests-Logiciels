@@ -9,7 +9,7 @@ Tables :
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from db.database import Base
@@ -110,4 +110,53 @@ class AIGeneratedItem(Base):
         back_populates="parent",
         foreign_keys="[AIGeneratedItem.parent_id]",
         cascade="all, delete-orphan",
+    )
+
+
+# ─── Journal des interactions IA (prompts / réponses) ─────────────────────────
+
+class AIPromptLog(Base):
+    """
+    Enregistre chaque échange prompt↔réponse avec un modèle IA.
+
+    Usages :
+      - audit et révision des interactions passées
+      - réutilisation avec d'autres modèles
+      - constitution d'un dataset pour l'amélioration des prompts
+    """
+    __tablename__ = "ai_prompt_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # ── Contexte ───────────────────────────────────────────────────────────
+    projet_id = Column(Integer, ForeignKey("projet.id", ondelete="SET NULL"), nullable=True)
+    user_id   = Column(Integer, ForeignKey("utilisateur.id", ondelete="SET NULL"), nullable=True)
+
+    # Type de tâche IA : generate_scrum | generate_tests | summarize | classify | …
+    action_type = Column(String(80), nullable=False, index=True)
+
+    # ── Contenu de l'échange ───────────────────────────────────────────────
+    prompt   = Column(Text, nullable=False)
+    response = Column(Text, nullable=True)   # NULL si la requête a échoué
+
+    # ── Méta-données du modèle ─────────────────────────────────────────────
+    model_used    = Column(String(100), nullable=True)   # ex: "gpt-4o", "gemini-1.5-pro"
+    tokens_used   = Column(Integer,     nullable=True)   # total (prompt + completion)
+    response_time = Column(Float,       nullable=True)   # secondes (float pour précision ms)
+
+    # ── Résultat ───────────────────────────────────────────────────────────
+    # success | failed | timeout | rate_limited
+    status = Column(String(30), nullable=False, default="success", index=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # ── Relations ──────────────────────────────────────────────────────────
+    projet = relationship("Projet",      foreign_keys=[projet_id])
+    user   = relationship("Utilisateur", foreign_keys=[user_id])
+
+    # ── Index composites pour les requêtes fréquentes ──────────────────────
+    __table_args__ = (
+        Index("ix_ai_prompt_logs_projet_created",  "projet_id",  "created_at"),
+        Index("ix_ai_prompt_logs_user_created",    "user_id",    "created_at"),
+        Index("ix_ai_prompt_logs_action_status",   "action_type", "status"),
     )
