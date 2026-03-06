@@ -1,7 +1,7 @@
 # Import all models for easy access
 from models.user import Utilisateur, Role, Permission
 from models.scrum import Projet, Module, Epic, UserStory, Sprint
-from models.ai_generation import AIGeneration, AILog, AIGeneratedItem
+from models.ai_generation import AIGeneration, AILog, AIGeneratedItem, AIPromptLog
 from models.attachment import Attachment
 from models.tests import CahierDeTests, Test, TestUnitaire, TestAutomatise, TestManuel, ScenarioTest, ValidationTest
 from models.execution import ExecutionTest, ResultatTest
@@ -15,6 +15,7 @@ __all__ = [
     "AIGeneration",
     "AILog",
     "AIGeneratedItem",
+    "AIPromptLog",
     # User models
     "Utilisateur",
     "Role",

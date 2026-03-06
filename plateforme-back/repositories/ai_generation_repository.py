@@ -6,7 +6,7 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session, joinedload
 
-from models.ai_generation import AIGeneration, AIGeneratedItem, AILog
+from models.ai_generation import AIGeneration, AIGeneratedItem, AILog, AIPromptLog
 from repositories.base_repository import BaseRepository
 
 
@@ -159,3 +159,92 @@ class AIGenerationRepository(BaseRepository[AIGeneration]):
             AIGeneratedItem.generation_id == generation_id
         ).delete()
         self.db.commit()
+
+
+# ─── AIPromptLog repository ───────────────────────────────────────────────────
+
+class AIPromptLogRepository:
+    """CRUD et requêtes analytiques sur la table ai_prompt_logs."""
+
+    def __init__(self, db: Session):
+        self.db = db
+
+    def create(
+        self,
+        action_type: str,
+        prompt: str,
+        *,
+        projet_id: Optional[int] = None,
+        user_id: Optional[int] = None,
+        response: Optional[str] = None,
+        model_used: Optional[str] = None,
+        tokens_used: Optional[int] = None,
+        response_time: Optional[float] = None,
+        status: str = "success",
+    ) -> AIPromptLog:
+        log = AIPromptLog(
+            projet_id=projet_id,
+            user_id=user_id,
+            action_type=action_type,
+            prompt=prompt,
+            response=response,
+            model_used=model_used,
+            tokens_used=tokens_used,
+            response_time=response_time,
+            status=status,
+        )
+        self.db.add(log)
+        self.db.commit()
+        self.db.refresh(log)
+        return log
+
+    def get_by_id(self, log_id: int) -> Optional[AIPromptLog]:
+        return self.db.query(AIPromptLog).filter(AIPromptLog.id == log_id).first()
+
+    def get_by_projet(self, projet_id: int, limit: int = 100) -> List[AIPromptLog]:
+        return (
+            self.db.query(AIPromptLog)
+            .filter(AIPromptLog.projet_id == projet_id)
+            .order_by(AIPromptLog.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def get_by_user(self, user_id: int, limit: int = 100) -> List[AIPromptLog]:
+        return (
+            self.db.query(AIPromptLog)
+            .filter(AIPromptLog.user_id == user_id)
+            .order_by(AIPromptLog.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def get_by_action_type(self, action_type: str, limit: int = 100) -> List[AIPromptLog]:
+        return (
+            self.db.query(AIPromptLog)
+            .filter(AIPromptLog.action_type == action_type)
+            .order_by(AIPromptLog.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def get_dataset(
+        self,
+        action_type: Optional[str] = None,
+        model_used: Optional[str] = None,
+        limit: int = 1000,
+    ) -> List[AIPromptLog]:
+        """
+        Retourne les interactions réussies (status='success') avec une réponse non nulle,
+        filtrées optionnellement par action_type et/ou model_used.
+        Conçu pour l'export en dataset d'entraînement/évaluation.
+        """
+        q = (
+            self.db.query(AIPromptLog)
+            .filter(AIPromptLog.status == "success", AIPromptLog.response.isnot(None))
+        )
+        if action_type:
+            q = q.filter(AIPromptLog.action_type == action_type)
+        if model_used:
+            q = q.filter(AIPromptLog.model_used == model_used)
+        return q.order_by(AIPromptLog.created_at.desc()).limit(limit).all()
