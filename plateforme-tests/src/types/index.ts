@@ -519,3 +519,76 @@ export interface RecommandationQualite {
   statut: "en_attente" | "en_cours" | "appliquee" | "rejetee";
   rapportId: number;
 }
+
+// ─── AI Generation ────────────────────────────────────────────────────────────
+
+export type AIGenerationStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "approved"
+  | "rejected";
+
+export type AIItemStatus = "draft" | "approved" | "rejected" | "modified";
+export type AIItemType = "module" | "epic" | "user_story";
+export type AIPriority = "High" | "Medium" | "Low";
+
+export interface AILog {
+  id: number;
+  step: string;
+  message: string | null;
+  progress: number;
+  created_at: string;
+}
+
+export interface AIGeneratedItem {
+  id: number;
+  generation_id: number;
+  type: AIItemType;
+  parent_id: number | null;
+  title: string;
+  description: string | null;
+  acceptance_criteria: string | null;
+  priority: AIPriority | null;
+  story_points: number | null;
+  sprint: number | null;
+  duration: string | null;
+  status: AIItemStatus;
+  created_at: string;
+  children: AIGeneratedItem[];
+}
+
+export interface AIGeneration {
+  id: number;
+  projet_id: number;
+  user_id: number | null;
+  type: string;
+  status: AIGenerationStatus;
+  progress: number;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface AIGenerationDetail extends AIGeneration {
+  logs: AILog[];
+  items: AIGeneratedItem[];
+}
+
+export interface ApplyGenerationResult {
+  generation_id: number;
+  modules_created: number;
+  epics_created: number;
+  stories_created: number;
+}
+
+export interface UpdateAIItemPayload {
+  title?: string;
+  description?: string;
+  acceptance_criteria?: string;
+  priority?: AIPriority;
+  story_points?: number;
+  sprint?: number;
+  duration?: string;
+  status?: AIItemStatus;
+}
