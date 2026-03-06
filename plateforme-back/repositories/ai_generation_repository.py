@@ -87,11 +87,13 @@ class AIGenerationRepository(BaseRepository[AIGeneration]):
         generation_id: int,
         type_: str,
         title: str,
-        description: str,
+        description: str = None,
         parent_id: Optional[int] = None,
         acceptance_criteria: Optional[str] = None,
         priority: Optional[str] = None,
         story_points: Optional[int] = None,
+        sprint: Optional[int] = None,
+        duration: Optional[str] = None,
     ) -> AIGeneratedItem:
         item = AIGeneratedItem(
             generation_id=generation_id,
@@ -102,6 +104,8 @@ class AIGenerationRepository(BaseRepository[AIGeneration]):
             acceptance_criteria=acceptance_criteria,
             priority=priority,
             story_points=story_points,
+            sprint=sprint,
+            duration=duration,
             status="draft",
         )
         self.db.add(item)

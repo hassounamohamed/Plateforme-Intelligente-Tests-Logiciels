@@ -23,6 +23,7 @@ from schemas.ai_generation import (
     AIGeneratedItemResponse,
     AIGenerationDetailResponse,
     AIGenerationResponse,
+    ApplyGenerationResponse,
     StartGenerationRequest,
     UpdateItemRequest,
     UpdateItemStatusRequest,
@@ -152,3 +153,20 @@ async def changer_statut_item(
     svc: AIGenerationService = Depends(get_ai_service),
 ):
     return svc.changer_statut_item(generation_id, item_id, body.status)
+
+
+# ─── Appliquer la génération au backlog ───────────────────────────────────────
+
+@router.post(
+    "/generations/{generation_id}/apply",
+    response_model=ApplyGenerationResponse,
+    summary="Créer les vrais modules/epics/user stories à partir des items approuvés",
+)
+@require_role(ROLE_PRODUCT_OWNER)
+async def appliquer_generation(
+    projet_id: int,
+    generation_id: int,
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: AIGenerationService = Depends(get_ai_service),
+):
+    return svc.appliquer_generation(generation_id, projet_id, current_user.id)

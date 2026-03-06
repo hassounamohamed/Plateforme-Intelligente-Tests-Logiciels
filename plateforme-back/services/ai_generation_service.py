@@ -16,12 +16,13 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from typing import Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from core.config import AI_API_KEY, AI_MODEL
+from core.config import AI_API_KEY, AI_MODEL, AI_API_URL
 from models.attachment import Attachment
 from models.scrum import Projet
 from repositories.ai_generation_repository import AIGenerationRepository
@@ -30,37 +31,49 @@ from schemas.ai_generation import AIBacklogResponse
 # ─── Prompt système ───────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT = """\
-Tu es un expert Agile/Scrum. Ton rôle est de transformer un cahier des charges \
+Tu es un expert Agile/Scrum. Ton rôle est de transformer un cahier des charges  \
 en backlog Scrum complet structuré en Modules → Epics → User Stories.
 
 Règles strictes :
+
 1. Identifie les modules principaux du système.
+
 2. Pour chaque module, identifie les Epics.
+
 3. Pour chaque Epic, génère les User Stories au format :
    "En tant que [rôle], je veux [objectif], afin de [bénéfice]."
-4. Chaque User Story doit avoir :
-   - Des critères d'acceptation (liste de phrases courtes)
-   - Une priorité : "High", "Medium" ou "Low"
-   - Des story points (entier de 1 à 13)
-5. Retourne UNIQUEMENT un objet JSON valide, sans aucun texte avant ou après.
-6. Respecte exactement ce schéma :
+
+4. Chaque User Story doit obligatoirement contenir :
+   - Priority : "High", "Medium" ou "Low"
+   - Story Points : entier de 1 à 13
+   - Sprint : numéro de sprint (1 à 6)
+   - Duration : estimation en heures (ex : 2h, 4h, 8h, 16h)
+   - Acceptance Criteria : liste de 3 à 5 phrases courtes et vérifiables
+
+5. Retourne UNIQUEMENT un objet JSON valide.
+   Aucun texte avant ou après.
+
+Structure JSON attendue :
 
 {
   "modules": [
     {
-      "titre": "...",
-      "description": "...",
+      "name": "Nom du module",
       "epics": [
         {
-          "titre": "...",
-          "description": "...",
+          "name": "Nom de l'epic",
           "user_stories": [
             {
-              "titre": "En tant que ..., je veux ..., afin de ...",
-              "description": "...",
-              "criteres_acceptation": ["...", "..."],
-              "priorite": "High",
-              "story_points": 5
+              "description": "En tant que ... je veux ... afin de ...",
+              "priority": "High",
+              "story_points": 5,
+              "sprint": 2,
+              "duration": "4h",
+              "acceptance_criteria": [
+                "critère 1",
+                "critère 2",
+                "critère 3"
+              ]
             }
           ]
         }
@@ -140,7 +153,7 @@ class AIGenerationService:
                           "Envoi du prompt au modèle IA…", 30)
         self.repo.update_progress(generation_id, 30)
 
-        raw_json = self._appeler_ia(content)
+        raw_json = self._appeler_ia(content, generation_id)
 
         self.repo.update_progress(generation_id, 60)
         self.repo.add_log(generation_id, "generating_epics",
@@ -164,8 +177,7 @@ class AIGenerationService:
             module_item = self.repo.add_item(
                 generation_id=generation_id,
                 type_="module",
-                title=module.titre,
-                description=module.description,
+                title=module.name,
             )
 
             for epic in module.epics:
@@ -173,23 +185,24 @@ class AIGenerationService:
                 epic_item = self.repo.add_item(
                     generation_id=generation_id,
                     type_="epic",
-                    title=epic.titre,
-                    description=epic.description,
+                    title=epic.name,
                     parent_id=module_item.id,
                 )
 
                 for us in epic.user_stories:
                     nb_us += 1
-                    criteres_json = json.dumps(us.criteres_acceptation, ensure_ascii=False)
+                    criteres_json = json.dumps(us.acceptance_criteria, ensure_ascii=False)
                     self.repo.add_item(
                         generation_id=generation_id,
                         type_="user_story",
-                        title=us.titre,
+                        title=us.description,
                         description=us.description,
                         parent_id=epic_item.id,
                         acceptance_criteria=criteres_json,
-                        priority=us.priorite,
+                        priority=us.priority,
                         story_points=us.story_points,
+                        sprint=us.sprint,
+                        duration=us.duration,
                     )
 
         # ── Étape 6 : Terminé ──────────────────────────────────────────────
@@ -271,42 +284,85 @@ class AIGenerationService:
         except Exception:
             return ""
 
-    def _appeler_ia(self, content: str) -> str:
-        """Envoie le contenu au modèle Google AI Studio (Gemini) et retourne la réponse brute."""
+    def _appeler_ia(self, content: str, generation_id: int) -> str:
+        """Envoie le contenu au modèle openrouter et retourne la réponse brute.
+
+        En cas d'erreur 429 (quota dépassé), attend le délai suggéré par l'API
+        puis réessaie (3 tentatives max).
+        """
         if not AI_API_KEY:
             raise ValueError("Clé API IA manquante. Définir ai_api_key dans .env")
 
-        # Tronquer si trop long (≈ 12 000 tokens max ≈ 48 000 caractères)
+        # Tronquer si trop long (≈ 12 000 tokens max ≈ 48 000 caractères)
         max_chars = 48_000
         if len(content) > max_chars:
             content = content[:max_chars] + "\n[... contenu tronqué ...]"
 
-        return self._appeler_google(content)
+        max_retries = 3
+        base_delay  = 30  # secondes
+
+        for attempt in range(max_retries):
+            try:
+                return self._appeler_google(content)
+            except Exception as exc:
+                err_str = str(exc)
+                is_quota = (
+                    "429" in err_str
+                    or "quota" in err_str.lower()
+                    or "RESOURCE_EXHAUSTED" in err_str
+                )
+                if not is_quota or attempt == max_retries - 1:
+                    raise
+
+                # Extraire le délai suggéré par l'API ("retry_delay { seconds: N }")
+                delay_match = re.search(r"retry_delay\s*\{\s*seconds:\s*(\d+)", err_str)
+                wait = int(delay_match.group(1)) + 5 if delay_match else base_delay * (2 ** attempt)
+
+                self.repo.add_log(
+                    generation_id, "retrying",
+                    f"Quota dépassé (429) — nouvelle tentative dans {wait} s "
+                    f"(essai {attempt + 1}/{max_retries - 1})…",
+                    30,
+                )
+                time.sleep(wait)
+
+        raise RuntimeError("Échec après toutes les tentatives.")
 
     @staticmethod
     def _appeler_google(content: str) -> str:
-        """Appel via Google AI Studio SDK (google-generativeai)."""
-        try:
-            import google.generativeai as genai
-        except ImportError:
-            raise ValueError(
-                "Package 'google-generativeai' manquant. Exécuter : pip install google-generativeai"
-            )
-
-        genai.configure(api_key=AI_API_KEY)
-
-        model = genai.GenerativeModel(
-            model_name=AI_MODEL,
-            system_instruction=SYSTEM_PROMPT,
-            generation_config={
-                "temperature": 0.3,
-                "max_output_tokens": 8192,
-            },
-        )
+        """Appel unique vers l'API OpenRouter (compatible OpenAI)."""
+        import requests
 
         full_prompt = USER_PROMPT_TEMPLATE.format(content=content)
-        response = model.generate_content(full_prompt)
-        return response.text
+
+        payload = {
+            "model": AI_MODEL,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user",   "content": full_prompt},
+            ],
+            "temperature": 0.3,
+            "max_tokens": 8192,
+        }
+        headers = {
+            "Authorization": f"Bearer {AI_API_KEY}",
+            "Content-Type":  "application/json",
+        }
+
+        resp = requests.post(AI_API_URL, json=payload, headers=headers, timeout=120)
+
+        if resp.status_code == 429:
+            # Propager comme exception pour que la boucle retry la capte
+            raise Exception(f"429 Quota dépassé : {resp.text}")
+
+        if not resp.ok:
+            raise ValueError(f"Erreur OpenRouter {resp.status_code} : {resp.text}")
+
+        data = resp.json()
+        try:
+            return data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError) as exc:
+            raise ValueError(f"Réponse OpenRouter inattendue : {data}") from exc
 
     @staticmethod
     def _parser_reponse(raw: str) -> AIBacklogResponse:
@@ -334,6 +390,114 @@ class AIGenerationService:
             raise ValueError(f"Structure JSON inattendue : {exc}")
 
     # ─── Actions sur les items ────────────────────────────────────────────
+
+    # ─── Application de la génération au backlog ─────────────────────────
+
+    def appliquer_generation(self, generation_id: int, projet_id: int, user_id: int) -> dict:
+        """
+        Crée les vraies entités (Module, Epic, UserStory) à partir des items
+        non-rejetés d'une génération IA complétée, puis marque la génération
+        comme « approved ».
+        """
+        from models.scrum import Module, Epic, UserStory
+        from repositories.projet_repository import ProjetRepository
+
+        gen = self.repo.get_detail(generation_id)
+        if not gen:
+            raise HTTPException(status_code=404, detail="Génération introuvable.")
+        if gen.status not in ("completed", "approved"):
+            raise HTTPException(
+                status_code=400,
+                detail="La génération n'est pas encore terminée (status != completed).",
+            )
+
+        projet_repo = ProjetRepository(self.db)
+        projet = projet_repo.get_by_id(projet_id)
+        if not projet:
+            raise HTTPException(status_code=404, detail="Projet introuvable.")
+
+        all_items = self.repo.get_items_by_generation(generation_id)
+        active   = [i for i in all_items if i.status != "rejected"]
+
+        modules_created = 0
+        epics_created   = 0
+        stories_created = 0
+
+        module_id_map: dict[int, int] = {}   # ai_item.id → real Module.id
+        epic_id_map:   dict[int, int] = {}   # ai_item.id → real Epic.id
+
+        # ── Modules ──────────────────────────────────────────────────────
+        for idx, item in enumerate(i for i in active if i.type == "module" and i.parent_id is None):
+            m = Module(
+                nom=item.title[:200],
+                description=item.description,
+                ordre=idx,
+                projet_id=projet_id,
+            )
+            self.db.add(m)
+            self.db.flush()
+            module_id_map[item.id] = m.id
+            modules_created += 1
+
+        # ── Epics ─────────────────────────────────────────────────────────
+        epic_idx = 0
+        for item in (i for i in active if i.type == "epic"):
+            parent_module_id = module_id_map.get(item.parent_id)
+            if parent_module_id is None:
+                continue
+            numero    = projet_repo.next_issue_number(projet_id)
+            reference = f"{projet.key}-{numero}"
+            e = Epic(
+                reference=reference,
+                titre=item.title[:200],
+                description=item.description,
+                priorite=epic_idx,
+                statut="to_do",
+                module_id=parent_module_id,
+                productOwnerId=user_id,
+            )
+            self.db.add(e)
+            self.db.flush()
+            epic_id_map[item.id] = e.id
+            epics_created += 1
+            epic_idx += 1
+
+        # ── User Stories ──────────────────────────────────────────────────
+        _prio_map = {"High": "must_have", "Medium": "should_have", "Low": "could_have"}
+        for item in (i for i in active if i.type == "user_story"):
+            parent_epic_id = epic_id_map.get(item.parent_id)
+            if parent_epic_id is None:
+                continue
+            numero    = projet_repo.next_issue_number(projet_id)
+            reference = f"{projet.key}-{numero}"
+            duree: float | None = None
+            if item.duration:
+                m_dur = re.match(r"(\d+(?:\.\d+)?)", item.duration)
+                if m_dur:
+                    duree = float(m_dur.group(1))
+            us = UserStory(
+                reference=reference,
+                titre=item.title[:200],
+                description=item.description or item.title,
+                criteresAcceptation=item.acceptance_criteria,
+                points=item.story_points,
+                duree_estimee=duree,
+                priorite=_prio_map.get(item.priority or "", "should_have"),
+                statut="to_do",
+                epic_id=parent_epic_id,
+            )
+            self.db.add(us)
+            stories_created += 1
+
+        self.db.commit()
+        self.repo.update_status(generation_id, "approved", 100)
+
+        return {
+            "generation_id": generation_id,
+            "modules_created": modules_created,
+            "epics_created": epics_created,
+            "stories_created": stories_created,
+        }
 
     def modifier_item(self, generation_id: int, item_id: int, **kwargs):
         item = self.repo.get_item_by_id(item_id, generation_id)

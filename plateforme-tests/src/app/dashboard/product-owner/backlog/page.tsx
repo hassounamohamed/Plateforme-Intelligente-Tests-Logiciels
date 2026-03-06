@@ -176,6 +176,7 @@ export default function BacklogPage() {
     { href: `${ROUTES.PRODUCT_OWNER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.PRODUCT_OWNER}/epics`, icon: "content_cut", label: "Epics" },
     { href: `${ROUTES.PRODUCT_OWNER}/sprints`, icon: "event", label: "Sprints" },
+    { href: `${ROUTES.PRODUCT_OWNER}/ai-backlog`, icon: "smart_toy", label: "AI Backlog" },
     { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
     { href: `${ROUTES.PRODUCT_OWNER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.PRODUCT_OWNER}/roadmap`, icon: "map", label: "Roadmap" },
@@ -196,6 +197,15 @@ export default function BacklogPage() {
         <DashboardHeader
           title="Product Backlog"
           subtitle="Vue d'ensemble et priorisation du backlog produit"
+          actions={
+            <Link
+              href={`${ROUTES.PRODUCT_OWNER}/ai-backlog${selectedProject ? `?projectId=${selectedProject}` : ""}`}
+              className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+              Générer avec IA
+            </Link>
+          }
         />
       }
     >

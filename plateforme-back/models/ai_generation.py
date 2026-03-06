@@ -88,6 +88,8 @@ class AIGeneratedItem(Base):
     acceptance_criteria = Column(Text,    nullable=True)   # JSON array sérialisé
     priority            = Column(String(10), nullable=True)  # High / Medium / Low
     story_points        = Column(Integer, nullable=True)    # 1 → 13
+    sprint              = Column(Integer, nullable=True)    # numéro de sprint 1 → 6
+    duration            = Column(String(20), nullable=True) # ex: "4h", "8h"
 
     # Cycle de vie : draft | approved | rejected | modified
     status = Column(String(20), nullable=False, default="draft")

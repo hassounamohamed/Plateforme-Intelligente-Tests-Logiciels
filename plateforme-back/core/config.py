@@ -17,6 +17,7 @@ ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "7no5-U0UKJfchPw69MmORHrP8z3YLNZbWS
 # En production, HTTPS est enforced via HTTPSRedirectMiddleware
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
-# ── Configuration IA (Google AI Studio) ─────────────────────────────────────
-AI_API_KEY = os.getenv("ai_api_key", "")
-AI_MODEL   = os.getenv("ai_model",   "gemini-2.0-flash")
+# ── Configuration IA (OpenRouter) ─────────────────────────────────────────────
+AI_API_KEY = os.getenv("ai_api_key", "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")
+AI_MODEL   = os.getenv("ai_model",   "google/gemma-3-12b-it")
+AI_API_URL = os.getenv("ai_api_url",  "https://openrouter.ai/api/v1/chat/completions")

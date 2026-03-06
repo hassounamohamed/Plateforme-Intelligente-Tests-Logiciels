@@ -37,6 +37,8 @@ class UpdateItemRequest(BaseModel):
     acceptance_criteria: Optional[str]       = Field(None, description="Critères d'acceptation (JSON)")
     priority:            Optional[PriorityLevel] = Field(None, description="Priorité")
     story_points:        Optional[int]       = Field(None, ge=1, le=13, description="Points (1-13)")
+    sprint:              Optional[int]       = Field(None, ge=1, le=6,  description="Numéro de sprint")
+    duration:            Optional[str]       = Field(None, description="Durée estimée (ex: 4h)")
     status:              Optional[StatusItem]= Field(None, description="Statut")
 
 
@@ -64,6 +66,8 @@ class AIGeneratedItemResponse(BaseModel):
     acceptance_criteria: Optional[str]
     priority:            Optional[str]
     story_points:        Optional[int]
+    sprint:              Optional[int]
+    duration:            Optional[str]
     status:              str
     created_at:          datetime
 
@@ -94,25 +98,32 @@ class AIGenerationDetailResponse(AIGenerationResponse):
 # Ces classes servent uniquement à valider / parser la réponse brute de l'IA.
 
 class AIUserStory(BaseModel):
-    titre:               str
     description:         str
-    criteres_acceptation: List[str] = []
-    priorite:            PriorityLevel = "Medium"
+    priority:            PriorityLevel = "Medium"
     story_points:        int = Field(3, ge=1, le=13)
+    sprint:              int = Field(1, ge=1, le=6)
+    duration:            str = "4h"
+    acceptance_criteria: List[str] = []
 
 
 class AIEpic(BaseModel):
-    titre:       str
-    description: str
+    name:         str
     user_stories: List[AIUserStory] = []
 
 
 class AIModule(BaseModel):
-    titre:       str
-    description: str
-    epics:       List[AIEpic] = []
+    name:  str
+    epics: List[AIEpic] = []
 
 
 class AIBacklogResponse(BaseModel):
     """Structure attendue dans la réponse JSON de l'IA."""
     modules: List[AIModule] = []
+
+
+class ApplyGenerationResponse(BaseModel):
+    """Résumé retourné après application d'une génération IA au backlog."""
+    generation_id: int
+    modules_created: int
+    epics_created: int
+    stories_created: int
