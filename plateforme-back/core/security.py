@@ -3,6 +3,9 @@ from jose import jwt
 from passlib.context import CryptContext
 from core.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY environment variable is not set. Add it to your .env file.")
+
 # Optional: refresh token expiry in minutes (e.g., 7 days)
 REFRESH_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  
 
