@@ -81,7 +81,8 @@ async def get_sprint(
     svc: SprintService = Depends(get_sprint_service),
 ):
     """Récupérer un sprint avec la liste de ses user stories."""
-    return svc.get_sprint(projet_id, sprint_id)
+    # Accepter n'importe quel projet_id et retourner le bon sprint
+    return svc.get_sprint_flexible(projet_id, sprint_id)
 
 
 # ─── Modification ─────────────────────────────────────────────────────────────
@@ -96,7 +97,7 @@ async def modifier_sprint(
     svc: SprintService = Depends(get_sprint_service),
 ):
     """Modifier les paramètres d'un sprint (planifié ou en cours) — Scrum Master."""
-    return svc.modifier_sprint(projet_id, sprint_id, data, current_user.id)
+    return svc.modifier_sprint_flexible(projet_id, sprint_id, data, current_user.id)
 
 
 # ─── Cycle de vie ─────────────────────────────────────────────────────────────
@@ -113,7 +114,7 @@ async def demarrer_sprint(
     Démarrer un sprint planifié → statut **en_cours**.
     Un seul sprint peut être actif à la fois par projet.
     """
-    return svc.demarrer_sprint(projet_id, sprint_id, current_user.id)
+    return svc.demarrer_sprint_flexible(projet_id, sprint_id, current_user.id)
 
 
 @router.patch("/{sprint_id}/cloturer", response_model=SprintResponse)
@@ -128,7 +129,7 @@ async def cloturer_sprint(
     Clôturer le sprint en cours → statut **termine**.
     La vélocité est calculée automatiquement à la clôture.
     """
-    return svc.cloturer_sprint(projet_id, sprint_id, current_user.id)
+    return svc.cloturer_sprint_flexible(projet_id, sprint_id, current_user.id)
 
 
 # ─── User Stories ─────────────────────────────────────────────────────────────
@@ -143,7 +144,7 @@ async def ajouter_userstories(
     svc: SprintService = Depends(get_sprint_service),
 ):
     """Ajouter des user stories au sprint — Scrum Master uniquement."""
-    return svc.ajouter_userstories(projet_id, sprint_id, data, current_user.id)
+    return svc.ajouter_userstories_flexible(projet_id, sprint_id, data, current_user.id)
 
 
 @router.delete("/{sprint_id}/userstories", response_model=SprintResponse)
@@ -156,7 +157,7 @@ async def retirer_userstories(
     svc: SprintService = Depends(get_sprint_service),
 ):
     """Retirer des user stories du sprint — Scrum Master uniquement."""
-    return svc.retirer_userstories(projet_id, sprint_id, data, current_user.id)
+    return svc.retirer_userstories_flexible(projet_id, sprint_id, data, current_user.id)
 
 
 # ─── Vélocité ─────────────────────────────────────────────────────────────────
@@ -172,7 +173,7 @@ async def calculer_velocite(
     Calculer la vélocité du sprint :
     somme des story points des user stories au statut **done**.
     """
-    return svc.calculer_velocite(projet_id, sprint_id)
+    return svc.calculer_velocite_flexible(projet_id, sprint_id)
 
 
 # ─── Suppression ──────────────────────────────────────────────────────────────
@@ -186,4 +187,4 @@ async def supprimer_sprint(
     svc: SprintService = Depends(get_sprint_service),
 ):
     """Supprimer un sprint (uniquement si statut 'planifie') — Scrum Master."""
-    svc.supprimer_sprint(projet_id, sprint_id, current_user.id)
+    svc.supprimer_sprint_flexible(projet_id, sprint_id, current_user.id)

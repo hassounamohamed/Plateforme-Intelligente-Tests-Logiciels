@@ -52,11 +52,21 @@ export default function EditSprintPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedProject && sprintId) {
-      loadSprintData(selectedProject, sprintId);
+    // Charger le sprint dès qu'on a la liste des projets
+    // Le sprint se chargera même avec un mauvais projet_id grâce au backend flexible
+    if (projects.length > 0 && sprintId && !selectedProject) {
+      // Utiliser un projet temporaire juste pour l'appel initial
+      // Le vrai projet sera détecté lors du chargement du sprint
+      loadSprintData(projects[0].id, sprintId);
+    }
+  }, [projects, sprintId, selectedProject]);
+
+  useEffect(() => {
+    // Recharger les données du projet si l'utilisateur change de projet manuellement
+    if (selectedProject && !isLoading) {
       loadProjectData(selectedProject);
     }
-  }, [selectedProject, sprintId]);
+  }, [selectedProject]);
 
   useEffect(() => {
     // Auto-calculate dureeJours based on dates
@@ -73,9 +83,9 @@ export default function EditSprintPage() {
     try {
       const projectsData = await getMyProjectsAsMember();
       setProjects(projectsData);
-      if (projectsData.length > 0) {
-        setSelectedProject(projectsData[0].id);
-      }
+      
+      // Ne pas sélectionner automatiquement - attendre de charger le sprint
+      // pour connaître son vrai projet_id
     } catch (error: any) {
       console.error("Erreur chargement projets:", error);
       setError("Impossible de charger les projets");
@@ -85,7 +95,17 @@ export default function EditSprintPage() {
   const loadSprintData = async (projectId: number, sprintId: number) => {
     setIsLoading(true);
     try {
+      // Utiliser le projectId passé en paramètre (même s'il peut être incorrect)
+      // Le backend flexible le retrouvera quand même
       const sprintData = await getSprintById(projectId, sprintId);
+      
+      // Utiliser le VRAI projet_id du sprint retourné
+      const realProjectId = sprintData.projet_id;
+      
+      // Si le projet sélectionné n'est pas le bon, le corriger
+      if (realProjectId !== selectedProject) {
+        setSelectedProject(realProjectId);
+      }
       
       // Populate form fields with existing data
       setNom(sprintData.nom);
@@ -110,6 +130,9 @@ export default function EditSprintPage() {
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         setDureeJours(diffDays);
       }
+
+      // Charger les données du VRAI projet
+      await loadProjectData(realProjectId);
 
     } catch (error: any) {
       console.error("Erreur chargement sprint:", error);

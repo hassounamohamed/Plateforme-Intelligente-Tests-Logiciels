@@ -98,6 +98,13 @@ class UserStory(Base):
     attachments = relationship("Attachment", back_populates="userstory", cascade="all, delete-orphan",
                                foreign_keys="Attachment.userstory_id")
 
+    @property
+    def module_id(self) -> int | None:
+        """Retourne le module_id via la relation epic."""
+        if self.epic:
+            return self.epic.module_id
+        return None
+
 
 class Sprint(Base):
     __tablename__ = "sprint"

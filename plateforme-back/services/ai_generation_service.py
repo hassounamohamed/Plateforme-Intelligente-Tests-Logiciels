@@ -21,7 +21,7 @@ from typing import Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-
+from datetime import datetime
 from core.config import AI_API_KEY, AI_MODEL, AI_API_URL
 from models.attachment import Attachment
 from models.scrum import Projet
@@ -395,11 +395,12 @@ class AIGenerationService:
 
     def appliquer_generation(self, generation_id: int, projet_id: int, user_id: int) -> dict:
         """
-        Crée les vraies entités (Module, Epic, UserStory) à partir des items
+        Crée les vraies entités (Module, Epic, UserStory, Sprint) à partir des items
         non-rejetés d'une génération IA complétée, puis marque la génération
         comme « approved ».
         """
-        from models.scrum import Module, Epic, UserStory
+        from datetime import timedelta
+        from models.scrum import Module, Epic, UserStory, Sprint
         from repositories.projet_repository import ProjetRepository
 
         gen = self.repo.get_detail(generation_id)
@@ -422,9 +423,40 @@ class AIGenerationService:
         modules_created = 0
         epics_created   = 0
         stories_created = 0
+        sprints_created = 0
 
         module_id_map: dict[int, int] = {}   # ai_item.id → real Module.id
         epic_id_map:   dict[int, int] = {}   # ai_item.id → real Epic.id
+        sprint_map:    dict[int, int] = {}   # sprint_number → Sprint.id
+
+        # ── Sprints ───────────────────────────────────────────────────────
+        # Collecter tous les numéros de sprint uniques
+        sprint_numbers = set()
+        for item in active:
+            if item.type == "user_story" and item.sprint:
+                sprint_numbers.add(item.sprint)
+
+        # Créer les sprints (durée de 2 semaines par défaut)
+        for sprint_num in sorted(sprint_numbers):
+            # Calculer les dates : sprint 1 démarre maintenant, les autres suivent
+            start_date = datetime.now() + timedelta(weeks=(sprint_num - 1) * 2)
+            end_date = start_date + timedelta(weeks=2)
+            
+            sprint = Sprint(
+                nom=f"Sprint {sprint_num}",
+                dateDebut=start_date,
+                dateFin=end_date,
+                objectifSprint=f"Sprint {sprint_num} - Généré automatiquement par IA",
+                capaciteEquipe=40,  # Valeur par défaut (40 story points)
+                velocite=0,
+                statut="planned",
+                projet_id=projet_id,
+                scrumMasterId=None,  # À définir manuellement
+            )
+            self.db.add(sprint)
+            self.db.flush()
+            sprint_map[sprint_num] = sprint.id
+            sprints_created += 1
 
         # ── Modules ──────────────────────────────────────────────────────
         for idx, item in enumerate(i for i in active if i.type == "module" and i.parent_id is None):
@@ -487,6 +519,15 @@ class AIGenerationService:
                 epic_id=parent_epic_id,
             )
             self.db.add(us)
+            self.db.flush()
+            
+            # Lier la user story au sprint si un numéro de sprint existe
+            if item.sprint and item.sprint in sprint_map:
+                sprint_id = sprint_map[item.sprint]
+                sprint = self.db.query(Sprint).get(sprint_id)
+                if sprint:
+                    us.sprints.append(sprint)
+            
             stories_created += 1
 
         self.db.commit()
@@ -494,6 +535,7 @@ class AIGenerationService:
 
         return {
             "generation_id": generation_id,
+            "sprints_created": sprints_created,
             "modules_created": modules_created,
             "epics_created": epics_created,
             "stories_created": stories_created,

@@ -42,9 +42,12 @@ class SprintRepository(BaseRepository[Sprint]):
         )
 
     def get_with_userstories(self, sprint_id: int) -> Optional[Sprint]:
+        from models.scrum import UserStory
         return (
             self.db.query(Sprint)
-            .options(joinedload(Sprint.userstories))
+            .options(
+                joinedload(Sprint.userstories).joinedload(UserStory.epic)
+            )
             .filter(Sprint.id == sprint_id)
             .first()
         )

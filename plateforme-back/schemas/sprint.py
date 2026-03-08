@@ -52,6 +52,8 @@ class UserStorySprint(BaseModel):
     points: Optional[int] = None
     priorite: Optional[str] = None
     developerId: Optional[int] = None
+    epic_id: int
+    module_id: Optional[int] = None  # Calculé via @property dans le modèle
 
     class Config:
         from_attributes = True
@@ -67,7 +69,7 @@ class SprintResponse(BaseModel):
     velocite: int
     statut: str
     projet_id: int
-    scrumMasterId: int
+    scrumMasterId: Optional[int] = None
     userstories: List[UserStorySprint] = []
 
     class Config:

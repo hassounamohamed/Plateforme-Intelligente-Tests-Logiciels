@@ -18,6 +18,9 @@ export default function UserStoryDetailsPage() {
   const router = useRouter();
   const userStoryId = Number(params.id);
   
+  // Lire les query params depuis l'URL
+  const [searchParams, setSearchParams] = useState<URLSearchParams | null>(null);
+  
   const [userStory, setUserStory] = useState<UserStory | null>(null);
   const [projectId, setProjectId] = useState<number | null>(null);
   const [moduleId, setModuleId] = useState<number | null>(null);
@@ -26,45 +29,79 @@ export default function UserStoryDetailsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadData();
-  }, [userStoryId]);
+    // Extraire les query params côté client
+    if (typeof window !== 'undefined') {
+      setSearchParams(new URLSearchParams(window.location.search));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (searchParams !== null) {
+      loadData();
+    }
+  }, [userStoryId, searchParams]);
 
   const loadData = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Get the first project
+      // Essayer d'utiliser les query params s'ils existent
+      const projectIdFromParams = searchParams?.get('projectId');
+      const moduleIdFromParams = searchParams?.get('moduleId');
+      const epicIdFromParams = searchParams?.get('epicId');
+
+      if (projectIdFromParams && moduleIdFromParams && epicIdFromParams) {
+        // Utiliser les paramètres fournis pour charger directement
+        const pid = Number(projectIdFromParams);
+        const mid = Number(moduleIdFromParams);
+        const eid = Number(epicIdFromParams);
+        
+        setProjectId(pid);
+        setModuleId(mid);
+        setEpicId(eid);
+
+        const userStoryData = await getUserStoryById(pid, mid, eid, userStoryId);
+        setUserStory(userStoryData);
+        return;
+      }
+
+      // Sinon, chercher dans tous les projets (ancien comportement)
       const projectsData = await getMyProjectsAsMember();
       if (projectsData.length === 0) {
         setError("Aucun projet trouvé");
         return;
       }
-      
-      const pid = projectsData[0].id;
-      setProjectId(pid);
 
-      // Search for the user story across all modules and epics
-      const modules = await getModules(pid);
-      
-      for (const module of modules) {
+      // Chercher d'abord dans le premier projet, puis dans les autres si nécessaire
+      for (const project of projectsData) {
         try {
-          const epics = await getEpics(pid, module.id);
+          const modules = await getModules(project.id);
           
-          for (const epic of epics) {
+          for (const module of modules) {
             try {
-              const userStoryData = await getUserStoryById(pid, module.id, epic.id, userStoryId);
-              // If successful, we found the user story
-              setUserStory(userStoryData);
-              setModuleId(module.id);
-              setEpicId(epic.id);
-              return;
+              const epics = await getEpics(project.id, module.id);
+              
+              for (const epic of epics) {
+                try {
+                  const userStoryData = await getUserStoryById(project.id, module.id, epic.id, userStoryId);
+                  // If successful, we found the user story
+                  setUserStory(userStoryData);
+                  setProjectId(project.id);
+                  setModuleId(module.id);
+                  setEpicId(epic.id);
+                  return;
+                } catch (err) {
+                  // Continue searching in other epics
+                  continue;
+                }
+              }
             } catch (err) {
-              // Continue searching in other epics
+              // Continue searching in other modules
               continue;
             }
           }
         } catch (err) {
-          // Continue searching in other modules
+          // Continue searching in other projects
           continue;
         }
       }

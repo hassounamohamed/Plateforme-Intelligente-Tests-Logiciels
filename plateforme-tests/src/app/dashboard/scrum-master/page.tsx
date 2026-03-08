@@ -8,7 +8,7 @@ import { DashboardLayout, StatCard } from "@/components/dashboard/DashboardLayou
 import { ROUTES } from "@/lib/constants";
 import { getMyProjectsAsMember } from "@/features/projects/api";
 import { getSprints, getActiveSprint } from "@/features/sprints/api";
-import { getBacklog, getBacklogIndicateurs } from "@/features/backlog/api";
+import { getBacklogIndicateurs } from "@/features/backlog/api";
 import { Project, Sprint, BacklogIndicateurs } from "@/types";
 
 export default function ScrumMasterDashboard() {
@@ -186,16 +186,6 @@ export default function ScrumMasterDashboard() {
             }}
           />
           <StatCard
-            title="Backlog Items"
-            value={isLoading ? "..." : (backlogIndicateurs?.total_stories || 0).toString()}
-            icon="list"
-            trend={{
-              value: `${backlogIndicateurs?.total_points || 0} points`,
-              isPositive: true,
-              label: "story points",
-            }}
-          />
-          <StatCard
             title="Vélocité Sprint"
             value={isLoading ? "..." : (activeSprint?.velocite || 0).toString()}
             icon="speed"
@@ -204,8 +194,7 @@ export default function ScrumMasterDashboard() {
               isPositive: !!activeSprint,
               label: "",
             }}
-          />
-        </div>
+          />        </div>
 
         {/* Sprint Actif */}
         {activeSprint && (
@@ -289,6 +278,7 @@ export default function ScrumMasterDashboard() {
             )}
           </div>
         )}
+
 
         {/* Backlog & Projets */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -431,6 +421,7 @@ export default function ScrumMasterDashboard() {
           </div>
         </div>
       </div>
+
     </DashboardLayout>
   );
 }

@@ -209,6 +209,7 @@ export interface UserStorySummary {
   developerId?: number;
   developerNom?: string;
   epic_id?: number;
+  module_id?: number;
   sprint?: {
     id: number;
     nom: string;

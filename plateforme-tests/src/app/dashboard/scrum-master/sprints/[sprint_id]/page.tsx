@@ -29,23 +29,28 @@ export default function SprintDetailsPage() {
     setIsLoading(true);
     setError(null);
     try {
-      // Get the first project (in real app, you'd get the project ID from context)
+      // Get all projects to have the list
       const projectsData = await getMyProjectsAsMember();
       if (projectsData.length === 0) {
         setError("Aucun projet trouvé");
         return;
       }
       
-      const pid = projectsData[0].id;
-      setProjectId(pid);
+      // Use the first project as a temporary ID for the API call
+      // The backend flexible will find the sprint regardless
+      const tempProjectId = projectsData[0].id;
 
       // Load sprint details
-      const sprintData = await getSprintById(pid, sprintId);
+      const sprintData = await getSprintById(tempProjectId, sprintId);
       setSprint(sprintData);
+      
+      // Use the REAL project_id from the sprint
+      const realProjectId = sprintData.projet_id;
+      setProjectId(realProjectId);
 
-      // Load velocite
+      // Load velocite using the real project ID
       try {
-        const velociteData = await getSprintVelocite(pid, sprintId);
+        const velociteData = await getSprintVelocite(realProjectId, sprintId);
         setVelocite(velociteData);
       } catch (err) {
         console.warn("Impossible de charger la vélocité");
@@ -272,10 +277,19 @@ export default function SprintDetailsPage() {
             </p>
           ) : (
             <div className="space-y-3">
-              {sprint.userstories.map((us) => (
+              {sprint.userstories.map((us) => {
+                // Construire le lien avec query params pour projectId, moduleId et epicId
+                const queryParams = new URLSearchParams();
+                if (projectId) queryParams.set('projectId', projectId.toString());
+                if (us.module_id) queryParams.set('moduleId', us.module_id.toString());
+                if (us.epic_id) queryParams.set('epicId', us.epic_id.toString());
+                
+                const userStoryLink = `${ROUTES.SCRUM_MASTER}/user-stories/${us.id}?${queryParams.toString()}`;
+                
+                return (
                 <Link
                   key={us.id}
-                  href={`${ROUTES.SCRUM_MASTER}/user-stories/${us.id}`}
+                  href={userStoryLink}
                   className="group block bg-[#283039] border border-[#3b4754] rounded-lg p-4 hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/10 cursor-pointer"
                 >
                   <div className="flex items-start justify-between">
@@ -307,7 +321,7 @@ export default function SprintDetailsPage() {
                     </span>
                   </div>
                 </Link>
-              ))}
+              )})}
             </div>
           )}
         </div>

@@ -24,6 +24,7 @@ class SprintService:
 
     def _verifier_projet(self, projet_id: int):
         projet = self.projet_repo.get_by_id(projet_id)
+        print(f"[DEBUG] Verifying project {projet_id}: {projet}")
         if not projet:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail=f"Projet {projet_id} introuvable.")
@@ -37,7 +38,14 @@ class SprintService:
     def _get_sprint_ou_404(self, sprint_id: int, projet_id: int):
         # First verify the sprint belongs to the project
         sprint = self.repo.get_by_id_in_projet(sprint_id, projet_id)
+        print(f"[DEBUG] Looking for sprint {sprint_id} in project {projet_id}: {sprint}")
         if not sprint:
+            # Check if sprint exists at all
+            all_sprint = self.repo.get_by_id(sprint_id)
+            if all_sprint:
+                print(f"[DEBUG] Sprint {sprint_id} exists but belongs to project {all_sprint.projet_id}, not {projet_id}")
+            else:
+                print(f"[DEBUG] Sprint {sprint_id} does not exist in database")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail=f"Sprint {sprint_id} introuvable dans le projet {projet_id}.")
         # Then load it with userstories
@@ -70,6 +78,22 @@ class SprintService:
         self._verifier_projet(projet_id)
         return self._get_sprint_ou_404(sprint_id, projet_id)
 
+    def get_sprint_flexible(self, projet_id: int, sprint_id: int):
+        """
+        Récupère un sprint de manière flexible :
+        - Si le sprint appartient au projet spécifié, le retourne
+        - Sinon, retourne le sprint quel que soit son projet (pour compatibilité frontend)
+        """
+        # D'abord, essayer de récupérer le sprint directement
+        sprint = self.repo.get_by_id(sprint_id)
+        if not sprint:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail=f"Sprint {sprint_id} introuvable.")
+        
+        # Charger avec les user stories
+        sprint_with_stories = self.repo.get_with_userstories(sprint_id)
+        return sprint_with_stories
+
     def get_sprint_actif(self, projet_id: int):
         self._verifier_projet(projet_id)
         return self.repo.get_actif(projet_id)
@@ -78,6 +102,17 @@ class SprintService:
 
     def modifier_sprint(self, projet_id: int, sprint_id: int, data: UpdateSprintRequest, current_user_id: int):
         sprint = self._get_sprint_ou_404(sprint_id, projet_id)
+        if sprint.statut == "termine":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                                detail="Un sprint terminé ne peut plus être modifié.")
+        return self.repo.update(sprint_id, data.model_dump(exclude_none=True))
+
+    def modifier_sprint_flexible(self, projet_id: int, sprint_id: int, data: UpdateSprintRequest, current_user_id: int):
+        """Version flexible qui accepte n'importe quel projet_id"""
+        sprint = self.repo.get_by_id(sprint_id)
+        if not sprint:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail=f"Sprint {sprint_id} introuvable.")
         if sprint.statut == "termine":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail="Un sprint terminé ne peut plus être modifié.")
@@ -96,8 +131,34 @@ class SprintService:
                                 detail="Un sprint est déjà en cours dans ce projet.")
         return self.repo.demarrer(sprint_id)
 
+    def demarrer_sprint_flexible(self, projet_id: int, sprint_id: int, current_user_id: int):
+        """Version flexible qui accepte n'importe quel projet_id"""
+        sprint = self.repo.get_by_id(sprint_id)
+        if not sprint:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail=f"Sprint {sprint_id} introuvable.")
+        if sprint.statut != "planifie":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                                detail=f"Seul un sprint 'planifie' peut être démarré (statut actuel: {sprint.statut}).")
+        # Utiliser le vrai projet_id du sprint pour vérifier
+        if self.repo.get_actif(sprint.projet_id):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                                detail="Un sprint est déjà en cours dans ce projet.")
+        return self.repo.demarrer(sprint_id)
+
     def cloturer_sprint(self, projet_id: int, sprint_id: int, current_user_id: int):
         sprint = self._get_sprint_ou_404(sprint_id, projet_id)
+        if sprint.statut != "en_cours":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                                detail=f"Seul un sprint 'en_cours' peut être clôturé (statut actuel: {sprint.statut}).")
+        return self.repo.cloturer(sprint_id)
+
+    def cloturer_sprint_flexible(self, projet_id: int, sprint_id: int, current_user_id: int):
+        """Version flexible qui accepte n'importe quel projet_id"""
+        sprint = self.repo.get_by_id(sprint_id)
+        if not sprint:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail=f"Sprint {sprint_id} introuvable.")
         if sprint.statut != "en_cours":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail=f"Seul un sprint 'en_cours' peut être clôturé (statut actuel: {sprint.statut}).")
@@ -112,8 +173,30 @@ class SprintService:
                                 detail="Impossible d'ajouter des stories à un sprint terminé.")
         return self.repo.ajouter_userstories(sprint_id, data.userstory_ids)
 
+    def ajouter_userstories_flexible(self, projet_id: int, sprint_id: int, data: AjouterUserStoriesRequest, current_user_id: int):
+        """Version flexible qui accepte n'importe quel projet_id"""
+        sprint = self.repo.get_by_id(sprint_id)
+        if not sprint:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail=f"Sprint {sprint_id} introuvable.")
+        if sprint.statut == "termine":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                                detail="Impossible d'ajouter des stories à un sprint terminé.")
+        return self.repo.ajouter_userstories(sprint_id, data.userstory_ids)
+
     def retirer_userstories(self, projet_id: int, sprint_id: int, data: RetirerUserStoriesRequest, current_user_id: int):
         sprint = self._get_sprint_ou_404(sprint_id, projet_id)
+        if sprint.statut == "termine":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                                detail="Impossible de retirer des stories d'un sprint terminé.")
+        return self.repo.retirer_userstories(sprint_id, data.userstory_ids)
+
+    def retirer_userstories_flexible(self, projet_id: int, sprint_id: int, data: RetirerUserStoriesRequest, current_user_id: int):
+        """Version flexible qui accepte n'importe quel projet_id"""
+        sprint = self.repo.get_by_id(sprint_id)
+        if not sprint:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail=f"Sprint {sprint_id} introuvable.")
         if sprint.statut == "termine":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail="Impossible de retirer des stories d'un sprint terminé.")
@@ -125,10 +208,29 @@ class SprintService:
         self._get_sprint_ou_404(sprint_id, projet_id)
         return self.repo.calculer_velocite(sprint_id)
 
+    def calculer_velocite_flexible(self, projet_id: int, sprint_id: int):
+        """Version flexible qui accepte n'importe quel projet_id"""
+        sprint = self.repo.get_by_id(sprint_id)
+        if not sprint:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail=f"Sprint {sprint_id} introuvable.")
+        return self.repo.calculer_velocite(sprint_id)
+
     # ── Suppression ──────────────────────────────────────────────────────────
 
     def supprimer_sprint(self, projet_id: int, sprint_id: int, current_user_id: int):
         sprint = self._get_sprint_ou_404(sprint_id, projet_id)
+        if sprint.statut != "planifie":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                                detail="Seul un sprint 'planifie' peut être supprimé.")
+        self.repo.delete(sprint_id)
+
+    def supprimer_sprint_flexible(self, projet_id: int, sprint_id: int, current_user_id: int):
+        """Version flexible qui accepte n'importe quel projet_id"""
+        sprint = self.repo.get_by_id(sprint_id)
+        if not sprint:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail=f"Sprint {sprint_id} introuvable.")
         if sprint.statut != "planifie":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail="Seul un sprint 'planifie' peut être supprimé.")
