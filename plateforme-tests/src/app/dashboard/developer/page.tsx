@@ -11,6 +11,7 @@ export default function DeveloperDashboard() {
     { href: `${ROUTES.DEVELOPER}/tasks`, icon: "task_alt", label: "My Tasks", badge: "12" },
     { href: `${ROUTES.DEVELOPER}/code`, icon: "code", label: "Code Review" },
     { href: `${ROUTES.DEVELOPER}/tests`, icon: "bug_report", label: "Test Results" },
+    { href: `${ROUTES.DEVELOPER}/cahier-tests`, icon: "menu_book", label: "Cahier de Tests" },
   ];
 
   const headerActions = (

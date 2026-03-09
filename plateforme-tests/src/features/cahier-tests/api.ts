@@ -132,6 +132,35 @@ export const updateCasTest = async (
 };
 
 /**
+ * Uploader une capture d'écran pour un cas de test
+ */
+export const uploadCasTestCapture = async (
+  projectId: number,
+  cahierId: number,
+  casId: number,
+  file: File
+): Promise<CasTest> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await axiosInstance.post<CasTest>(
+    `${getCahierBase(projectId)}/${cahierId}/cas-tests/${casId}/capture`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return response.data;
+};
+
+/**
+ * Construire l'URL de la capture d'écran d'un cas de test (requiert auth)
+ */
+export const getCasTestCaptureUrl = (
+  projectId: number,
+  cahierId: number,
+  casId: number
+): string =>
+  `${getCahierBase(projectId)}/${cahierId}/cas-tests/${casId}/capture`;
+
+/**
  * ─── VALIDATION ────────────────────────────────────────────────────────────
  */
 

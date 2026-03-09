@@ -1,30 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Project } from "@/types";
-import { getMyProjects } from "@/features/projects/api";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { ROUTES } from "@/lib/constants";
+import { getMyProjectsAsMember } from "@/features/projects/api";
+import { Project } from "@/types";
 import CahierTestsManager from "@/features/cahier-tests/CahierTestsManager";
 
-export default function ValidationTestsPage() {
+export default function CahierTestsDeveloperPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
 
   const sidebarLinks = [
-    { href: ROUTES.PRODUCT_OWNER, icon: "dashboard", label: "Dashboard" },
-    { href: `${ROUTES.PRODUCT_OWNER}/projects`, icon: "folder", label: "Projets" },
-    { href: `${ROUTES.PRODUCT_OWNER}/backlog`, icon: "list", label: "Backlog" },
-    { href: `${ROUTES.PRODUCT_OWNER}/epics`, icon: "content_cut", label: "Epics" },
-    { href: `${ROUTES.PRODUCT_OWNER}/sprints`, icon: "event", label: "Sprints" },
-    { href: `${ROUTES.PRODUCT_OWNER}/ai-backlog`, icon: "smart_toy", label: "AI Backlog" },
-    { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "menu_book", label: "Cahier de Tests" },
-    { href: `${ROUTES.PRODUCT_OWNER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
-    { href: `${ROUTES.PRODUCT_OWNER}/roadmap`, icon: "map", label: "Roadmap" },
-    { href: `${ROUTES.PRODUCT_OWNER}/profile`, icon: "account_circle", label: "Mon Profil" },
+    { href: ROUTES.DEVELOPER, icon: "dashboard", label: "Dashboard" },
+    { href: `${ROUTES.DEVELOPER}/cahier-tests`, icon: "menu_book", label: "Cahier de Tests" },
   ];
 
   useEffect(() => {
@@ -33,7 +25,7 @@ export default function ValidationTestsPage() {
 
   const loadProjects = async () => {
     try {
-      const data = await getMyProjects();
+      const data = await getMyProjectsAsMember();
       setProjects(data);
     } catch (error) {
       console.error("Erreur lors du chargement des projets:", error);
@@ -44,9 +36,9 @@ export default function ValidationTestsPage() {
 
   const sidebarContent = (
     <Sidebar
-      title="Product Owner"
+      title="Developer"
       subtitle="Agile & QA Platform"
-      icon="account_tree"
+      icon="code"
       links={sidebarLinks}
     />
   );
@@ -75,8 +67,8 @@ export default function ValidationTestsPage() {
           <div className="text-[#9dabb9] mb-4">
             <span className="material-symbols-outlined text-6xl">folder_open</span>
           </div>
-          <h3 className="text-white text-lg font-bold mb-2">Aucun projet trouvé</h3>
-          <p className="text-[#9dabb9]">Vous n&apos;avez aucun projet pour le moment.</p>
+          <h3 className="text-white text-lg font-bold mb-2">Aucun projet assigné</h3>
+          <p className="text-[#9dabb9]">Vous n&apos;êtes membre d&apos;aucun projet pour le moment.</p>
         </div>
       </DashboardLayout>
     );
@@ -86,7 +78,7 @@ export default function ValidationTestsPage() {
     <DashboardLayout sidebarContent={sidebarContent} headerContent={headerContent}>
       <div className="max-w-350 mx-auto">
         {selectedProject ? (
-          <CahierTestsManager projectId={selectedProject.id} readOnly />
+          <CahierTestsManager projectId={selectedProject.id} canGenerate={false} />
         ) : (
           <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-12">
             <div className="max-w-md mx-auto text-center">

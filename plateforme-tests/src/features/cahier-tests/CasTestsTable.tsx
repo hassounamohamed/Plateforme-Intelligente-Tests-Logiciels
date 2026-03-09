@@ -9,6 +9,7 @@ interface CasTestsTableProps {
   cahierId: number;
   casTests: CasTest[];
   onRefresh: () => void;
+  readOnly?: boolean;
 }
 
 export default function CasTestsTable({
@@ -16,6 +17,7 @@ export default function CasTestsTable({
   cahierId,
   casTests,
   onRefresh,
+  readOnly = false,
 }: CasTestsTableProps) {
   const [selectedCas, setSelectedCas] = useState<CasTest | null>(null);
   const [filterStatut, setFilterStatut] = useState<StatutTest | "all">("all");
@@ -151,9 +153,11 @@ export default function CasTestsTable({
               <th className="px-4 py-3 text-left text-xs font-medium text-[#9dabb9] uppercase">
                 Statut
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#9dabb9] uppercase">
-                Actions
-              </th>
+              {!readOnly && (
+                <th className="px-4 py-3 text-left text-xs font-medium text-[#9dabb9] uppercase">
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-[#3b4754]">
@@ -203,17 +207,19 @@ export default function CasTestsTable({
                   <td className="px-4 py-3 text-sm">
                     {getStatutBadge(cas.statut_test)}
                   </td>
-                  <td className="px-4 py-3 text-sm">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedCas(cas);
-                      }}
-                      className="text-blue-600 hover:text-blue-800 font-medium"
-                    >
-                      Modifier
-                    </button>
-                  </td>
+                  {!readOnly && (
+                    <td className="px-4 py-3 text-sm">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedCas(cas);
+                        }}
+                        className="text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Modifier
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))
             )}
@@ -221,7 +227,7 @@ export default function CasTestsTable({
         </table>
       </div>
 
-      {/* Modal d'édition */}
+      {/* Modal  */}
       {selectedCas && (
         <EditCasTestModal
           projectId={projectId}
@@ -229,6 +235,7 @@ export default function CasTestsTable({
           casTest={selectedCas}
           isOpen={!!selectedCas}
           onClose={() => setSelectedCas(null)}
+          readOnly={readOnly}
           onSuccess={() => {
             onRefresh();
             setSelectedCas(null);

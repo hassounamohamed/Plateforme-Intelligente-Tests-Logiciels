@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { CasTest, StatutTest, TypeTest, UpdateCasTestPayload } from "@/types";
-import { updateCasTest } from "./api";
+import { updateCasTest, uploadCasTestCapture, getCasTestCaptureUrl } from "./api";
+import axiosInstance from "@/lib/axios";
 
 interface EditCasTestModalProps {
   projectId: number;
@@ -11,6 +12,7 @@ interface EditCasTestModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  readOnly?: boolean;
 }
 
 export default function EditCasTestModal({
@@ -20,6 +22,7 @@ export default function EditCasTestModal({
   isOpen,
   onClose,
   onSuccess,
+  readOnly = false,
 }: EditCasTestModalProps) {
   const [formData, setFormData] = useState<UpdateCasTestPayload>({
     test_case: casTest.test_case,
@@ -33,6 +36,33 @@ export default function EditCasTestModal({
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [captureFile, setCaptureFile] = useState<File | null>(null);
+  const [capturePreview, setCapturePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load existing capture as authenticated blob URL
+  useEffect(() => {
+    if (!casTest.capture) return;
+    let objectUrl: string | null = null;
+    axiosInstance
+      .get(getCasTestCaptureUrl(projectId, cahierId, casTest.id), { responseType: "blob" })
+      .then((res) => {
+        objectUrl = URL.createObjectURL(res.data);
+        setCapturePreview(objectUrl);
+      })
+      .catch(() => {});
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [casTest.id, casTest.capture]);
+
+  const handleCaptureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCaptureFile(file);
+    if (capturePreview && !casTest.capture) URL.revokeObjectURL(capturePreview);
+    setCapturePreview(URL.createObjectURL(file));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +71,9 @@ export default function EditCasTestModal({
 
     try {
       await updateCasTest(projectId, cahierId, casTest.id, formData);
+      if (captureFile) {
+        await uploadCasTestCapture(projectId, cahierId, casTest.id, captureFile);
+      }
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -51,6 +84,151 @@ export default function EditCasTestModal({
   };
 
   if (!isOpen) return null;
+
+  // ─── View-only mode ───────────────────────────────────────────────────────
+  if (readOnly) {
+    const statutStyles: Record<StatutTest, string> = {
+      "Non exécuté": "bg-[#283039] text-[#9dabb9]",
+      Réussi: "bg-green-500/20 text-green-400",
+      Échoué: "bg-red-500/20 text-red-400",
+      Bloqué: "bg-orange-500/20 text-orange-400",
+    };
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="bg-surface-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-[#3b4754]">
+          {/* Header */}
+          <div className="sticky top-0 bg-surface-dark border-b border-[#3b4754] px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-semibold text-white">
+                {casTest.test_ref}
+              </h2>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${statutStyles[casTest.statut_test]}`}>
+                {casTest.statut_test}
+              </span>
+              <span className={`px-2 py-1 rounded text-xs ${
+                casTest.type_test === "Automatisé"
+                  ? "bg-blue-500/20 text-blue-400"
+                  : "bg-[#283039] text-[#9dabb9]"
+              }`}>
+                {casTest.type_test}
+              </span>
+            </div>
+            <button onClick={onClose} className="text-[#9dabb9] hover:text-white text-2xl">
+              ×
+            </button>
+          </div>
+
+          <div className="p-6 space-y-5">
+            {/* Informations générales */}
+            <div className="grid grid-cols-3 gap-4 p-4 bg-[#283039] rounded-lg">
+              <div>
+                <p className="text-xs text-[#9dabb9] uppercase mb-1">Sprint</p>
+                <p className="text-white font-medium">{casTest.sprint || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-[#9dabb9] uppercase mb-1">Module</p>
+                <p className="text-white font-medium">{casTest.module || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-[#9dabb9] uppercase mb-1">Sous-module</p>
+                <p className="text-white font-medium">{casTest.sous_module || "—"}</p>
+              </div>
+            </div>
+
+            {/* Cas de test & Objectif */}
+            <div>
+              <p className="text-xs text-[#9dabb9] uppercase mb-1">Cas de Test</p>
+              <p className="text-white">{casTest.test_case || "—"}</p>
+            </div>
+            {casTest.test_purpose && (
+              <div>
+                <p className="text-xs text-[#9dabb9] uppercase mb-1">Objectif</p>
+                <p className="text-white">{casTest.test_purpose}</p>
+              </div>
+            )}
+
+            {/* Scénario */}
+            {casTest.scenario_test && (
+              <div>
+                <p className="text-xs text-[#9dabb9] uppercase mb-1">Scénario de Test</p>
+                <div className="bg-[#283039] rounded-lg p-3 text-white whitespace-pre-wrap text-sm">
+                  {casTest.scenario_test}
+                </div>
+              </div>
+            )}
+
+            {/* Résultat attendu / obtenu */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {casTest.resultat_attendu && (
+                <div>
+                  <p className="text-xs text-[#9dabb9] uppercase mb-1">Résultat Attendu</p>
+                  <div className="bg-[#283039] rounded-lg p-3 text-white whitespace-pre-wrap text-sm">
+                    {casTest.resultat_attendu}
+                  </div>
+                </div>
+              )}
+              {casTest.resultat_obtenu && (
+                <div>
+                  <p className="text-xs text-[#9dabb9] uppercase mb-1">Résultat Obtenu</p>
+                  <div className="bg-[#283039] rounded-lg p-3 text-white whitespace-pre-wrap text-sm">
+                    {casTest.resultat_obtenu}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Logs d'erreur */}
+            {casTest.fail_logs && (
+              <div>
+                <p className="text-xs text-[#9dabb9] uppercase mb-1 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-red-400 text-sm">error</span>
+                  Logs d&apos;Erreur
+                </p>
+                <div className="bg-red-950/40 border border-red-500/30 rounded-lg p-3 text-red-300 font-mono text-sm whitespace-pre-wrap">
+                  {casTest.fail_logs}
+                </div>
+              </div>
+            )}
+
+            {/* Commentaire */}
+            {casTest.commentaire && (
+              <div>
+                <p className="text-xs text-[#9dabb9] uppercase mb-1">Commentaire</p>
+                <div className="bg-[#283039] rounded-lg p-3 text-white text-sm">
+                  {casTest.commentaire}
+                </div>
+              </div>
+            )}
+
+            {/* Capture d'écran */}
+            {capturePreview && (
+              <div>
+                <p className="text-xs text-[#9dabb9] uppercase mb-2 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#9dabb9] text-sm">photo_camera</span>
+                  Capture d&apos;écran
+                </p>
+                <img
+                  src={capturePreview}
+                  alt="Capture du test"
+                  className="rounded-lg border border-[#3b4754] max-w-full max-h-96 object-contain"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end px-6 pb-5">
+            <button
+              onClick={onClose}
+              className="px-5 py-2 border border-[#3b4754] rounded-md text-white hover:bg-[#283039]"
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -224,6 +402,42 @@ export default function EditCasTestModal({
               }
               placeholder="Notes supplémentaires..."
             />
+          </div>
+
+          {/* Capture d'écran */}
+          <div>
+            <label className="block text-sm font-medium text-white mb-1">
+              Capture d&apos;écran
+            </label>
+            {capturePreview && (
+              <div className="mb-2 relative">
+                <img
+                  src={capturePreview}
+                  alt="Capture"
+                  className="rounded-lg border border-[#3b4754] max-w-full max-h-64 object-contain"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCaptureFile(null);
+                    setCapturePreview(null);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                  className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-700"
+                  title="Supprimer la capture"
+                >
+                  ×
+                </button>
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp"
+              onChange={handleCaptureChange}
+              className="block w-full text-sm text-[#9dabb9] file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+            />
+            <p className="text-xs text-[#9dabb9] mt-1">PNG, JPG, GIF, WebP — max 10 MB</p>
           </div>
 
           {/* Actions */}

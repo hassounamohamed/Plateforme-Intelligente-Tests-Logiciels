@@ -22,10 +22,14 @@ import GenerationProgress from "./GenerationProgress";
 
 interface CahierTestsManagerProps {
   projectId: number;
+  readOnly?: boolean;
+  canGenerate?: boolean;
 }
 
 export default function CahierTestsManager({
   projectId,
+  readOnly = false,
+  canGenerate = true,
 }: CahierTestsManagerProps) {
   const [cahier, setCahier] = useState<CahierTestGlobalDetail | null>(null);
   const [stats, setStats] = useState<StatistiquesCahier | null>(null);
@@ -176,12 +180,14 @@ export default function CahierTestsManager({
             Aucun cahier de tests
           </h3>
           <p className="text-[#9dabb9] mb-6">{error}</p>
-          <button
-            onClick={handleGenerate}
-            className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
-          >
-            🤖 Générer le Cahier avec l'IA
-          </button>
+          {canGenerate && (
+            <button
+              onClick={handleGenerate}
+              className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+            >
+              🤖 Générer le Cahier avec l'IA
+            </button>
+          )}
         </div>
       </div>
     );
@@ -211,16 +217,18 @@ export default function CahierTestsManager({
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Bouton Regénérer */}
-            <button
-              onClick={handleGenerate}
-              className="px-4 py-2 border border-[#3b4754] rounded-md text-white hover:bg-[#283039] font-medium"
-            >
-              🔄 Regénérer
-            </button>
+            {/* Bouton Regénérer - uniquement pour les testeurs */}
+            {canGenerate && (
+              <button
+                onClick={handleGenerate}
+                className="px-4 py-2 border border-[#3b4754] rounded-md text-white hover:bg-[#283039] font-medium"
+              >
+                🔄 Regénérer
+              </button>
+            )}
 
-            {/* Bouton Valider */}
-            {cahier?.statut === "brouillon" && (
+            {/* Bouton Valider - uniquement pour les testeurs */}
+            {canGenerate && cahier?.statut === "brouillon" && (
               <button
                 onClick={handleValidate}
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium"
@@ -283,6 +291,7 @@ export default function CahierTestsManager({
           cahierId={cahier.id}
           casTests={cahier.cas_tests}
           onRefresh={loadCahier}
+          readOnly={readOnly}
         />
       )}
     </div>
