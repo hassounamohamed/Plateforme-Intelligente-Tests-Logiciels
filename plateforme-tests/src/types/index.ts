@@ -593,3 +593,94 @@ export interface UpdateAIItemPayload {
   duration?: string;
   status?: AIItemStatus;
 }
+
+// ─── Cahier de Tests Global ──────────────────────────────────────────────────
+
+export type StatutCahier = "brouillon" | "valide" | "generating" | "failed";
+export type TypeTest = "Manuel" | "Automatisé";
+export type StatutTest = "Non exécuté" | "Réussi" | "Échoué" | "Bloqué";
+
+export interface CasTest {
+  id: number;
+  cahier_id: number;
+  sprint: string | null;
+  module: string | null;
+  sous_module: string | null;
+  test_ref: string; // TC-001
+  test_case: string;
+  test_purpose: string | null;
+  type_utilisateur: string | null;
+  scenario_test: string | null;
+  resultat_attendu: string | null;
+  resultat_obtenu: string | null;
+  fail_logs: string | null;
+  capture: string | null; // URL ou chemin du screenshot
+  date_creation: string;
+  type_test: TypeTest;
+  statut_test: StatutTest;
+  commentaire: string | null;
+  ordre: number;
+}
+
+export interface CahierTestGlobal {
+  id: number;
+  projet_id: number;
+  version: string;
+  statut: StatutCahier;
+  date_generation: string;
+  nombre_total: number;
+  nombre_reussi: number;
+  nombre_echoue: number;
+  nombre_bloque: number;
+  ai_generation_id: number | null;
+}
+
+export interface CahierTestGlobalDetail extends CahierTestGlobal {
+  cas_tests: CasTest[];
+}
+
+export interface StatistiquesCahier {
+  version: string;
+  nombre_total: number;
+  nombre_reussi: number;
+  nombre_echoue: number;
+  nombre_bloque: number;
+  nombre_non_execute: number;
+  pct_reussi: number;
+  pct_echoue: number;
+  pct_bloque: number;
+  pct_non_execute: number;
+}
+
+export interface GenererCahierPayload {
+  version?: string; // Default: "1.0.0"
+}
+
+export interface UpdateCasTestPayload {
+  sprint?: string;
+  module?: string;
+  sous_module?: string;
+  test_case?: string;
+  test_purpose?: string;
+  type_utilisateur?: string;
+  scenario_test?: string;
+  resultat_attendu?: string;
+  resultat_obtenu?: string;
+  fail_logs?: string;
+  capture?: string;
+  type_test?: TypeTest;
+  statut_test?: StatutTest;
+  commentaire?: string;
+}
+
+export interface ValiderCahierPayload {
+  version?: string;
+}
+
+export interface AIGenerationCahier extends AIGeneration {
+  // Hérite de AIGeneration avec type = "generate_tests"
+}
+
+export interface AIGenerationCahierDetail extends AIGenerationDetail {
+  // Hérite de AIGenerationDetail avec logs spécifiques au cahier
+}

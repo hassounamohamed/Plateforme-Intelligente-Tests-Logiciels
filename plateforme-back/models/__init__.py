@@ -9,6 +9,7 @@ from models.anomalie import Anomalie
 from models.rapports import RapportQA, IndicateurQualite, RecommandationQualite
 from models.notification import Notification, TypeNotification
 from models.log_systems import LogSystems, AuditLog
+from models.cahier_test_global import CahierTestGlobal, CasTest
 
 __all__ = [
     # AI Generation
@@ -51,4 +52,7 @@ __all__ = [
     # Log models
     "LogSystems",
     "AuditLog",
+    # Cahier de Tests Global
+    "CahierTestGlobal",
+    "CasTest",
 ]
