@@ -10,13 +10,12 @@ import type { User } from "@/types";
 import type {
   CreateUserPayload,
   UpdateUserPayload,
-  PaginatedUsers,
 } from "./types";
 
 // ─── useUsers (paginated list) ───────────────────────────────────────────────
 
-export function useUsers(page = 1, limit = 10) {
-  const [data, setData] = useState<PaginatedUsers | null>(null);
+export function useUsers() {
+  const [data, setData] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +23,7 @@ export function useUsers(page = 1, limit = 10) {
     setIsLoading(true);
     setError(null);
     try {
-      setData(await getUsersApi(page, limit));
+      setData(await getUsersApi());
     } catch (err: unknown) {
       setError(
         err instanceof Error ? err.message : "Failed to fetch users"
@@ -32,7 +31,7 @@ export function useUsers(page = 1, limit = 10) {
     } finally {
       setIsLoading(false);
     }
-  }, [page, limit]);
+  }, []);
 
   useEffect(() => { void fetch(); }, [fetch]);
 
@@ -41,7 +40,7 @@ export function useUsers(page = 1, limit = 10) {
 
 // ─── useUser (single) ────────────────────────────────────────────────────────
 
-export function useUser(id: string) {
+export function useUser(id: number) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +88,7 @@ export function useUpdateUser() {
   const [error, setError] = useState<string | null>(null);
 
   const update = async (
-    id: string,
+    id: number,
     payload: UpdateUserPayload
   ): Promise<User | null> => {
     setIsLoading(true);
@@ -113,7 +112,7 @@ export function useDeleteUser() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const remove = async (id: string): Promise<boolean> => {
+  const remove = async (id: number): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
     try {

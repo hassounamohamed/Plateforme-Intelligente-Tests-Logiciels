@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sidebar } from "@/components/dashboard/Sidebar";
@@ -14,6 +14,14 @@ import { createUserStory } from "@/features/userstories/api";
 import { Project, Module, Epic, PrioriteUS } from "@/types";
 
 export default function NewUserStoryPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewUserStoryContent />
+    </Suspense>
+  );
+}
+
+function NewUserStoryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectIdParam = searchParams.get("project_id");

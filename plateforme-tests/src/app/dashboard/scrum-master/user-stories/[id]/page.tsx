@@ -341,7 +341,7 @@ export default function UserStoryDetailsPage() {
         )}
 
         {/* Développeur assigné */}
-        {userStory.developpeur && (
+        {userStory.developer && (
           <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
             <p className="text-[#9dabb9] text-xs font-bold uppercase mb-2">Développeur assigné</p>
             <div className="flex items-center gap-3">
@@ -349,8 +349,8 @@ export default function UserStoryDetailsPage() {
                 <span className="material-symbols-outlined text-primary">person</span>
               </div>
               <div>
-                <p className="text-white font-medium">{userStory.developpeur.nom} {userStory.developpeur.prenom}</p>
-                <p className="text-[#9dabb9] text-sm">{userStory.developpeur.email}</p>
+                <p className="text-white font-medium">{userStory.developer.nom} {userStory.developer.nom}</p>
+                <p className="text-[#9dabb9] text-sm">{userStory.developer.email}</p>
               </div>
             </div>
           </div>

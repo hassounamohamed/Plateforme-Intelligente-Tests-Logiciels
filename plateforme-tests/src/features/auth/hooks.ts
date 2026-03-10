@@ -37,6 +37,7 @@ export function useLogin() {
         nom: response.nom,
         email: response.email,
         role: response.role,
+        actif: true
       };
       
       signIn(user, response.access_token, ""); // No refresh token in backend
