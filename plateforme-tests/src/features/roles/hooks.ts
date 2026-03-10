@@ -34,7 +34,7 @@ export function useRoles() {
 
 // ─── useRole (single) ────────────────────────────────────────────────────────
 
-export function useRole(id: string) {
+export function useRole(id: number) {
   const [role, setRole] = useState<RoleDefinition | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +84,7 @@ export function useUpdateRole() {
   const [error, setError] = useState<string | null>(null);
 
   const update = async (
-    id: string,
+    id: number,
     payload: UpdateRolePayload
   ): Promise<RoleDefinition | null> => {
     setIsLoading(true);
@@ -108,7 +108,7 @@ export function useDeleteRole() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const remove = async (id: string): Promise<boolean> => {
+  const remove = async (id: number): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
     try {

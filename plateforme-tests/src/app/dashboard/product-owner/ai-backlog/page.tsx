@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sidebar } from "@/components/dashboard/Sidebar";
@@ -27,6 +27,14 @@ const sidebarLinks = [
 ];
 
 export default function AIBacklogPage() {
+  return (
+    <Suspense fallback={null}>
+      <AIBacklogContent />
+    </Suspense>
+  );
+}
+
+function AIBacklogContent() {
   const searchParams = useSearchParams();
 
   const [projects, setProjects] = useState<Project[]>([]);
