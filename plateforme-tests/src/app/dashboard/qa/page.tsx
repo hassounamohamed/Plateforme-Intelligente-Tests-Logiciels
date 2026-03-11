@@ -8,7 +8,6 @@ import { DashboardLayout, StatCard } from "@/components/dashboard/DashboardLayou
 import { ROUTES } from "@/lib/constants";
 import { getMyProjectsAsMember } from "@/features/projects/api";
 import { getSprints } from "@/features/sprints/api";
-import { getBacklog } from "@/features/backlog/api";
 import { getCahierDetail } from "@/features/cahier-tests/api";
 import { Project } from "@/types";
 
@@ -59,12 +58,9 @@ export default function QADashboard() {
           sprintsData.forEach((sprint) => {
             if (sprint.userstories) {
               totalUserStories += sprint.userstories.length;
+              completedUserStories += sprint.userstories.filter((us) => us.statut === "done").length;
             }
           });
-
-          // Get backlog to count completed stories
-          const backlogData = await getBacklog(project.id, {});
-          completedUserStories += backlogData.filter((item) => item.statut === "done").length;
 
           // Get test stats from cahier de tests if exists
           try {
@@ -109,7 +105,6 @@ export default function QADashboard() {
     { href: ROUTES.QA, icon: "dashboard", label: "Dashboard" },
     { href: `${ROUTES.QA}/cahier-tests`, icon: "science", label: "Cahier de Tests" },
     { href: `${ROUTES.QA}/sprints`, icon: "calendar_month", label: "Sprints" },
-    { href: `${ROUTES.QA}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.QA}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
@@ -302,7 +297,7 @@ export default function QADashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Link
             href={`${ROUTES.QA}/cahier-tests`}
             className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors group"
@@ -333,23 +328,6 @@ export default function QADashboard() {
               <div>
                 <h4 className="text-white font-bold mb-1">Sprints</h4>
                 <p className="text-[#9dabb9] text-xs">Voir les sprints</p>
-              </div>
-            </div>
-          </Link>
-
-          <Link
-            href={`${ROUTES.QA}/backlog`}
-            className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors group"
-          >
-            <div className="flex items-center gap-4">
-              <div className="shrink-0 w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-                <span className="material-symbols-outlined text-blue-400 text-2xl">
-                  list
-                </span>
-              </div>
-              <div>
-                <h4 className="text-white font-bold mb-1">Backlog</h4>
-                <p className="text-[#9dabb9] text-xs">Voir le backlog</p>
               </div>
             </div>
           </Link>

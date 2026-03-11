@@ -21,6 +21,9 @@ class SprintRepository(BaseRepository[Sprint]):
     def get_by_projet(self, projet_id: int) -> List[Sprint]:
         return (
             self.db.query(Sprint)
+            .options(
+                joinedload(Sprint.userstories).joinedload(UserStory.epic)
+            )
             .filter(Sprint.projet_id == projet_id)
             .order_by(Sprint.dateDebut.asc())
             .all()

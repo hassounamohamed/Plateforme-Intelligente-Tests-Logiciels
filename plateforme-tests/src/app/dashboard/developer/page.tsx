@@ -8,10 +8,9 @@ import { ROUTES } from "@/lib/constants";
 export default function DeveloperDashboard() {
   const sidebarLinks = [
     { href: ROUTES.DEVELOPER, icon: "dashboard", label: "Dashboard" },
-    { href: `${ROUTES.DEVELOPER}/tasks`, icon: "task_alt", label: "My Tasks", badge: "12" },
-    { href: `${ROUTES.DEVELOPER}/code`, icon: "code", label: "Code Review" },
-    { href: `${ROUTES.DEVELOPER}/tests`, icon: "bug_report", label: "Test Results" },
+    { href: `${ROUTES.DEVELOPER}/sprints`, icon: "calendar_month", label: "Sprints" },
     { href: `${ROUTES.DEVELOPER}/cahier-tests`, icon: "menu_book", label: "Cahier de Tests" },
+    { href: `${ROUTES.DEVELOPER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
   const headerActions = (

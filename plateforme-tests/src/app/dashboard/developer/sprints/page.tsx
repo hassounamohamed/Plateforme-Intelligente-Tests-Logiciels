@@ -50,10 +50,10 @@ export default function SprintsPage() {
   };
 
   const sidebarLinks = [
-    { href: ROUTES.QA, icon: "dashboard", label: "Dashboard" },
-    { href: `${ROUTES.QA}/cahier-tests`, icon: "science", label: "Cahier de Tests" },
-    { href: `${ROUTES.QA}/sprints`, icon: "calendar_month", label: "Sprints" },
-    { href: `${ROUTES.QA}/profile`, icon: "account_circle", label: "Mon Profil" },
+    { href: ROUTES.DEVELOPER, icon: "dashboard", label: "Dashboard" },
+    { href: `${ROUTES.DEVELOPER}/sprints`, icon: "calendar_month", label: "Sprints" },
+    { href: `${ROUTES.DEVELOPER}/cahier-tests`, icon: "menu_book", label: "Cahier de Tests" },
+    { href: `${ROUTES.DEVELOPER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
   if (loading) {
@@ -61,9 +61,9 @@ export default function SprintsPage() {
       <DashboardLayout
         sidebarContent={
           <Sidebar
-            title="Testeur QA"
+            title="Developer"
             subtitle="Agile & QA Platform"
-            icon="science"
+            icon="code"
             links={sidebarLinks}
           />
         }
@@ -86,9 +86,9 @@ export default function SprintsPage() {
       <DashboardLayout
         sidebarContent={
           <Sidebar
-            title="Testeur QA"
+            title="Developer"
             subtitle="Agile & QA Platform"
-            icon="science"
+            icon="code"
             links={sidebarLinks}
           />
         }
@@ -107,7 +107,7 @@ export default function SprintsPage() {
             Aucun projet assigné
           </h3>
           <p className="text-[#9dabb9]">
-            Vous n'êtes membre d'aucun projet pour le moment.
+            Vous n&apos;êtes membre d&apos;aucun projet pour le moment.
           </p>
         </div>
       </DashboardLayout>
@@ -118,9 +118,9 @@ export default function SprintsPage() {
     <DashboardLayout
       sidebarContent={
         <Sidebar
-          title="Testeur QA"
+          title="Developer"
           subtitle="Agile & QA Platform"
-          icon="science"
+          icon="code"
           links={sidebarLinks}
         />
       }

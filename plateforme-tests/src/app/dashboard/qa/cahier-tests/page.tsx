@@ -34,7 +34,6 @@ export default function CahierTestsPage() {
     { href: ROUTES.QA, icon: "dashboard", label: "Dashboard" },
     { href: `${ROUTES.QA}/cahier-tests`, icon: "science", label: "Cahier de Tests" },
     { href: `${ROUTES.QA}/sprints`, icon: "calendar_month", label: "Sprints" },
-    { href: `${ROUTES.QA}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.QA}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
