@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
@@ -10,6 +11,7 @@ import { Project } from "@/types";
 import CahierTestsManager from "@/features/cahier-tests/CahierTestsManager";
 
 export default function CahierTestsScrumMasterPage() {
+  const searchParams = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,6 +29,29 @@ export default function CahierTestsScrumMasterPage() {
   useEffect(() => {
     loadProjects();
   }, []);
+
+  useEffect(() => {
+    if (projects.length === 0) return;
+
+    const projectIdParam = searchParams.get("projectId");
+    if (!projectIdParam) {
+      setSelectedProject(null);
+      return;
+    }
+
+    const projectId = Number(projectIdParam);
+    if (Number.isNaN(projectId)) {
+      setSelectedProject(null);
+      return;
+    }
+
+    const project = projects.find((p) => p.id === projectId) ?? null;
+    setSelectedProject(project);
+  }, [projects, searchParams]);
+
+  const openProjectInNewTab = (projectId: number) => {
+    window.open(`${ROUTES.SCRUM_MASTER}/cahier-tests?projectId=${projectId}`, "_blank", "noopener,noreferrer");
+  };
 
   const loadProjects = async () => {
     try {
@@ -105,8 +130,7 @@ export default function CahierTestsScrumMasterPage() {
                   onChange={(e) => {
                     const value = e.target.value;
                     if (value !== "") {
-                      const project = projects.find((p) => p.id === parseInt(value));
-                      setSelectedProject(project || null);
+                      openProjectInNewTab(parseInt(value, 10));
                     }
                   }}
                   className="w-full h-12 px-4 bg-[#283039] border border-[#3b4754] text-white text-base rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"

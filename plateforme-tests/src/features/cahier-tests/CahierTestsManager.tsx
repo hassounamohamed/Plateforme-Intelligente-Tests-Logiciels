@@ -9,6 +9,7 @@ import {
 import {
   getCahierDetail,
   getStatistiques,
+  listGenerations,
   genererCahier,
   validerCahier,
   exporterExcel,
@@ -45,6 +46,33 @@ export default function CahierTestsManager({
     setLoading(true);
     setError(null);
     try {
+      const generations = await listGenerations(projectId);
+      const activeGeneration = generations.find(
+        (generation) =>
+          generation.status === "pending" || generation.status === "processing"
+      );
+      const hasCompletedGeneration = generations.some(
+        (generation) => generation.status === "completed"
+      );
+
+      if (activeGeneration) {
+        setGenerating(true);
+        setCurrentGeneration(activeGeneration);
+        setCahier(null);
+        setStats(null);
+        return;
+      }
+
+      setGenerating(false);
+      setCurrentGeneration(null);
+
+      if (!hasCompletedGeneration) {
+        setCahier(null);
+        setStats(null);
+        setError("Aucun cahier de tests disponible pour ce projet.");
+        return;
+      }
+
       const [cahierData, statsData] = await Promise.all([
         getCahierDetail(projectId),
         getStatistiques(projectId),
@@ -53,6 +81,8 @@ export default function CahierTestsManager({
       setStats(statsData);
     } catch (err: any) {
       if (err.response?.status === 404) {
+        setCahier(null);
+        setStats(null);
         setError("Aucun cahier de tests disponible pour ce projet.");
       } else {
         setError(

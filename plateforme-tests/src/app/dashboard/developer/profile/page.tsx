@@ -32,10 +32,10 @@ export default function ProfilePage() {
   }, [profile]);
 
   const sidebarLinks = [
-    { href: ROUTES.QA, icon: "dashboard", label: "Dashboard" },
-    { href: `${ROUTES.QA}/cahier-tests`, icon: "science", label: "Cahier de Tests" },
-    { href: `${ROUTES.QA}/sprints`, icon: "calendar_month", label: "Sprints" },
-    { href: `${ROUTES.QA}/profile`, icon: "account_circle", label: "Mon Profil" },
+    { href: ROUTES.DEVELOPER, icon: "dashboard", label: "Dashboard" },
+    { href: `${ROUTES.DEVELOPER}/sprints`, icon: "calendar_month", label: "Sprints" },
+    { href: `${ROUTES.DEVELOPER}/cahier-tests`, icon: "menu_book", label: "Cahier de Tests" },
+    { href: `${ROUTES.DEVELOPER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -89,9 +89,9 @@ export default function ProfilePage() {
     <DashboardLayout
       sidebarContent={
         <Sidebar
-          title="Testeur QA"
+          title="Developer"
           subtitle="Agile & QA Platform"
-          icon="science"
+          icon="code"
           links={sidebarLinks}
         />
       }
@@ -203,7 +203,7 @@ export default function ProfilePage() {
                     className="w-full px-4 py-2 bg-[#283039] border border-[#3b4754] text-[#9dabb9] rounded-lg opacity-50 cursor-not-allowed"
                   />
                   <p className="text-[#9dabb9] text-xs mt-1">
-                    L'email ne peut pas être modifié
+                    L&apos;email ne peut pas être modifié
                   </p>
                 </div>
 

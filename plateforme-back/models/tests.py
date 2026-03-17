@@ -12,8 +12,9 @@ class CahierDeTests(Base):
     statut = Column(String)
     nombreTests = Column(Integer, default=0)
 
-    userstory_id = Column(Integer, ForeignKey("userstory.id"))
-    
+    userstory_id     = Column(Integer, ForeignKey("userstory.id"))
+    ai_generation_id = Column(Integer, ForeignKey("ai_generations.id", ondelete="SET NULL"), nullable=True)
+
     # Relations
     userstory = relationship("UserStory", back_populates="cahier_tests")
     tests = relationship("Test", back_populates="cahier", cascade="all, delete-orphan")

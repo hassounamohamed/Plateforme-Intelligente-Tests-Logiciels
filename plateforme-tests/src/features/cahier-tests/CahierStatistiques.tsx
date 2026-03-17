@@ -8,6 +8,9 @@ interface CahierStatistiquesProps {
 }
 
 export default function CahierStatistiques({ stats }: CahierStatistiquesProps) {
+  const completionRate =
+    stats.nombre_total > 0 ? (stats.nombre_reussi / stats.nombre_total) * 100 : 0;
+
   return (
     <div className="bg-surface-dark rounded-lg border border-[#3b4754] p-6 mb-6">
       <h3 className="text-lg font-semibold text-white mb-4">
@@ -69,8 +72,7 @@ export default function CahierStatistiques({ stats }: CahierStatistiquesProps) {
         <div className="flex items-center justify-between text-sm mb-2">
           <span className="text-white">Progression</span>
           <span className="font-medium text-white">
-            {((stats.nombre_reussi / stats.nombre_total) * 100).toFixed(1)}%
-            terminé
+            {completionRate.toFixed(1)}% terminé
           </span>
         </div>
         <div className="w-full bg-[#283039] rounded-full h-4 overflow-hidden">

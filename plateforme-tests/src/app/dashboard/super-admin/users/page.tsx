@@ -26,6 +26,7 @@ export default function UsersPage() {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [roles, setRoles] = useState<RoleDefinition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -132,6 +133,26 @@ export default function UsersPage() {
     }
   };
 
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+  const filteredUsers = users.filter((user) => {
+    if (!normalizedSearchTerm) {
+      return true;
+    }
+
+    const searchableValues = [
+      user.nom,
+      user.email,
+      user.role?.nom,
+      user.role?.code,
+      user.actif ? "actif" : "inactif",
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return searchableValues.includes(normalizedSearchTerm);
+  });
+
   return (
     <DashboardLayout
       sidebarContent={
@@ -157,6 +178,8 @@ export default function UsersPage() {
               <input
                 type="search"
                 placeholder="Rechercher..."
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
                 className="bg-[#1e293b] border border-[#3b4754] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <button
@@ -202,8 +225,14 @@ export default function UsersPage() {
                       Aucun utilisateur trouvé
                     </td>
                   </tr>
+                ) : filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-[#9dabb9]">
+                      Aucun utilisateur ne correspond à la recherche
+                    </td>
+                  </tr>
                 ) : (
-                  users.map((user) => (
+                  filteredUsers.map((user) => (
                     <tr
                       key={user.id}
                       className="border-b border-[#283039] hover:bg-[#283039]/30 transition-colors"

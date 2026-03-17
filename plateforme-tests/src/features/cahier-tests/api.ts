@@ -69,7 +69,8 @@ export const getCahier = async (
   projectId: number
 ): Promise<CahierTestGlobal> => {
   const response = await axiosInstance.get<CahierTestGlobal>(
-    `${getCahierBase(projectId)}`
+    `${getCahierBase(projectId)}`,
+    { suppressErrorLog: true }
   );
   return response.data;
 };
@@ -81,7 +82,8 @@ export const getCahierDetail = async (
   projectId: number
 ): Promise<CahierTestGlobalDetail> => {
   const response = await axiosInstance.get<CahierTestGlobalDetail>(
-    `${getCahierBase(projectId)}/detail`
+    `${getCahierBase(projectId)}/detail`,
+    { suppressErrorLog: true }
   );
   return response.data;
 };
@@ -93,7 +95,8 @@ export const getStatistiques = async (
   projectId: number
 ): Promise<StatistiquesCahier> => {
   const response = await axiosInstance.get<StatistiquesCahier>(
-    `${getCahierBase(projectId)}/stats`
+    `${getCahierBase(projectId)}/stats`,
+    { suppressErrorLog: true }
   );
   return response.data;
 };

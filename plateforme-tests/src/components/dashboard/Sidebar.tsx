@@ -26,7 +26,7 @@ export function Sidebar({ title, subtitle, icon, links }: SidebarProps) {
   };
 
   return (
-    <aside className="w-64 bg-background-dark border-r border-[#283039] shrink-0 z-20 hidden md:flex md:flex-col">
+    <aside className="w-64 bg-(--surface) border-r border-(--border) shrink-0 z-20 hidden md:flex md:flex-col">
       {/* Logo */}
       <div className="p-6 pb-2">
         <div className="flex items-center gap-3">
@@ -36,10 +36,10 @@ export function Sidebar({ title, subtitle, icon, links }: SidebarProps) {
             </span>
           </div>
           <div className="flex flex-col">
-            <h1 className="text-white text-base font-bold leading-tight tracking-tight">
+            <h1 className="text-foreground text-base font-bold leading-tight tracking-tight">
               {title}
             </h1>
-            <p className="text-[#9dabb9] text-xs font-medium">{subtitle}</p>
+            <p className="text-(--muted) text-xs font-medium">{subtitle}</p>
           </div>
         </div>
       </div>
@@ -55,7 +55,7 @@ export function Sidebar({ title, subtitle, icon, links }: SidebarProps) {
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg group transition-colors ${
                 isActive
                   ? "bg-primary text-white"
-                  : "text-[#9dabb9] hover:text-white hover:bg-[#283039]"
+                  : "text-(--muted) hover:text-foreground hover:bg-(--surface-2)"
               }`}
             >
               <span className={`material-symbols-outlined ${isActive ? "fill" : ""}`}>
@@ -75,19 +75,19 @@ export function Sidebar({ title, subtitle, icon, links }: SidebarProps) {
       </nav>
 
       {/* User Profile */}
-      <div className="p-4 border-t border-[#283039]">
-        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#283039] cursor-pointer transition-colors group">
+      <div className="p-4 border-t border-(--border)">
+        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-(--surface-2) cursor-pointer transition-colors group">
           <div className="relative">
-            <div className="bg-primary/20 rounded-full h-9 w-9 ring-2 ring-[#283039] flex items-center justify-center text-primary font-bold">
+            <div className="bg-primary/20 rounded-full h-9 w-9 ring-2 ring-(--surface-2) flex items-center justify-center text-primary font-bold">
               {user?.nom?.charAt(0).toUpperCase() || "U"}
             </div>
-            <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-background-dark rounded-full"></div>
+            <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-background rounded-full"></div>
           </div>
           <div className="flex flex-col overflow-hidden flex-1">
-            <p className="text-white text-sm font-medium truncate">
+            <p className="text-foreground text-sm font-medium truncate">
               {user?.nom || "User"}
             </p>
-            <p className="text-[#9dabb9] text-xs truncate">
+            <p className="text-(--muted) text-xs truncate">
               {user?.role?.nom || "User"}
             </p>
           </div>
@@ -95,7 +95,7 @@ export function Sidebar({ title, subtitle, icon, links }: SidebarProps) {
             onClick={handleLogout}
             className="opacity-0 group-hover:opacity-100 transition-opacity"
           >
-            <span className="material-symbols-outlined text-[#9dabb9] hover:text-red-400 text-lg">
+            <span className="material-symbols-outlined text-(--muted) hover:text-red-400 text-lg">
               logout
             </span>
           </button>
