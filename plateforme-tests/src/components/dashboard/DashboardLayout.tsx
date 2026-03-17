@@ -19,15 +19,15 @@ interface StatCardProps {
 
 export function StatCard({ title, value, icon, trend, status }: StatCardProps) {
   return (
-    <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-5 flex flex-col gap-3 hover:border-primary/50 transition-colors group">
+    <div className="bg-(--surface) border border-(--border) rounded-xl p-5 flex flex-col gap-3 hover:border-primary/50 transition-colors group">
       <div className="flex items-center justify-between">
-        <p className="text-[#9dabb9] text-sm font-medium">{title}</p>
-        <div className="h-8 w-8 rounded-full bg-[#283039] flex items-center justify-center text-white group-hover:bg-primary/20 group-hover:text-primary transition-colors">
+        <p className="text-(--muted) text-sm font-medium">{title}</p>
+        <div className="h-8 w-8 rounded-full bg-(--surface-2) flex items-center justify-center text-foreground group-hover:bg-primary/20 group-hover:text-primary transition-colors">
           <span className="material-symbols-outlined text-[18px]">{icon}</span>
         </div>
       </div>
       <div>
-        <p className="text-white text-2xl font-bold">{value}</p>
+        <p className="text-foreground text-2xl font-bold">{value}</p>
         {trend && (
           <div className="flex items-center gap-1 mt-1">
             <span
@@ -57,7 +57,7 @@ export function StatCard({ title, value, icon, trend, status }: StatCardProps) {
                   : "bg-red-500"
               } animate-pulse`}
             ></div>
-            <p className="text-[#9dabb9] text-xs font-medium">{status.text}</p>
+            <p className="text-(--muted) text-xs font-medium">{status.text}</p>
           </div>
         )}
       </div>
@@ -77,7 +77,7 @@ export function DashboardLayout({
   headerContent,
 }: DashboardLayoutProps) {
   return (
-    <div className="h-screen flex overflow-hidden bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display">
+    <div className="dashboard-themed h-screen flex overflow-hidden bg-background text-foreground font-display">
       {/* Sidebar */}
       {sidebarContent}
 

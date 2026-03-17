@@ -1,6 +1,7 @@
 /* Google Fonts - Must be first */
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+@import "@mantine/core/styles.css";
 
 @import "tailwindcss";
 
@@ -10,6 +11,34 @@
   --background-light: #f8fafc;
   --background-dark: #111418;
   --surface-dark: #1c2127;
+  --surface: #ffffff;
+  --surface-2: #eef2f7;
+  --border: #d6deea;
+  --muted: #6b7c93;
+}
+
+[data-theme="light"] {
+  --background: #f3f7fb;
+  --foreground: #111827;
+  --background-light: #f3f7fb;
+  --background-dark: #f3f7fb;
+  --surface-dark: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #eef2f7;
+  --border: #d6deea;
+  --muted: #6b7c93;
+}
+
+[data-theme="dark"] {
+  --background: #111418;
+  --foreground: #ffffff;
+  --background-light: #111418;
+  --background-dark: #111418;
+  --surface-dark: #1c2127;
+  --surface: #1c2127;
+  --surface-2: #283039;
+  --border: #3b4754;
+  --muted: #9dabb9;
 }
 
 @theme inline {
@@ -40,17 +69,188 @@
   --color-surface-dark: #1c2127;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #111418;
-    --foreground: #ffffff;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-display);
+  transition: background-color 220ms ease, color 220ms ease;
+}
+
+/* Keep legacy text utility colors readable when switching to light mode. */
+[data-theme="light"] .dashboard-themed .text-white {
+  color: var(--foreground) !important;
+}
+
+/* Keep white text on explicit action/semantic colored backgrounds. */
+[data-theme="light"] .dashboard-themed .bg-primary,
+[data-theme="light"] .dashboard-themed .bg-blue-600,
+[data-theme="light"] .dashboard-themed .bg-blue-500,
+[data-theme="light"] .dashboard-themed .bg-green-600,
+[data-theme="light"] .dashboard-themed .bg-red-600,
+[data-theme="light"] .dashboard-themed .bg-red-500,
+[data-theme="light"] .dashboard-themed .bg-orange-500,
+[data-theme="light"] .dashboard-themed .bg-yellow-500 {
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .dashboard-themed .bg-primary *,
+[data-theme="light"] .dashboard-themed .bg-blue-600 *,
+[data-theme="light"] .dashboard-themed .bg-blue-500 *,
+[data-theme="light"] .dashboard-themed .bg-green-600 *,
+[data-theme="light"] .dashboard-themed .bg-red-600 *,
+[data-theme="light"] .dashboard-themed .bg-red-500 *,
+[data-theme="light"] .dashboard-themed .bg-orange-500 *,
+[data-theme="light"] .dashboard-themed .bg-yellow-500 * {
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .dashboard-themed .text-\[\#9dabb9\] {
+  color: var(--muted) !important;
+}
+
+/* Map legacy dark backgrounds/borders to light surfaces in light mode. */
+[data-theme="light"] .dashboard-themed .bg-surface-dark,
+[data-theme="light"] .dashboard-themed .bg-background-dark,
+[data-theme="light"] .dashboard-themed .bg-\[\#111418\],
+[data-theme="light"] .dashboard-themed .bg-\[\#1c2127\],
+[data-theme="light"] .dashboard-themed .bg-\[\#283039\],
+[data-theme="light"] .dashboard-themed .bg-\[\#1a1f26\],
+[data-theme="light"] .dashboard-themed .bg-\[\#1a2028\],
+[data-theme="light"] .dashboard-themed .bg-\[\#1e293b\],
+[data-theme="light"] .dashboard-themed .bg-\[\#1e252d\],
+[data-theme="light"] .dashboard-themed .bg-\[\#252b33\],
+[data-theme="light"] .dashboard-themed .bg-\[\#29323d\],
+[data-theme="light"] .dashboard-themed .bg-\[\#344150\],
+[data-theme="light"] .dashboard-themed .bg-\[\#141820\],
+[data-theme="light"] .dashboard-themed .bg-\[\#171b22\]\/90,
+[data-theme="light"] .dashboard-themed .bg-\[\#151219\],
+[data-theme="light"] .dashboard-themed .dark\:bg-\[\#1e252d\],
+[data-theme="light"] .dashboard-themed .dark\:bg-\[\#151219\] {
+  background-color: var(--surface) !important;
+}
+
+/* Fallback for class strings generated dynamically with legacy dark hex values. */
+[data-theme="light"] .dashboard-themed [class*="bg-[#1a2028]"],
+[data-theme="light"] .dashboard-themed [class*="bg-[#1e293b]"],
+[data-theme="light"] .dashboard-themed [class*="bg-[#1e252d]"],
+[data-theme="light"] .dashboard-themed [class*="bg-[#252b33]"],
+[data-theme="light"] .dashboard-themed [class*="bg-[#29323d]"],
+[data-theme="light"] .dashboard-themed [class*="bg-[#344150]"],
+[data-theme="light"] .dashboard-themed [class*="bg-[#283039]"],
+[data-theme="light"] .dashboard-themed [class*="bg-[#1a1f26]"],
+[data-theme="light"] .dashboard-themed [class*="bg-[#171b22]/90"],
+[data-theme="light"] .dashboard-themed [class*="bg-[#141820]"],
+[data-theme="light"] .dashboard-themed [class*="bg-surface-dark"],
+[data-theme="light"] .dashboard-themed [class*="bg-background-dark"] {
+  background-color: var(--surface) !important;
+}
+
+[data-theme="light"] .dashboard-themed .hover\:bg-\[\#283039\]:hover,
+[data-theme="light"] .dashboard-themed .hover\:bg-\[\#1c2127\]:hover,
+[data-theme="light"] .dashboard-themed .hover\:bg-\[\#344150\]:hover,
+[data-theme="light"] .dashboard-themed .hover\:bg-\[\#3b4754\]:hover,
+[data-theme="light"] .dashboard-themed .hover\:bg-\[\#283039\]\/30:hover,
+[data-theme="light"] .dashboard-themed .dark\:hover\:bg-\[\#252b33\]:hover,
+[data-theme="light"] .dashboard-themed .dark\:hover\:bg-\[\#29323d\]:hover {
+  background-color: var(--surface-2) !important;
+}
+
+[data-theme="light"] .dashboard-themed [class*="hover:bg-[#283039]"]:hover,
+[data-theme="light"] .dashboard-themed [class*="hover:bg-[#3b4754]"]:hover,
+[data-theme="light"] .dashboard-themed [class*="hover:bg-[#344150]"]:hover {
+  background-color: var(--surface-2) !important;
+}
+
+[data-theme="light"] .dashboard-themed .border-\[\#283039\],
+[data-theme="light"] .dashboard-themed .border-\[\#3b4754\],
+[data-theme="light"] .dashboard-themed .border-\[\#4a5866\],
+[data-theme="light"] .dashboard-themed .border-\[\#9dabb9\],
+[data-theme="light"] .dashboard-themed .dark\:border-\[\#29323d\] {
+  border-color: var(--border) !important;
+}
+
+[data-theme="light"] .dashboard-themed [class*="border-[#283039]"],
+[data-theme="light"] .dashboard-themed [class*="border-[#3b4754]"],
+[data-theme="light"] .dashboard-themed [class*="border-[#4a5866]"],
+[data-theme="light"] .dashboard-themed [class*="border-[#344150]"],
+[data-theme="light"] .dashboard-themed [class*="border-[#9dabb9]"],
+[data-theme="light"] .dashboard-themed [class*="border-[#29323d]"] {
+  border-color: var(--border) !important;
+}
+
+[data-theme="light"] .dashboard-themed .text-slate-900,
+[data-theme="light"] .dashboard-themed .text-slate-800,
+[data-theme="light"] .dashboard-themed .text-slate-700 {
+  color: var(--foreground) !important;
+}
+
+[data-theme="light"] .dashboard-themed .dark\:text-white {
+  color: var(--foreground) !important;
+}
+
+[data-theme="light"] .dashboard-themed .dark\:text-\[\#9dabb9\],
+[data-theme="light"] .dashboard-themed .text-gray-400,
+[data-theme="light"] .dashboard-themed .dark\:text-gray-300,
+[data-theme="light"] .dashboard-themed .dark\:text-slate-400 {
+  color: var(--muted) !important;
+}
+
+[data-theme="light"] .dashboard-themed [class*="text-[#9dabb9]"],
+[data-theme="light"] .dashboard-themed [class*="text-[#6b7c93]"] {
+  color: var(--muted) !important;
+}
+
+[data-theme="light"] .dashboard-themed .ring-\[\#283039\],
+[data-theme="light"] .dashboard-themed .dark\:ring-\[\#29323d\],
+[data-theme="light"] .dashboard-themed .dark\:ring-primary-900\/60 {
+  --tw-ring-color: var(--border) !important;
+}
+
+/* Harmonize modal/forms text areas and inputs in dashboard light mode. */
+[data-theme="light"] .dashboard-themed input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+[data-theme="light"] .dashboard-themed select,
+[data-theme="light"] .dashboard-themed textarea {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--foreground) !important;
+  caret-color: var(--foreground);
+}
+
+[data-theme="light"] .dashboard-themed input:not([type="checkbox"]):not([type="radio"]):not([type="range"])::placeholder,
+[data-theme="light"] .dashboard-themed textarea::placeholder {
+  color: var(--muted) !important;
+}
+
+[data-theme="light"] .dashboard-themed input:disabled,
+[data-theme="light"] .dashboard-themed select:disabled,
+[data-theme="light"] .dashboard-themed textarea:disabled {
+  background-color: var(--surface-2) !important;
+  color: var(--muted) !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="light"] .dashboard-themed input:focus,
+[data-theme="light"] .dashboard-themed select:focus,
+[data-theme="light"] .dashboard-themed textarea:focus {
+  outline-color: var(--color-primary) !important;
+}
+
+/* Harmonize boolean controls in modals/forms (epic, user story, etc.). */
+[data-theme="light"] .dashboard-themed input[type="checkbox"],
+[data-theme="light"] .dashboard-themed input[type="radio"] {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="light"] .dashboard-themed input[type="checkbox"]:checked,
+[data-theme="light"] .dashboard-themed input[type="radio"]:checked {
+  background-color: var(--color-primary) !important;
+  border-color: var(--color-primary) !important;
+}
+
+[data-theme="light"] .dashboard-themed select option {
+  background-color: var(--surface);
+  color: var(--foreground);
 }
 
 /* Utility classes */
