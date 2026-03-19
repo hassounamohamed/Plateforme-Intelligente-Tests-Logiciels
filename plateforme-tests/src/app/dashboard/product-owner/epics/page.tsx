@@ -44,8 +44,7 @@ export default function EpicsManagementPage() {
     { href: `${ROUTES.PRODUCT_OWNER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.PRODUCT_OWNER}/epics`, icon: "content_cut", label: "Epics" },
     { href: `${ROUTES.PRODUCT_OWNER}/sprints`, icon: "event", label: "Sprints" },
-    { href: `${ROUTES.PRODUCT_OWNER}/ai-backlog`, icon: "smart_toy", label: "AI Backlog" },
-    { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
+        { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
     { href: `${ROUTES.PRODUCT_OWNER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.PRODUCT_OWNER}/roadmap`, icon: "map", label: "Roadmap" },
     { href: `${ROUTES.PRODUCT_OWNER}/profile`, icon: "account_circle", label: "Mon Profil" },
@@ -222,7 +221,7 @@ export default function EpicsManagementPage() {
     >
       <div className="max-w-350 mx-auto flex flex-col gap-6">
         {/* Filters */}
-        <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-4">
+        <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-white mb-2">Projet</label>
@@ -232,7 +231,7 @@ export default function EpicsManagementPage() {
                   const project = projects.find((p) => p.id === parseInt(e.target.value));
                   setSelectedProject(project || null);
                 }}
-                className="w-full bg-[#1e293b] border border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full bg-[#1e293b] border border-slate-200 dark:border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">Sélectionner un projet</option>
                 {projects.map((project) => (
@@ -252,7 +251,7 @@ export default function EpicsManagementPage() {
                   setSelectedModule(module || null);
                 }}
                 disabled={!selectedProject}
-                className="w-full bg-[#1e293b] border border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                className="w-full bg-[#1e293b] border border-slate-200 dark:border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
               >
                 <option value="">Sélectionner un module</option>
                 {modules.map((module) => (
@@ -269,7 +268,7 @@ export default function EpicsManagementPage() {
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as EpicStatus | "all")}
                 disabled={!selectedModule}
-                className="w-full bg-[#1e293b] border border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                className="w-full bg-[#1e293b] border border-slate-200 dark:border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
               >
                 <option value="all">Tous les statuts</option>
                 <option value="to_do">To Do</option>
@@ -281,18 +280,18 @@ export default function EpicsManagementPage() {
         </div>
 
         {/* Epics List */}
-        <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
+        <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-white text-lg font-bold">Epics ({filteredEpics.length})</h2>
           </div>
 
           {!selectedProject || !selectedModule ? (
-            <div className="text-center py-12 text-[#9dabb9]">
+            <div className="text-center py-12 text-slate-500 dark:text-[#9dabb9]">
               Sélectionnez un projet et un module pour voir les epics
             </div>
           ) : filteredEpics.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-[#9dabb9] mb-4">Aucun epic trouvé</p>
+              <p className="text-slate-500 dark:text-[#9dabb9] mb-4">Aucun epic trouvé</p>
               <button
                 onClick={handleCreateEpic}
                 className="px-4 py-2 bg-primary hover:bg-blue-600 text-white rounded-lg text-sm"
@@ -305,13 +304,13 @@ export default function EpicsManagementPage() {
               {filteredEpics.map((epic) => (
                 <div
                   key={epic.id}
-                  className="p-4 rounded-lg border border-[#3b4754] hover:border-primary/50 transition-all"
+                  className="p-4 rounded-lg border border-slate-200 dark:border-[#3b4754] hover:border-primary/50 transition-all"
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         {epic.reference && (
-                          <span className="text-[#9dabb9] text-xs font-mono">
+                          <span className="text-slate-500 dark:text-[#9dabb9] text-xs font-mono">
                             {epic.reference}
                           </span>
                         )}
@@ -323,11 +322,11 @@ export default function EpicsManagementPage() {
                         >
                           {getStatusLabel(epic.statut)}
                         </span>
-                        <span className="text-xs text-[#9dabb9]">
+                        <span className="text-xs text-slate-500 dark:text-[#9dabb9]">
                           Priorité: {epic.priorite}
                         </span>
                       </div>
-                      <p className="text-sm text-[#9dabb9] mb-2">
+                      <p className="text-sm text-slate-500 dark:text-[#9dabb9] mb-2">
                         {epic.description || "Aucune description"}
                       </p>
                       {epic.businessValue && (
@@ -342,7 +341,7 @@ export default function EpicsManagementPage() {
                         onChange={(e) =>
                           handleChangeEpicStatus(epic.id, e.target.value as EpicStatus)
                         }
-                        className="px-2 py-1 text-xs border border-[#3b4754] rounded bg-[#1e293b] text-white focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="px-2 py-1 text-xs border border-slate-200 dark:border-[#3b4754] rounded bg-[#1e293b] text-white focus:outline-none focus:ring-1 focus:ring-primary"
                       >
                         <option value="to_do">To Do</option>
                         <option value="in_progress">In Progress</option>
@@ -352,7 +351,7 @@ export default function EpicsManagementPage() {
                         onClick={() => handleEditEpic(epic)}
                         className="p-1 hover:bg-[#283039] rounded"
                       >
-                        <span className="material-symbols-outlined text-[18px] text-[#9dabb9]">
+                        <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-[#9dabb9]">
                           edit
                         </span>
                       </button>
@@ -367,8 +366,8 @@ export default function EpicsManagementPage() {
                     </div>
                   </div>
                   {epic.user_stories && epic.user_stories.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-[#3b4754]">
-                      <p className="text-xs text-[#9dabb9]">
+                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-[#3b4754]">
+                      <p className="text-xs text-slate-500 dark:text-[#9dabb9]">
                         User Stories: {epic.user_stories.length}
                       </p>
                     </div>

@@ -212,8 +212,8 @@ export default function NewSprintPage() {
           )}
 
           {/* Project Selection */}
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
-            <h3 className="text-white text-lg font-bold mb-4">Projet</h3>
+          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
+            <h3 className="text-slate-900 dark:text-white text-lg font-bold mb-4">Projet</h3>
             {isLoading ? (
               <div className="flex items-center justify-center py-4">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -224,7 +224,7 @@ export default function NewSprintPage() {
                 name="project"
                 value={selectedProject || ""}
                 onChange={(e) => setSelectedProject(Number(e.target.value))}
-                className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary"
+                className="w-full bg-white dark:bg-[#283039] border border-slate-300 dark:border-[#3b4754] rounded-lg px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-primary"
                 required
               >
                 <option value="">Sélectionner un projet</option>
@@ -242,12 +242,12 @@ export default function NewSprintPage() {
           </div>
 
           {/* Sprint Details */}
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 space-y-4">
-            <h3 className="text-white text-lg font-bold mb-4">Informations du Sprint</h3>
+          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6 space-y-4">
+            <h3 className="text-slate-900 dark:text-white text-lg font-bold mb-4">Informations du Sprint</h3>
 
             {/* Sprint Name */}
             <div>
-              <label htmlFor="sprint-name" className="text-[#9dabb9] text-sm font-bold mb-2 block">
+              <label htmlFor="sprint-name" className="text-slate-600 dark:text-[#9dabb9] text-sm font-bold mb-2 block">
                 Nom du Sprint <span className="text-red-400">*</span>
               </label>
               <input
@@ -257,14 +257,14 @@ export default function NewSprintPage() {
                 value={nom}
                 onChange={(e) => setNom(e.target.value)}
                 placeholder="ex: Sprint 1, Sprint Planning Q1"
-                className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2.5 text-white placeholder-[#9dabb9]/50 focus:outline-none focus:border-primary"
+                className="w-full bg-white dark:bg-[#283039] border border-slate-300 dark:border-[#3b4754] rounded-lg px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-[#9dabb9]/50 focus:outline-none focus:border-primary"
                 required
               />
             </div>
 
             {/* Sprint Goal */}
             <div>
-              <label htmlFor="sprint-goal" className="text-[#9dabb9] text-sm font-bold mb-2 block">
+              <label htmlFor="sprint-goal" className="text-slate-600 dark:text-[#9dabb9] text-sm font-bold mb-2 block">
                 Objectif du Sprint
               </label>
               <textarea
@@ -274,14 +274,14 @@ export default function NewSprintPage() {
                 onChange={(e) => setObjectifSprint(e.target.value)}
                 placeholder="Quel est l'objectif principal de ce sprint ?"
                 rows={3}
-                className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2.5 text-white placeholder-[#9dabb9]/50 focus:outline-none focus:border-primary resize-none"
+                className="w-full bg-white dark:bg-[#283039] border border-slate-300 dark:border-[#3b4754] rounded-lg px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-[#9dabb9]/50 focus:outline-none focus:border-primary resize-none"
               />
             </div>
 
             {/* Sprint Duration */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-[#9dabb9] text-sm font-bold mb-2 block">
+                <label className="text-slate-600 dark:text-[#9dabb9] text-sm font-bold mb-2 block">
                   Durée du Sprint (jours) <span className="text-red-400">*</span>
                 </label>
                 <div className="grid grid-cols-5 gap-2">
@@ -293,7 +293,7 @@ export default function NewSprintPage() {
                       className={`py-2 rounded-lg text-sm font-bold transition-all ${
                         dureeJours === duree
                           ? "bg-primary text-white"
-                          : "bg-[#283039] text-[#9dabb9] hover:bg-[#3b4754]"
+                          : "bg-slate-100 dark:bg-[#283039] text-slate-600 dark:text-[#9dabb9] hover:bg-slate-200 dark:hover:bg-[#3b4754]"
                       }`}
                     >
                       {duree}j
@@ -303,7 +303,7 @@ export default function NewSprintPage() {
               </div>
 
               <div>
-                <label htmlFor="team-capacity" className="text-[#9dabb9] text-sm font-bold mb-2 block">
+                <label htmlFor="team-capacity" className="text-slate-600 dark:text-[#9dabb9] text-sm font-bold mb-2 block">
                   Capacité de l'Équipe (story points) <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -314,7 +314,7 @@ export default function NewSprintPage() {
                   onChange={(e) => setCapaciteEquipe(Number(e.target.value))}
                   placeholder="ex: 50"
                   min="1"
-                  className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2.5 text-white placeholder-[#9dabb9]/50 focus:outline-none focus:border-primary"
+                  className="w-full bg-white dark:bg-[#283039] border border-slate-300 dark:border-[#3b4754] rounded-lg px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-[#9dabb9]/50 focus:outline-none focus:border-primary"
                   required
                 />
               </div>
@@ -323,7 +323,7 @@ export default function NewSprintPage() {
             {/* Dates */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="date-debut" className="text-[#9dabb9] text-sm font-bold mb-2 block">
+                <label htmlFor="date-debut" className="text-slate-600 dark:text-[#9dabb9] text-sm font-bold mb-2 block">
                   Date de Début <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -332,13 +332,13 @@ export default function NewSprintPage() {
                   type="date"
                   value={dateDebut}
                   onChange={(e) => setDateDebut(e.target.value)}
-                  className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary"
+                  className="w-full bg-white dark:bg-[#283039] border border-slate-300 dark:border-[#3b4754] rounded-lg px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-primary"
                   required
                 />
               </div>
 
               <div>
-                <label htmlFor="date-fin" className="text-[#9dabb9] text-sm font-bold mb-2 block">
+                <label htmlFor="date-fin" className="text-slate-600 dark:text-[#9dabb9] text-sm font-bold mb-2 block">
                   Date de Fin <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -347,7 +347,7 @@ export default function NewSprintPage() {
                   type="date"
                   value={dateFin}
                   onChange={(e) => setDateFin(e.target.value)}
-                  className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary"
+                  className="w-full bg-white dark:bg-[#283039] border border-slate-300 dark:border-[#3b4754] rounded-lg px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-primary"
                   required
                 />
               </div>
@@ -356,11 +356,11 @@ export default function NewSprintPage() {
 
           {/* User Stories Selection */}
           {availableStories.length > 0 && (
-            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
+            <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-white text-lg font-bold">Ajouter des User Stories</h3>
+                <h3 className="text-slate-900 dark:text-white text-lg font-bold">Ajouter des User Stories</h3>
                 <div className="flex items-center gap-4 text-sm">
-                  <span className="text-[#9dabb9]">
+                  <span className="text-slate-500 dark:text-[#9dabb9]">
                     {selectedStories.length} stories sélectionnées
                   </span>
                   <span
@@ -388,10 +388,10 @@ export default function NewSprintPage() {
                   <div
                     key={story.id}
                     onClick={() => handleToggleStory(story.id)}
-                    className={`bg-[#283039] border rounded-lg p-4 cursor-pointer transition-all ${
+                    className={`bg-slate-50 dark:bg-[#283039] border rounded-lg p-4 cursor-pointer transition-all ${
                       selectedStories.includes(story.id)
                         ? "border-primary bg-primary/10"
-                        : "border-[#3b4754] hover:border-primary/50"
+                        : "border-slate-200 dark:border-[#3b4754] hover:border-primary/50"
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -402,17 +402,17 @@ export default function NewSprintPage() {
                         className="mt-1"
                       />
                       <div className="flex-1">
-                        <h4 className="text-white font-medium text-sm mb-1">{story.titre}</h4>
+                        <h4 className="text-slate-900 dark:text-white font-medium text-sm mb-1">{story.titre}</h4>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="px-2 py-0.5 bg-primary/20 text-primary rounded text-xs font-bold">
                             {story.priorite}
                           </span>
                           {story.points && (
-                            <span className="px-2 py-0.5 bg-[#9dabb9]/20 text-[#9dabb9] rounded text-xs font-bold">
+                            <span className="px-2 py-0.5 bg-[#9dabb9]/20 text-slate-600 dark:text-[#9dabb9] rounded text-xs font-bold">
                               {story.points} pts
                             </span>
                           )}
-                          <span className="text-[#9dabb9] text-xs">
+                          <span className="text-slate-500 dark:text-[#9dabb9] text-xs">
                             Epic #{story.epic_id}
                           </span>
                         </div>
@@ -428,7 +428,7 @@ export default function NewSprintPage() {
           <div className="flex gap-3 justify-end">
             <Link
               href={`${ROUTES.SCRUM_MASTER}/sprints`}
-              className="px-6 py-2.5 bg-[#283039] border border-[#3b4754] text-white text-sm font-bold rounded-lg hover:bg-[#3b4754] transition-colors"
+              className="px-6 py-2.5 bg-slate-100 dark:bg-[#283039] border border-slate-300 dark:border-[#3b4754] text-slate-700 dark:text-white text-sm font-bold rounded-lg hover:bg-slate-200 dark:hover:bg-[#3b4754] transition-colors"
             >
               Annuler
             </Link>

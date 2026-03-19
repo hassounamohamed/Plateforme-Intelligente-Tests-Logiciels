@@ -47,7 +47,6 @@ class Utilisateur(Base):
     # Audit
     audit_logs = relationship("AuditLog", back_populates="user", foreign_keys="AuditLog.userId")
 
-
 class Role(Base):
     __tablename__ = "role"
 

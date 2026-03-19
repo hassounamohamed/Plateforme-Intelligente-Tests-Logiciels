@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { isAxiosError } from "axios";
 import {
   loginApi,
   registerApi,
@@ -14,6 +15,24 @@ import type {
   ResetPasswordPayload,
 } from "@/types";
 import { ROUTES } from "@/lib/constants";
+
+function extractApiError(err: unknown, fallback: string): string {
+  if (isAxiosError(err)) {
+    const detail = err.response?.data?.detail;
+    if (typeof detail === "string" && detail.trim().length > 0) {
+      return detail;
+    }
+    if (typeof err.message === "string" && err.message.trim().length > 0) {
+      return err.message;
+    }
+  }
+
+  if (err instanceof Error && err.message.trim().length > 0) {
+    return err.message;
+  }
+
+  return fallback;
+}
 
 // ─── useLogin ────────────────────────────────────────────────────────────────
 
@@ -121,7 +140,7 @@ export function useForgotPassword() {
       await forgotPasswordApi(payload);
       setSuccess(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "La demande a échoué.");
+      setError(extractApiError(err, "La demande a échoué."));
     } finally {
       setIsLoading(false);
     }
@@ -146,11 +165,7 @@ export function useResetPassword() {
       setSuccess(true);
       router.push(ROUTES.LOGIN + "?reset=1");
     } catch (err: unknown) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "La réinitialisation a échoué."
-      );
+      setError(extractApiError(err, "La réinitialisation a échoué."));
     } finally {
       setIsLoading(false);
     }

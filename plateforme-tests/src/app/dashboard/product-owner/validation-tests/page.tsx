@@ -20,8 +20,7 @@ export default function ValidationTestsPage() {
     { href: `${ROUTES.PRODUCT_OWNER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.PRODUCT_OWNER}/epics`, icon: "content_cut", label: "Epics" },
     { href: `${ROUTES.PRODUCT_OWNER}/sprints`, icon: "event", label: "Sprints" },
-    { href: `${ROUTES.PRODUCT_OWNER}/ai-backlog`, icon: "smart_toy", label: "AI Backlog" },
-    { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "menu_book", label: "Cahier de Tests" },
+        { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "menu_book", label: "Cahier de Tests" },
     { href: `${ROUTES.PRODUCT_OWNER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.PRODUCT_OWNER}/roadmap`, icon: "map", label: "Roadmap" },
     { href: `${ROUTES.PRODUCT_OWNER}/profile`, icon: "account_circle", label: "Mon Profil" },
@@ -71,12 +70,12 @@ export default function ValidationTestsPage() {
   if (projects.length === 0) {
     return (
       <DashboardLayout sidebarContent={sidebarContent} headerContent={headerContent}>
-        <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-8 text-center">
-          <div className="text-[#9dabb9] mb-4">
+        <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-8 text-center">
+          <div className="text-slate-500 dark:text-[#9dabb9] mb-4">
             <span className="material-symbols-outlined text-6xl">folder_open</span>
           </div>
           <h3 className="text-white text-lg font-bold mb-2">Aucun projet trouvé</h3>
-          <p className="text-[#9dabb9]">Vous n&apos;avez aucun projet pour le moment.</p>
+          <p className="text-slate-500 dark:text-[#9dabb9]">Vous n&apos;avez aucun projet pour le moment.</p>
         </div>
       </DashboardLayout>
     );
@@ -88,15 +87,15 @@ export default function ValidationTestsPage() {
         {selectedProject ? (
           <CahierTestsManager projectId={selectedProject.id} readOnly />
         ) : (
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-12">
+          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-12">
             <div className="max-w-md mx-auto text-center">
-              <div className="text-[#9dabb9] mb-6">
+              <div className="text-slate-500 dark:text-[#9dabb9] mb-6">
                 <span className="material-symbols-outlined text-8xl">menu_book</span>
               </div>
               <h3 className="text-white text-2xl font-bold mb-3">
                 Sélectionnez un projet
               </h3>
-              <p className="text-[#9dabb9] text-base mb-8">
+              <p className="text-slate-500 dark:text-[#9dabb9] text-base mb-8">
                 Choisissez le projet pour lequel vous souhaitez consulter le cahier de tests.
               </p>
               <div className="space-y-4">
@@ -112,7 +111,7 @@ export default function ValidationTestsPage() {
                       setSelectedProject(project || null);
                     }
                   }}
-                  className="w-full h-12 px-4 bg-[#283039] border border-[#3b4754] text-white text-base rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                  className="w-full h-12 px-4 bg-slate-100 dark:bg-[#283039] border border-slate-200 dark:border-[#3b4754] text-white text-base rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                 >
                   <option value="">-- Sélectionnez un projet --</option>
                   {projects.map((project) => (
@@ -121,7 +120,7 @@ export default function ValidationTestsPage() {
                     </option>
                   ))}
                 </select>
-                <p className="text-[#9dabb9] text-sm text-left mt-2">
+                <p className="text-slate-500 dark:text-[#9dabb9] text-sm text-left mt-2">
                   {projects.length} projet{projects.length > 1 ? "s" : ""} disponible{projects.length > 1 ? "s" : ""}
                 </p>
               </div>

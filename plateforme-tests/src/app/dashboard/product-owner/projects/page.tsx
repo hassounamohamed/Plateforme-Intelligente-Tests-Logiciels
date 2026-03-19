@@ -61,8 +61,7 @@ export default function ProjectsManagementPage() {
     { href: `${ROUTES.PRODUCT_OWNER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.PRODUCT_OWNER}/epics`, icon: "content_cut", label: "Epics" },
     { href: `${ROUTES.PRODUCT_OWNER}/sprints`, icon: "event", label: "Sprints" },
-    { href: `${ROUTES.PRODUCT_OWNER}/ai-backlog`, icon: "smart_toy", label: "AI Backlog" },
-    { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
+        { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
     { href: `${ROUTES.PRODUCT_OWNER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.PRODUCT_OWNER}/roadmap`, icon: "map", label: "Roadmap" },
     { href: `${ROUTES.PRODUCT_OWNER}/profile`, icon: "account_circle", label: "Mon Profil" },
@@ -299,7 +298,7 @@ export default function ProjectsManagementPage() {
       <div className="max-w-350 mx-auto flex flex-col gap-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Projects Section */}
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
+          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-white text-lg font-bold">Mes Projets</h2>
               <button
@@ -312,12 +311,12 @@ export default function ProjectsManagementPage() {
             </div>
 
             {isLoading ? (
-              <div className="text-center py-12 text-[#9dabb9]">
+              <div className="text-center py-12 text-slate-500 dark:text-[#9dabb9]">
                 Chargement...
               </div>
             ) : projects.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-[#9dabb9] mb-4">Aucun projet</p>
+                <p className="text-slate-500 dark:text-[#9dabb9] mb-4">Aucun projet</p>
                 <button
                   onClick={handleCreateProject}
                   className="px-4 py-2 bg-primary hover:bg-blue-600 text-white rounded-lg text-sm"
@@ -333,7 +332,7 @@ export default function ProjectsManagementPage() {
                     className={`p-4 rounded-lg border cursor-pointer transition-all ${
                       selectedProject?.id === project.id
                         ? "border-primary bg-primary/5"
-                        : "border-[#3b4754] hover:border-primary/50"
+                        : "border-slate-200 dark:border-[#3b4754] hover:border-primary/50"
                     }`}
                     onClick={() => setSelectedProject(project)}
                   >
@@ -341,7 +340,7 @@ export default function ProjectsManagementPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           {project.key && (
-                            <span className="text-[#9dabb9] text-xs font-mono bg-[#283039] px-2 py-0.5 rounded">
+                            <span className="text-slate-500 dark:text-[#9dabb9] text-xs font-mono bg-slate-100 dark:bg-[#283039] px-2 py-0.5 rounded">
                               {project.key}
                             </span>
                           )}
@@ -390,7 +389,7 @@ export default function ProjectsManagementPage() {
                           className="p-1 hover:bg-[#283039] rounded"
                           title="Modifier"
                         >
-                          <span className="material-symbols-outlined text-[18px] text-[#9dabb9]">edit</span>
+                          <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-[#9dabb9]">edit</span>
                         </button>
                         <button
                           onClick={(e) => {
@@ -404,7 +403,7 @@ export default function ProjectsManagementPage() {
                         </button>
                       </div>
                     </div>
-                    <p className="text-sm text-[#9dabb9] line-clamp-2">
+                    <p className="text-sm text-slate-500 dark:text-[#9dabb9] line-clamp-2">
                       {project.description || "Aucune description"}
                     </p>
                   </div>
@@ -414,7 +413,7 @@ export default function ProjectsManagementPage() {
           </div>
 
           {/* Modules Section */}
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
+          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-white text-lg font-bold">
                 {selectedProject ? `Modules: ${selectedProject.nom}` : "Modules"}
@@ -431,12 +430,12 @@ export default function ProjectsManagementPage() {
             </div>
 
             {!selectedProject ? (
-              <div className="text-center py-12 text-[#9dabb9]">
+              <div className="text-center py-12 text-slate-500 dark:text-[#9dabb9]">
                 Sélectionnez un projet pour voir ses modules
               </div>
             ) : modules.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-[#9dabb9] mb-4">Aucun module</p>
+                <p className="text-slate-500 dark:text-[#9dabb9] mb-4">Aucun module</p>
                 <button
                   onClick={handleCreateModule}
                   className="px-4 py-2 bg-primary hover:bg-blue-600 text-white rounded-lg text-sm"
@@ -449,7 +448,7 @@ export default function ProjectsManagementPage() {
                 {modules.map((module) => (
                   <div
                     key={module.id}
-                    className="p-4 rounded-lg border border-[#3b4754] hover:border-primary/50 transition-all"
+                    className="p-4 rounded-lg border border-slate-200 dark:border-[#3b4754] hover:border-primary/50 transition-all"
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex items-center gap-2 flex-1">
@@ -461,7 +460,7 @@ export default function ProjectsManagementPage() {
                           onClick={() => handleEditModule(module)}
                           className="p-1 hover:bg-[#283039] rounded"
                         >
-                          <span className="material-symbols-outlined text-[18px] text-[#9dabb9]">edit</span>
+                          <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-[#9dabb9]">edit</span>
                         </button>
                         <button
                           onClick={() => handleDeleteModule(module.id)}
@@ -471,10 +470,10 @@ export default function ProjectsManagementPage() {
                         </button>
                       </div>
                     </div>
-                    <p className="text-sm text-[#9dabb9]">
+                    <p className="text-sm text-slate-500 dark:text-[#9dabb9]">
                       {module.description || "Aucune description"}
                     </p>
-                    <p className="text-xs text-[#9dabb9] mt-2">
+                    <p className="text-xs text-slate-500 dark:text-[#9dabb9] mt-2">
                       {module.epics?.length || 0} epic(s)
                     </p>
                   </div>
@@ -512,13 +511,13 @@ export default function ProjectsManagementPage() {
       {/* Attachments Modal */}
       {showAttachments && attachmentsProject && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-white text-xl font-bold">
                   Pièces jointes
                 </h2>
-                <p className="text-[#9dabb9] text-sm mt-1">
+                <p className="text-slate-500 dark:text-[#9dabb9] text-sm mt-1">
                   {attachmentsProject.nom}
                 </p>
               </div>
@@ -526,7 +525,7 @@ export default function ProjectsManagementPage() {
                 onClick={() => setShowAttachments(false)}
                 className="p-2 hover:bg-[#283039] rounded-lg transition-colors"
               >
-                <span className="material-symbols-outlined text-[#9dabb9]">
+                <span className="material-symbols-outlined text-slate-500 dark:text-[#9dabb9]">
                   close
                 </span>
               </button>

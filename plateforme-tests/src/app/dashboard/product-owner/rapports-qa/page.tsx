@@ -21,8 +21,7 @@ export default function RapportsQAPage() {
     { href: `${ROUTES.PRODUCT_OWNER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.PRODUCT_OWNER}/epics`, icon: "content_cut", label: "Epics" },
     { href: `${ROUTES.PRODUCT_OWNER}/sprints`, icon: "event", label: "Sprints" },
-    { href: `${ROUTES.PRODUCT_OWNER}/ai-backlog`, icon: "smart_toy", label: "AI Backlog" },
-    { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
+        { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
     { href: `${ROUTES.PRODUCT_OWNER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.PRODUCT_OWNER}/roadmap`, icon: "map", label: "Roadmap" },
     { href: `${ROUTES.PRODUCT_OWNER}/profile`, icon: "account_circle", label: "Mon Profil" },
@@ -257,14 +256,14 @@ export default function RapportsQAPage() {
     >
       <div className="max-w-350 mx-auto flex flex-col gap-6">
       {/* Project Selector */}
-      <div className="bg-surface-dark border border-[#3b4754] rounded-lg p-4">
+      <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-lg p-4">
         <label className="block text-sm font-medium text-gray-300 mb-2">
           Sélectionner un projet
         </label>
         <select
           value={selectedProject || ""}
           onChange={(e) => setSelectedProject(Number(e.target.value))}
-          className="w-full md:w-96 bg-surface-dark border border-[#3b4754] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+          className="w-full md:w-96 bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
         >
           {projects.map((project) => (
             <option key={project.id} value={project.id}>
@@ -275,12 +274,12 @@ export default function RapportsQAPage() {
       </div>
 
       {isLoading ? (
-        <div className="bg-surface-dark border border-[#3b4754] rounded-lg p-8 text-center">
+        <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-lg p-8 text-center">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mx-auto"></div>
           <p className="text-gray-400 mt-4">Chargement des rapports...</p>
         </div>
       ) : rapports.length === 0 ? (
-        <div className="bg-surface-dark border border-[#3b4754] rounded-lg p-8 text-center">
+        <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-lg p-8 text-center">
           <span className="material-symbols-outlined text-6xl text-gray-600">
             assessment
           </span>
@@ -297,10 +296,10 @@ export default function RapportsQAPage() {
               <div
                 key={rapport.id}
                 onClick={() => setSelectedRapport(rapport)}
-                className={`bg-surface-dark border rounded-lg p-4 cursor-pointer transition-colors ${
+                className={`bg-white dark:bg-surface-dark border rounded-lg p-4 cursor-pointer transition-colors ${
                   selectedRapport?.id === rapport.id
                     ? "border-blue-500 bg-blue-500/5"
-                    : "border-[#3b4754] hover:border-blue-500/50"
+                    : "border-slate-200 dark:border-[#3b4754] hover:border-blue-500/50"
                 }`}
               >
                 <div className="flex items-start justify-between mb-2">
@@ -342,32 +341,32 @@ export default function RapportsQAPage() {
           {selectedRapport && (
             <div className="lg:col-span-2 space-y-6">
               {/* Overview */}
-              <div className="bg-surface-dark border border-[#3b4754] rounded-lg p-6">
+              <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-lg p-6">
                 <h2 className="text-xl font-bold text-white mb-4">
                   {selectedRapport.sprint?.nom || `Rapport #${selectedRapport.id}`}
                 </h2>
                 
                 {/* Metrics Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  <div className="bg-surface-dark rounded-lg p-4 text-center">
+                  <div className="bg-white dark:bg-surface-dark rounded-lg p-4 text-center">
                     <div className="text-xs text-gray-400 mb-1">Taux Réussite</div>
                     <div className="text-2xl font-bold text-green-400">
                       {selectedRapport.tauxReussite}%
                     </div>
                   </div>
-                  <div className="bg-surface-dark rounded-lg p-4 text-center">
+                  <div className="bg-white dark:bg-surface-dark rounded-lg p-4 text-center">
                     <div className="text-xs text-gray-400 mb-1">Tests Exécutés</div>
                     <div className="text-2xl font-bold text-white">
                       {selectedRapport.nombreTestsExecutes}
                     </div>
                   </div>
-                  <div className="bg-surface-dark rounded-lg p-4 text-center">
+                  <div className="bg-white dark:bg-surface-dark rounded-lg p-4 text-center">
                     <div className="text-xs text-gray-400 mb-1">Réussis</div>
                     <div className="text-2xl font-bold text-green-400">
                       {selectedRapport.nombreTestsReussis}
                     </div>
                   </div>
-                  <div className="bg-surface-dark rounded-lg p-4 text-center">
+                  <div className="bg-white dark:bg-surface-dark rounded-lg p-4 text-center">
                     <div className="text-xs text-gray-400 mb-1">Échoués</div>
                     <div className="text-2xl font-bold text-red-400">
                       {selectedRapport.nombreTestsEchoues}
@@ -397,19 +396,19 @@ export default function RapportsQAPage() {
 
               {/* Indicateurs de Qualité */}
               {selectedRapport.indicateurs && (
-                <div className="bg-surface-dark border border-[#3b4754] rounded-lg p-6">
+                <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-lg p-6">
                   <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <span className="material-symbols-outlined">analytics</span>
                     Indicateurs de Qualité
                   </h3>
 
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div className="bg-surface-dark rounded-lg p-4">
+                    <div className="bg-white dark:bg-surface-dark rounded-lg p-4">
                       <div className="text-xs text-gray-400 mb-2">Couverture Tests</div>
                       <div className="text-2xl font-bold text-white mb-1">
                         {selectedRapport.indicateurs.tauxCouverture}%
                       </div>
-                      <div className="w-full bg-[#283039] rounded-full h-2">
+                      <div className="w-full bg-slate-100 dark:bg-[#283039] rounded-full h-2">
                         <div
                           className="bg-blue-500 h-2 rounded-full"
                           style={{
@@ -419,7 +418,7 @@ export default function RapportsQAPage() {
                       </div>
                     </div>
 
-                    <div className="bg-surface-dark rounded-lg p-4">
+                    <div className="bg-white dark:bg-surface-dark rounded-lg p-4">
                       <div className="text-xs text-gray-400 mb-2">Indice Qualité</div>
                       <div
                         className={`text-2xl font-bold mb-1 ${getQualityColor(
@@ -442,7 +441,7 @@ export default function RapportsQAPage() {
                       </div>
                     </div>
 
-                    <div className="bg-surface-dark rounded-lg p-4">
+                    <div className="bg-white dark:bg-surface-dark rounded-lg p-4">
                       <div className="text-xs text-gray-400 mb-2">Anomalies</div>
                       <div className="text-2xl font-bold text-white mb-1">
                         {selectedRapport.indicateurs.nombreAnomalies}
@@ -458,7 +457,7 @@ export default function RapportsQAPage() {
               {/* Recommandations Détaillées */}
               {selectedRapport.recommandations_qualite &&
                 selectedRapport.recommandations_qualite.length > 0 && (
-                  <div className="bg-surface-dark border border-[#3b4754] rounded-lg p-6">
+                  <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-lg p-6">
                     <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                       <span className="material-symbols-outlined">rule</span>
                       Recommandations Détaillées
@@ -468,7 +467,7 @@ export default function RapportsQAPage() {
                       {selectedRapport.recommandations_qualite.map((rec) => (
                         <div
                           key={rec.id}
-                          className="bg-surface-dark rounded-lg p-4 border-l-4 border-blue-500"
+                          className="bg-white dark:bg-surface-dark rounded-lg p-4 border-l-4 border-blue-500"
                         >
                           <div className="flex items-start justify-between mb-2">
                             <h4 className="font-semibold text-white flex-1">
@@ -497,7 +496,7 @@ export default function RapportsQAPage() {
                             </p>
                           )}
                           <div className="flex items-center gap-4 text-xs text-gray-500">
-                            <span className="bg-[#283039] px-2 py-1 rounded">
+                            <span className="bg-slate-100 dark:bg-[#283039] px-2 py-1 rounded">
                               {rec.categorie}
                             </span>
                             <span>Impact: {rec.impact}/10</span>

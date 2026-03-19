@@ -4,6 +4,7 @@ from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from sqlalchemy.exc import ProgrammingError
 
 from core.config import ENVIRONMENT
 from db.database import engine, get_db, Base
@@ -21,6 +22,7 @@ from models import (
     LogSystems, AuditLog,
     AIGeneration, AILog, AIGeneratedItem,
     CahierTestGlobal, CasTest,
+    PasswordResetToken,
 )
 
 # Import routes
@@ -75,12 +77,19 @@ def startup():
             connection.execute(text("SELECT 1"))
         print("[OK] Database connection successful!")
         print(f"[OK] Connected to: {engine.url.database}")
-        
+
         # Create all tables (will only create new ones, skip existing)
-        Base.metadata.create_all(bind=engine)
-        print("[OK] All database tables created successfully!")
-        
-        
+        try:
+            Base.metadata.create_all(bind=engine)
+            print("[OK] All database tables created successfully!")
+        except ProgrammingError as pe:
+            err = str(pe).lower()
+            if "permission denied for schema" in err or "insufficientprivilege" in err:
+                print("[WARNING] Missing CREATE privilege on schema 'public'.")
+                print("[WARNING] Auto table creation skipped. Apply migration with a privileged DB user.")
+            else:
+                raise
+
     except Exception as e:
         print(f"[ERROR] Database initialization failed: {e}")
         raise

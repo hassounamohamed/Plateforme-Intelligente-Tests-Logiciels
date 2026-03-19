@@ -45,12 +45,12 @@ export async function registerApi(
 }
 
 /**
- * Forgot password endpoint (to implement on backend)
+ * Forgot password endpoint
  */
 export async function forgotPasswordApi(
   payload: ForgotPasswordPayload
 ): Promise<void> {
-  await axiosInstance.post("/auth/forgot-password", payload);
+  await axiosInstance.post("/auth/request-reset-password", payload);
 }
 
 /**

@@ -41,6 +41,13 @@ export default function UserStoriesPage() {
 
   useEffect(() => {
     if (selectedProject) {
+      // Reset dependent selectors to avoid requests with stale IDs
+      setSelectedModule(null);
+      setSelectedEpic(null);
+      setModules([]);
+      setEpics([]);
+      setUserStories([]);
+
       loadModules(selectedProject);
       loadProjectMembers(selectedProject);
     }
@@ -48,6 +55,11 @@ export default function UserStoriesPage() {
 
   useEffect(() => {
     if (selectedProject && selectedModule) {
+      // Reset epic-dependent data when module changes
+      setSelectedEpic(null);
+      setEpics([]);
+      setUserStories([]);
+
       loadEpics(selectedProject, selectedModule);
     }
   }, [selectedProject, selectedModule]);
@@ -94,10 +106,19 @@ export default function UserStoriesPage() {
       setModules(modulesData);
       if (modulesData.length > 0) {
         setSelectedModule(modulesData[0].id);
+      } else {
+        setSelectedModule(null);
+        setSelectedEpic(null);
+        setEpics([]);
+        setUserStories([]);
       }
     } catch (error: any) {
       console.error("Erreur chargement modules:", error);
       setModules([]);
+      setSelectedModule(null);
+      setSelectedEpic(null);
+      setEpics([]);
+      setUserStories([]);
     }
   };
 
@@ -107,10 +128,15 @@ export default function UserStoriesPage() {
       setEpics(epicsData);
       if (epicsData.length > 0) {
         setSelectedEpic(epicsData[0].id);
+      } else {
+        setSelectedEpic(null);
+        setUserStories([]);
       }
     } catch (error: any) {
       console.error("Erreur chargement epics:", error);
       setEpics([]);
+      setSelectedEpic(null);
+      setUserStories([]);
     }
   };
 
@@ -129,8 +155,13 @@ export default function UserStoriesPage() {
       setUserStories(filteredData);
     } catch (error: any) {
       console.error("Erreur chargement user stories:", error);
-      setError("Impossible de charger les user stories");
-      setUserStories([]);
+      // During fast selector changes, API can briefly answer 404 for stale combinations.
+      if (error?.response?.status === 404) {
+        setUserStories([]);
+      } else {
+        setError("Impossible de charger les user stories");
+        setUserStories([]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -287,7 +318,13 @@ export default function UserStoriesPage() {
               <label className="text-[#9dabb9] text-sm font-bold mb-2 block">Projet</label>
               <select
                 value={selectedProject || ""}
-                onChange={(e) => setSelectedProject(Number(e.target.value))}
+                onChange={(e) => {
+                  const projectId = Number(e.target.value);
+                  setSelectedModule(null);
+                  setSelectedEpic(null);
+                  setUserStories([]);
+                  setSelectedProject(projectId);
+                }}
                 className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
               >
                 {projects.map((project) => (
@@ -310,7 +347,12 @@ export default function UserStoriesPage() {
               <label className="text-[#9dabb9] text-sm font-bold mb-2 block">Module</label>
               <select
                 value={selectedModule || ""}
-                onChange={(e) => setSelectedModule(Number(e.target.value))}
+                onChange={(e) => {
+                  const moduleId = Number(e.target.value);
+                  setSelectedEpic(null);
+                  setUserStories([]);
+                  setSelectedModule(moduleId);
+                }}
                 className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
               >
                 {modules.map((module) => (

@@ -9,6 +9,12 @@ from db.database import get_db
 from schemas.user import CreateUserRequest
 from schemas.auth import Token
 from services.auth_service import AuthService
+from schemas.password_reset import (
+    MessageResponse,
+    RequestResetPasswordRequest,
+    ResetPasswordRequest,
+)
+from services.password_reset_service import PasswordResetService
 from core.rbac.dependencies import get_current_user
 
 router = APIRouter(
@@ -19,6 +25,10 @@ router = APIRouter(
 
 def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
     return AuthService(db)
+
+
+def get_password_reset_service(db: Session = Depends(get_db)) -> PasswordResetService:
+    return PasswordResetService(db)
 
 # ================= SIGN UP =================
 
@@ -53,3 +63,19 @@ async def get_me(
     svc: AuthService = Depends(get_auth_service),
 ):
     return svc.get_profile(user_id)
+
+
+@router.post("/request-reset-password", response_model=MessageResponse)
+async def request_reset_password(
+    payload: RequestResetPasswordRequest,
+    svc: PasswordResetService = Depends(get_password_reset_service),
+):
+    return svc.request_reset_password(payload.email)
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+async def reset_password(
+    payload: ResetPasswordRequest,
+    svc: PasswordResetService = Depends(get_password_reset_service),
+):
+    return svc.reset_password(payload.token, payload.new_password)

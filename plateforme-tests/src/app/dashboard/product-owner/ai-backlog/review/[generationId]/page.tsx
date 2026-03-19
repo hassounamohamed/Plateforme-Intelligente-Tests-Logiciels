@@ -27,8 +27,7 @@ const sidebarLinks = [
   { href: `${ROUTES.PRODUCT_OWNER}/backlog`, icon: "list", label: "Backlog" },
   { href: `${ROUTES.PRODUCT_OWNER}/epics`, icon: "content_cut", label: "Epics" },
   { href: `${ROUTES.PRODUCT_OWNER}/sprints`, icon: "event", label: "Sprints" },
-  { href: `${ROUTES.PRODUCT_OWNER}/ai-backlog`, icon: "smart_toy", label: "AI Backlog" },
-  { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
+    { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
   { href: `${ROUTES.PRODUCT_OWNER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
   { href: `${ROUTES.PRODUCT_OWNER}/roadmap`, icon: "map", label: "Roadmap" },
   { href: `${ROUTES.PRODUCT_OWNER}/profile`, icon: "account_circle", label: "Mon Profil" },
@@ -266,13 +265,13 @@ export default function AIBacklogReviewPage() {
     return (
       <div
         key={item.id}
-        className={depth > 0 ? "ml-6 border-l border-[#3b4754] pl-4" : ""}
+        className={depth > 0 ? "ml-6 border-l border-slate-200 dark:border-[#3b4754] pl-4" : ""}
       >
         <div
-          className={`bg-surface-dark border rounded-xl p-4 mb-3 transition-opacity ${
+          className={`bg-white dark:bg-surface-dark border rounded-xl p-4 mb-3 transition-opacity ${
             isRejected
               ? "opacity-40 border-red-500/20"
-              : "border-[#3b4754] hover:border-primary/40"
+              : "border-slate-200 dark:border-[#3b4754] hover:border-primary/40"
           }`}
         >
           <div className="flex items-start gap-3">
@@ -307,7 +306,7 @@ export default function AIBacklogReviewPage() {
                   <button
                     onClick={() => openEdit(item)}
                     title="Modifier"
-                    className="flex items-center justify-center h-7 w-7 rounded-lg bg-[#283039] hover:bg-[#3b4754] text-[#9dabb9] hover:text-white transition-colors"
+                    className="flex items-center justify-center h-7 w-7 rounded-lg bg-slate-100 dark:bg-[#283039] hover:bg-[#3b4754] text-slate-500 dark:text-[#9dabb9] hover:text-white transition-colors"
                   >
                     <span className="material-symbols-outlined text-[15px]">
                       edit
@@ -319,7 +318,7 @@ export default function AIBacklogReviewPage() {
                     className={`flex items-center justify-center h-7 w-7 rounded-lg transition-colors ${
                       item.status === "approved"
                         ? "bg-green-500 text-white"
-                        : "bg-[#283039] hover:bg-green-500/20 text-[#9dabb9] hover:text-green-400"
+                        : "bg-slate-100 dark:bg-[#283039] hover:bg-green-500/20 text-slate-500 dark:text-[#9dabb9] hover:text-green-400"
                     }`}
                   >
                     <span className="material-symbols-outlined text-[15px]">
@@ -332,7 +331,7 @@ export default function AIBacklogReviewPage() {
                     className={`flex items-center justify-center h-7 w-7 rounded-lg transition-colors ${
                       item.status === "rejected"
                         ? "bg-red-500 text-white"
-                        : "bg-[#283039] hover:bg-red-500/20 text-[#9dabb9] hover:text-red-400"
+                        : "bg-slate-100 dark:bg-[#283039] hover:bg-red-500/20 text-slate-500 dark:text-[#9dabb9] hover:text-red-400"
                     }`}
                   >
                     <span className="material-symbols-outlined text-[15px]">
@@ -358,7 +357,7 @@ export default function AIBacklogReviewPage() {
                     </span>
                   )}
                   {item.story_points != null && (
-                    <div className="flex items-center gap-1 text-[#9dabb9] text-xs">
+                    <div className="flex items-center gap-1 text-slate-500 dark:text-[#9dabb9] text-xs">
                       <span className="material-symbols-outlined text-[13px]">
                         star
                       </span>
@@ -366,7 +365,7 @@ export default function AIBacklogReviewPage() {
                     </div>
                   )}
                   {item.sprint != null && (
-                    <div className="flex items-center gap-1 text-[#9dabb9] text-xs">
+                    <div className="flex items-center gap-1 text-slate-500 dark:text-[#9dabb9] text-xs">
                       <span className="material-symbols-outlined text-[13px]">
                         event
                       </span>
@@ -374,7 +373,7 @@ export default function AIBacklogReviewPage() {
                     </div>
                   )}
                   {item.duration && (
-                    <div className="flex items-center gap-1 text-[#9dabb9] text-xs">
+                    <div className="flex items-center gap-1 text-slate-500 dark:text-[#9dabb9] text-xs">
                       <span className="material-symbols-outlined text-[13px]">
                         schedule
                       </span>
@@ -392,7 +391,7 @@ export default function AIBacklogReviewPage() {
                     .map((c, i) => (
                       <li
                         key={i}
-                        className="flex items-start gap-1.5 text-xs text-[#9dabb9]"
+                        className="flex items-start gap-1.5 text-xs text-slate-500 dark:text-[#9dabb9]"
                       >
                         <span className="material-symbols-outlined text-[12px] text-green-400 mt-0.5 shrink-0">
                           check_small
@@ -432,8 +431,8 @@ export default function AIBacklogReviewPage() {
           subtitle="Approuvez, modifiez ou rejetez les éléments générés avant de les appliquer"
           actions={
             <Link
-              href={`${ROUTES.PRODUCT_OWNER}/ai-backlog`}
-              className="flex items-center gap-1.5 text-[#9dabb9] hover:text-white bg-[#283039] hover:bg-[#3b4754] px-3 py-2 rounded-lg text-sm transition-colors"
+              href={`${ROUTES.PRODUCT_OWNER}/backlog?tab=ai`}
+              className="flex items-center gap-1.5 text-slate-500 dark:text-[#9dabb9] hover:text-white bg-slate-100 dark:bg-[#283039] hover:bg-[#3b4754] px-3 py-2 rounded-lg text-sm transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">
                 arrow_back
@@ -456,7 +455,7 @@ export default function AIBacklogReviewPage() {
                 <h2 className="text-white font-bold text-xl">
                   Backlog appliqué avec succès !
                 </h2>
-                <p className="text-[#9dabb9] text-sm">
+                <p className="text-slate-500 dark:text-[#9dabb9] text-sm">
                   Les éléments ont été créés dans votre projet.
                 </p>
               </div>
@@ -469,7 +468,7 @@ export default function AIBacklogReviewPage() {
               ].map(({ label, value, icon }) => (
                 <div
                   key={label}
-                  className="bg-[#283039] rounded-lg p-4 text-center"
+                  className="bg-slate-100 dark:bg-[#283039] rounded-lg p-4 text-center"
                 >
                   <span className="material-symbols-outlined text-primary text-2xl">
                     {icon}
@@ -477,7 +476,7 @@ export default function AIBacklogReviewPage() {
                   <div className="text-2xl font-bold text-white mt-1">
                     {value}
                   </div>
-                  <div className="text-[#9dabb9] text-sm">{label}</div>
+                  <div className="text-slate-500 dark:text-[#9dabb9] text-sm">{label}</div>
                 </div>
               ))}
             </div>
@@ -491,7 +490,7 @@ export default function AIBacklogReviewPage() {
               </Link>
               <Link
                 href={`${ROUTES.PRODUCT_OWNER}/epics`}
-                className="flex items-center gap-2 bg-[#283039] hover:bg-[#3b4754] text-white px-5 py-2.5 rounded-lg font-medium transition-colors"
+                className="flex items-center gap-2 bg-slate-100 dark:bg-[#283039] hover:bg-[#3b4754] text-white px-5 py-2.5 rounded-lg font-medium transition-colors"
               >
                 <span className="material-symbols-outlined text-[18px]">content_cut</span>
                 Voir les Epics
@@ -502,23 +501,23 @@ export default function AIBacklogReviewPage() {
 
         {/* ── Stats + action bar ─────────────────────────────────────────── */}
         {!isLoading && !applyResult && (
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-4">
+          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-4">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-5 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <span className="text-[#9dabb9] text-sm">Total :</span>
+                  <span className="text-slate-500 dark:text-[#9dabb9] text-sm">Total :</span>
                   <span className="text-white font-bold">{totalCount}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-green-400" />
-                  <span className="text-[#9dabb9] text-sm">Approuvés :</span>
+                  <span className="text-slate-500 dark:text-[#9dabb9] text-sm">Approuvés :</span>
                   <span className="text-green-400 font-bold">
                     {approvedCount}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-red-400" />
-                  <span className="text-[#9dabb9] text-sm">Rejetés :</span>
+                  <span className="text-slate-500 dark:text-[#9dabb9] text-sm">Rejetés :</span>
                   <span className="text-red-400 font-bold">{rejectedCount}</span>
                 </div>
               </div>
@@ -570,7 +569,7 @@ export default function AIBacklogReviewPage() {
         {isLoading && (
           <div className="flex flex-col items-center gap-3 py-20">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
-            <p className="text-[#9dabb9] text-sm">
+            <p className="text-slate-500 dark:text-[#9dabb9] text-sm">
               Chargement des items générés…
             </p>
           </div>
@@ -586,12 +585,12 @@ export default function AIBacklogReviewPage() {
         {/* ── Empty ─────────────────────────────────────────────────────── */}
         {!isLoading && !applyResult && items.length === 0 && (
           <div className="flex flex-col items-center gap-3 py-20 text-center">
-            <span className="material-symbols-outlined text-6xl text-[#9dabb9]">
+            <span className="material-symbols-outlined text-6xl text-slate-500 dark:text-[#9dabb9]">
               inbox
             </span>
-            <p className="text-[#9dabb9]">Aucun item généré.</p>
+            <p className="text-slate-500 dark:text-[#9dabb9]">Aucun item généré.</p>
             <Link
-              href={`${ROUTES.PRODUCT_OWNER}/ai-backlog`}
+              href={`${ROUTES.PRODUCT_OWNER}/backlog?tab=ai`}
               className="flex items-center gap-2 text-primary hover:underline text-sm"
             >
               ← Retour à la génération
@@ -603,9 +602,9 @@ export default function AIBacklogReviewPage() {
       {/* ── Edit Modal ──────────────────────────────────────────────────── */}
       {editingItem && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-[#1e293b] border border-[#3b4754] rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#1e293b] border border-slate-200 dark:border-[#3b4754] rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             {/* Modal header */}
-            <div className="flex items-center justify-between p-5 border-b border-[#3b4754]">
+            <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-[#3b4754]">
               <div className="flex items-center gap-2">
                 <div
                   className={`flex items-center justify-center h-8 w-8 rounded-lg ${typeBg(editingItem.type)}`}
@@ -620,7 +619,7 @@ export default function AIBacklogReviewPage() {
               </div>
               <button
                 onClick={() => setEditingItem(null)}
-                className="text-[#9dabb9] hover:text-white"
+                className="text-slate-500 dark:text-[#9dabb9] hover:text-white"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
@@ -629,7 +628,7 @@ export default function AIBacklogReviewPage() {
             {/* Modal body */}
             <div className="p-5 flex flex-col gap-4">
               <div>
-                <label className="text-[#9dabb9] text-sm font-bold mb-1.5 block">
+                <label className="text-slate-500 dark:text-[#9dabb9] text-sm font-bold mb-1.5 block">
                   Titre
                 </label>
                 <input
@@ -638,12 +637,12 @@ export default function AIBacklogReviewPage() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, title: e.target.value })
                   }
-                  className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-primary"
+                  className="w-full bg-slate-100 dark:bg-[#283039] border border-slate-200 dark:border-[#3b4754] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-primary"
                 />
               </div>
 
               <div>
-                <label className="text-[#9dabb9] text-sm font-bold mb-1.5 block">
+                <label className="text-slate-500 dark:text-[#9dabb9] text-sm font-bold mb-1.5 block">
                   Description
                 </label>
                 <textarea
@@ -652,7 +651,7 @@ export default function AIBacklogReviewPage() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, description: e.target.value })
                   }
-                  className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-primary resize-none"
+                  className="w-full bg-slate-100 dark:bg-[#283039] border border-slate-200 dark:border-[#3b4754] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-primary resize-none"
                 />
               </div>
 
@@ -660,7 +659,7 @@ export default function AIBacklogReviewPage() {
                 <>
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <label className="text-[#9dabb9] text-xs font-bold mb-1 block">
+                      <label className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold mb-1 block">
                         Priorité
                       </label>
                       <select
@@ -671,7 +670,7 @@ export default function AIBacklogReviewPage() {
                             priority: e.target.value as AIPriority,
                           })
                         }
-                        className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-primary"
+                        className="w-full bg-slate-100 dark:bg-[#283039] border border-slate-200 dark:border-[#3b4754] rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-primary"
                       >
                         <option value="High">High</option>
                         <option value="Medium">Medium</option>
@@ -679,7 +678,7 @@ export default function AIBacklogReviewPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="text-[#9dabb9] text-xs font-bold mb-1 block">
+                      <label className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold mb-1 block">
                         Story Points
                       </label>
                       <input
@@ -693,11 +692,11 @@ export default function AIBacklogReviewPage() {
                             story_points: Number(e.target.value),
                           })
                         }
-                        className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-primary"
+                        className="w-full bg-slate-100 dark:bg-[#283039] border border-slate-200 dark:border-[#3b4754] rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-primary"
                       />
                     </div>
                     <div>
-                      <label className="text-[#9dabb9] text-xs font-bold mb-1 block">
+                      <label className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold mb-1 block">
                         Sprint
                       </label>
                       <input
@@ -711,13 +710,13 @@ export default function AIBacklogReviewPage() {
                             sprint: Number(e.target.value),
                           })
                         }
-                        className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-primary"
+                        className="w-full bg-slate-100 dark:bg-[#283039] border border-slate-200 dark:border-[#3b4754] rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-primary"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-[#9dabb9] text-xs font-bold mb-1 block">
+                    <label className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold mb-1 block">
                       Durée estimée
                     </label>
                     <input
@@ -727,12 +726,12 @@ export default function AIBacklogReviewPage() {
                       onChange={(e) =>
                         setEditForm({ ...editForm, duration: e.target.value })
                       }
-                      className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
+                      className="w-full bg-slate-100 dark:bg-[#283039] border border-slate-200 dark:border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[#9dabb9] text-xs font-bold mb-1 block">
+                    <label className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold mb-1 block">
                       Critères d&apos;acceptation (JSON)
                     </label>
                     <textarea
@@ -745,7 +744,7 @@ export default function AIBacklogReviewPage() {
                           acceptance_criteria: e.target.value,
                         })
                       }
-                      className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary resize-none font-mono"
+                      className="w-full bg-slate-100 dark:bg-[#283039] border border-slate-200 dark:border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary resize-none font-mono"
                     />
                   </div>
                 </>
@@ -753,10 +752,10 @@ export default function AIBacklogReviewPage() {
             </div>
 
             {/* Modal footer */}
-            <div className="flex justify-end gap-3 p-5 border-t border-[#3b4754]">
+            <div className="flex justify-end gap-3 p-5 border-t border-slate-200 dark:border-[#3b4754]">
               <button
                 onClick={() => setEditingItem(null)}
-                className="px-4 py-2 rounded-lg bg-[#283039] hover:bg-[#3b4754] text-white text-sm transition-colors"
+                className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-[#283039] hover:bg-[#3b4754] text-white text-sm transition-colors"
               >
                 Annuler
               </button>
