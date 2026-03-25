@@ -191,8 +191,8 @@ export default function SprintDetailsPage() {
       <div className="max-w-350 mx-auto flex flex-col gap-6">
         {/* Sprint Info */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
-            <p className="text-[#9dabb9] text-xs font-bold uppercase mb-2">Statut</p>
+          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
+            <p className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold uppercase mb-2">Statut</p>
             <span
               className={`inline-block px-3 py-1 rounded-full text-sm font-bold ${
                 sprint.statut === "en_cours"
@@ -210,9 +210,9 @@ export default function SprintDetailsPage() {
             </span>
           </div>
 
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
-            <p className="text-[#9dabb9] text-xs font-bold uppercase mb-2">Période</p>
-            <p className="text-white text-sm">
+          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
+            <p className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold uppercase mb-2">Période</p>
+            <p className="text-slate-900 dark:text-white text-sm">
               {sprint.dateDebut
                 ? new Date(sprint.dateDebut).toLocaleDateString("fr-FR")
                 : "Non défini"}{" "}
@@ -223,9 +223,9 @@ export default function SprintDetailsPage() {
             </p>
           </div>
 
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
-            <p className="text-[#9dabb9] text-xs font-bold uppercase mb-2">Capacité</p>
-            <p className="text-white text-lg font-bold">
+          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
+            <p className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold uppercase mb-2">Capacité</p>
+            <p className="text-slate-900 dark:text-white text-lg font-bold">
               {sprint.capaciteEquipe || "Non défini"} points
             </p>
           </div>
@@ -233,32 +233,32 @@ export default function SprintDetailsPage() {
 
         {/* Objectif */}
         {sprint.objectifSprint && (
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
-            <p className="text-[#9dabb9] text-xs font-bold uppercase mb-2">Objectif du Sprint</p>
-            <p className="text-white text-sm">{sprint.objectifSprint}</p>
+          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
+            <p className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold uppercase mb-2">Objectif du Sprint</p>
+            <p className="text-slate-700 dark:text-white text-sm">{sprint.objectifSprint}</p>
           </div>
         )}
 
         {/* Vélocité */}
         {velocite && (
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
-            <h3 className="text-white text-lg font-bold mb-4">Métriques du Sprint</h3>
+          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
+            <h3 className="text-slate-900 dark:text-white text-lg font-bold mb-4">Métriques du Sprint</h3>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <p className="text-[#9dabb9] text-xs font-bold uppercase mb-2">Vélocité</p>
-                <p className="text-white text-2xl font-bold">{velocite.velocite}</p>
+                <p className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold uppercase mb-2">Vélocité</p>
+                <p className="text-slate-900 dark:text-white text-2xl font-bold">{velocite.velocite}</p>
               </div>
               <div>
-                <p className="text-[#9dabb9] text-xs font-bold uppercase mb-2">Points Total</p>
-                <p className="text-white text-2xl font-bold">{velocite.points_total}</p>
+                <p className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold uppercase mb-2">Points Total</p>
+                <p className="text-slate-900 dark:text-white text-2xl font-bold">{velocite.points_total}</p>
               </div>
               <div>
-                <p className="text-[#9dabb9] text-xs font-bold uppercase mb-2">Points Terminés</p>
+                <p className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold uppercase mb-2">Points Terminés</p>
                 <p className="text-[#0bda5b] text-2xl font-bold">{velocite.points_termines}</p>
               </div>
               <div>
-                <p className="text-[#9dabb9] text-xs font-bold uppercase mb-2">US Terminées</p>
-                <p className="text-white text-2xl font-bold">
+                <p className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold uppercase mb-2">US Terminées</p>
+                <p className="text-slate-900 dark:text-white text-2xl font-bold">
                   {velocite.nb_terminees} / {velocite.nb_userstories}
                 </p>
               </div>
@@ -267,12 +267,12 @@ export default function SprintDetailsPage() {
         )}
 
         {/* User Stories */}
-        <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
-          <h3 className="text-white text-lg font-bold mb-4">
+        <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
+          <h3 className="text-slate-900 dark:text-white text-lg font-bold mb-4">
             User Stories ({sprint.userstories?.length || 0})
           </h3>
           {!sprint.userstories || sprint.userstories.length === 0 ? (
-            <p className="text-[#9dabb9] text-sm text-center py-4">
+            <p className="text-slate-500 dark:text-[#9dabb9] text-sm text-center py-4">
               Aucune user story dans ce sprint
             </p>
           ) : (
@@ -290,17 +290,17 @@ export default function SprintDetailsPage() {
                 <Link
                   key={us.id}
                   href={userStoryLink}
-                  className="group block bg-[#283039] border border-[#3b4754] rounded-lg p-4 hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/10 cursor-pointer"
+                  className="group block bg-slate-50 dark:bg-[#283039] border border-slate-200 dark:border-[#3b4754] rounded-lg p-4 hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/10 cursor-pointer"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         {us.reference && (
-                          <span className="text-[#9dabb9] text-xs font-mono bg-[#1c2229] px-2 py-0.5 rounded">
+                          <span className="text-slate-500 dark:text-[#9dabb9] text-xs font-mono bg-white dark:bg-[#1c2229] border border-slate-200 dark:border-transparent px-2 py-0.5 rounded">
                             {us.reference}
                           </span>
                         )}
-                        <h4 className="text-white font-medium text-sm group-hover:text-primary transition-colors">{us.titre}</h4>
+                        <h4 className="text-slate-900 dark:text-white font-medium text-sm group-hover:text-primary transition-colors">{us.titre}</h4>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={`px-2 py-0.5 rounded text-xs font-bold ${getStatusColor(us.statut || "to_do")}`}>
@@ -312,7 +312,7 @@ export default function SprintDetailsPage() {
                           </span>
                         )}
                         {us.points !== null && us.points !== undefined && (
-                          <span className="text-[#9dabb9] text-xs">{us.points} pts</span>
+                            <span className="text-slate-500 dark:text-[#9dabb9] text-xs">{us.points} pts</span>
                         )}
                       </div>
                     </div>

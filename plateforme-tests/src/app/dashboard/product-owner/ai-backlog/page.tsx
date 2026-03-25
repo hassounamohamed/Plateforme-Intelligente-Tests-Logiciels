@@ -19,8 +19,7 @@ const sidebarLinks = [
   { href: `${ROUTES.PRODUCT_OWNER}/backlog`, icon: "list", label: "Backlog" },
   { href: `${ROUTES.PRODUCT_OWNER}/epics`, icon: "content_cut", label: "Epics" },
   { href: `${ROUTES.PRODUCT_OWNER}/sprints`, icon: "event", label: "Sprints" },
-  { href: `${ROUTES.PRODUCT_OWNER}/ai-backlog`, icon: "smart_toy", label: "AI Backlog" },
-  { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
+    { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
   { href: `${ROUTES.PRODUCT_OWNER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
   { href: `${ROUTES.PRODUCT_OWNER}/roadmap`, icon: "map", label: "Roadmap" },
   { href: `${ROUTES.PRODUCT_OWNER}/profile`, icon: "account_circle", label: "Mon Profil" },
@@ -173,7 +172,7 @@ function AIBacklogContent() {
     >
       <div className="max-w-4xl mx-auto flex flex-col gap-6">
         {/* Project Selector + Start */}
-        <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
+        <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
           <div className="flex items-center gap-3 mb-5">
             <div className="bg-primary/20 rounded-lg p-2.5 flex items-center justify-center">
               <span className="material-symbols-outlined text-primary text-[26px]">
@@ -184,7 +183,7 @@ function AIBacklogContent() {
               <h2 className="text-white font-bold text-lg">
                 Génération IA du Backlog
               </h2>
-              <p className="text-[#9dabb9] text-sm">
+              <p className="text-slate-500 dark:text-[#9dabb9] text-sm">
                 Analyse le cahier des charges et génère Modules → Epics → User
                 Stories
               </p>
@@ -192,14 +191,14 @@ function AIBacklogContent() {
           </div>
 
           {isLoadingProjects ? (
-            <div className="flex items-center gap-2 text-[#9dabb9]">
+            <div className="flex items-center gap-2 text-slate-500 dark:text-[#9dabb9]">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
               <span className="text-sm">Chargement des projets…</span>
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
-                <label className="text-[#9dabb9] text-sm font-bold mb-2 block">
+                <label className="text-slate-500 dark:text-[#9dabb9] text-sm font-bold mb-2 block">
                   Projet
                 </label>
                 {projects.length > 0 ? (
@@ -209,7 +208,7 @@ function AIBacklogContent() {
                       setSelectedProject(Number(e.target.value))
                     }
                     disabled={isRunning || isStarting}
-                    className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary disabled:opacity-50"
+                    className="w-full bg-slate-100 dark:bg-[#283039] border border-slate-200 dark:border-[#3b4754] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary disabled:opacity-50"
                   >
                     {projects.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -260,7 +259,7 @@ function AIBacklogContent() {
 
         {/* Progress Section */}
         {generation && (
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 flex flex-col gap-5">
+          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6 flex flex-col gap-5">
             {/* Status row */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -283,13 +282,13 @@ function AIBacklogContent() {
                   {getStatusLabel(generation.status)}
                 </span>
               </div>
-              <span className="text-[#9dabb9] text-sm font-mono">
+              <span className="text-slate-500 dark:text-[#9dabb9] text-sm font-mono">
                 {generation.progress}%
               </span>
             </div>
 
             {/* Progress bar */}
-            <div className="w-full bg-[#283039] rounded-full h-3 overflow-hidden">
+            <div className="w-full bg-slate-100 dark:bg-[#283039] rounded-full h-3 overflow-hidden">
               <div
                 className={`h-3 rounded-full transition-all duration-700 ${
                   isFailed
@@ -303,7 +302,7 @@ function AIBacklogContent() {
             </div>
 
             {/* Segmented labels */}
-            <div className="flex justify-between text-[10px] text-[#9dabb9] font-mono -mt-2">
+            <div className="flex justify-between text-[10px] text-slate-500 dark:text-[#9dabb9] font-mono -mt-2">
               <span>0%</span>
               <span>Lecture</span>
               <span>Prompt IA</span>
@@ -314,7 +313,7 @@ function AIBacklogContent() {
 
             {/* Last log message */}
             {lastLog && (
-              <p className="text-[#9dabb9] text-sm italic">{lastLog.message}</p>
+              <p className="text-slate-500 dark:text-[#9dabb9] text-sm italic">{lastLog.message}</p>
             )}
 
             {/* Logs timeline */}
@@ -330,7 +329,7 @@ function AIBacklogContent() {
                           ? "bg-red-500/10 border border-red-500/20"
                           : log.step === "done"
                           ? "bg-green-500/10 border border-green-500/20"
-                          : "bg-[#283039]"
+                          : "bg-slate-100 dark:bg-[#283039]"
                       }`}
                     >
                       <span
@@ -355,7 +354,7 @@ function AIBacklogContent() {
                       >
                         {log.message}
                       </span>
-                      <span className="text-[#9dabb9] text-xs font-mono shrink-0">
+                      <span className="text-slate-500 dark:text-[#9dabb9] text-xs font-mono shrink-0">
                         {log.progress}%
                       </span>
                     </div>
@@ -366,7 +365,7 @@ function AIBacklogContent() {
 
             {/* CTA when done */}
             {isDone && selectedProject && (
-              <div className="flex flex-col sm:flex-row items-center gap-3 pt-3 border-t border-[#3b4754]">
+              <div className="flex flex-col sm:flex-row items-center gap-3 pt-3 border-t border-slate-200 dark:border-[#3b4754]">
                 <div className="flex items-center gap-2 text-green-400 flex-1">
                   <span className="material-symbols-outlined">check_circle</span>
                   <span className="font-medium">
@@ -387,7 +386,7 @@ function AIBacklogContent() {
 
             {/* Retry on failure */}
             {isFailed && (
-              <div className="flex flex-col sm:flex-row items-center gap-3 pt-3 border-t border-[#3b4754]">
+              <div className="flex flex-col sm:flex-row items-center gap-3 pt-3 border-t border-slate-200 dark:border-[#3b4754]">
                 <p className="text-red-400 flex-1 text-sm">
                   La génération a échoué. Vérifiez que le projet possède un
                   cahier des charges (TXT/PDF) en pièce jointe.
@@ -408,15 +407,15 @@ function AIBacklogContent() {
 
         {/* Empty state */}
         {!generation && !isStarting && (
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-12 flex flex-col items-center gap-4 text-center">
-            <span className="material-symbols-outlined text-7xl text-[#9dabb9]">
+          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-12 flex flex-col items-center gap-4 text-center">
+            <span className="material-symbols-outlined text-7xl text-slate-500 dark:text-[#9dabb9]">
               auto_awesome
             </span>
             <div>
               <h3 className="text-white font-bold text-lg mb-1">
                 Prêt à générer
               </h3>
-              <p className="text-[#9dabb9] text-sm max-w-md">
+              <p className="text-slate-500 dark:text-[#9dabb9] text-sm max-w-md">
                 Sélectionnez un projet, puis cliquez sur{" "}
                 <strong className="text-white">Générer le Backlog IA</strong>.
                 <br />
@@ -425,16 +424,16 @@ function AIBacklogContent() {
               </p>
             </div>
             <div className="flex flex-col gap-2 text-left w-full max-w-sm mt-2">
-              <p className="text-[#9dabb9] text-xs font-bold uppercase tracking-wide">
+              <p className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold uppercase tracking-wide">
                 Prérequis
               </p>
-              <div className="flex items-center gap-2 text-sm text-[#9dabb9]">
+              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-[#9dabb9]">
                 <span className="material-symbols-outlined text-primary text-[16px]">
                   attach_file
                 </span>
                 Un fichier TXT ou PDF doit être attaché au projet
               </div>
-              <div className="flex items-center gap-2 text-sm text-[#9dabb9]">
+              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-[#9dabb9]">
                 <span className="material-symbols-outlined text-primary text-[16px]">
                   manage_accounts
                 </span>

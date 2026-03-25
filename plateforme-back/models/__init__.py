@@ -10,6 +10,7 @@ from models.rapports import RapportQA, IndicateurQualite, RecommandationQualite
 from models.notification import Notification, TypeNotification
 from models.log_systems import LogSystems, AuditLog
 from models.cahier_test_global import CahierTestGlobal, CasTest
+from models.password_reset_token import PasswordResetToken
 
 __all__ = [
     # AI Generation
@@ -55,4 +56,6 @@ __all__ = [
     # Cahier de Tests Global
     "CahierTestGlobal",
     "CasTest",
+    # Password reset
+    "PasswordResetToken",
 ]

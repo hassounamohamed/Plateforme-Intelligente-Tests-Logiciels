@@ -60,6 +60,20 @@ axiosInstance.interceptors.response.use(
       _retry?: boolean;
     };
 
+    const requestUrl = String(original?.url ?? "");
+    const isPublicAuthRequest =
+      requestUrl.includes("/auth/login") ||
+      requestUrl.includes("/auth/register") ||
+      requestUrl.includes("/auth/request-reset-password") ||
+      requestUrl.includes("/auth/reset-password") ||
+      requestUrl.includes("/auth/select-role");
+
+    // Never force logout/reload for login/register/reset flows.
+    // These endpoints legitimately return 401/4xx for invalid credentials or validation errors.
+    if (error.response?.status === 401 && isPublicAuthRequest) {
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
       try {

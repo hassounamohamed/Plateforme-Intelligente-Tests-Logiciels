@@ -6,8 +6,11 @@ import type {
   ResetPasswordPayload,
   LoginResponse,
   RegisterResponse,
+  OAuthSelectRolePayload,
+  OAuthSelectRoleResponse,
   User,
 } from "@/types";
+import { API_URL } from "@/lib/constants";
 
 /**
  * Login endpoint
@@ -45,12 +48,12 @@ export async function registerApi(
 }
 
 /**
- * Forgot password endpoint (to implement on backend)
+ * Forgot password endpoint
  */
 export async function forgotPasswordApi(
   payload: ForgotPasswordPayload
 ): Promise<void> {
-  await axiosInstance.post("/auth/forgot-password", payload);
+  await axiosInstance.post("/auth/request-reset-password", payload);
 }
 
 /**
@@ -77,4 +80,21 @@ export async function logoutApi(): Promise<void> {
   // For now, just clear local storage
   // If backend implements logout endpoint, uncomment:
   // await axiosInstance.post("/auth/logout");
+}
+
+export function getOAuthLoginUrl(
+  provider: "google" | "github",
+  intent: "login" | "register" = "login"
+): string {
+  return `${API_URL}/auth/oauth/${provider}/login?intent=${intent}`;
+}
+
+export async function selectOAuthRoleApi(
+  payload: OAuthSelectRolePayload
+): Promise<OAuthSelectRoleResponse> {
+  const { data } = await axiosInstance.post<OAuthSelectRoleResponse>(
+    "/auth/select-role",
+    payload
+  );
+  return data;
 }

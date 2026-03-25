@@ -165,12 +165,12 @@ export default function SprintsPage() {
       <div className="max-w-350 mx-auto flex flex-col gap-6">
         {/* Project Selector */}
         {projects.length > 0 && (
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-4">
-            <label className="text-[#9dabb9] text-sm font-bold mb-2 block">Projet</label>
+          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-4">
+            <label className="text-slate-600 dark:text-[#9dabb9] text-sm font-bold mb-2 block">Projet</label>
             <select
               value={selectedProject || ""}
               onChange={(e) => setSelectedProject(Number(e.target.value))}
-              className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
+              className="w-full bg-white dark:bg-[#283039] border border-slate-300 dark:border-[#3b4754] rounded-lg px-4 py-2 text-slate-900 dark:text-white focus:outline-none focus:border-primary"
             >
               {projects.map((project) => (
                 <option key={project.id} value={project.id}>
@@ -201,10 +201,10 @@ export default function SprintsPage() {
 
         {/* Sprints List */}
         {!isLoading && sprints.length === 0 && (
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-8 text-center">
-            <span className="material-symbols-outlined text-[#9dabb9] text-5xl mb-4">calendar_month</span>
-            <h3 className="text-white text-lg font-bold mb-2">Aucun sprint</h3>
-            <p className="text-[#9dabb9] text-sm mb-4">
+          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-8 text-center">
+            <span className="material-symbols-outlined text-slate-500 dark:text-[#9dabb9] text-5xl mb-4">calendar_month</span>
+            <h3 className="text-slate-900 dark:text-white text-lg font-bold mb-2">Aucun sprint</h3>
+            <p className="text-slate-500 dark:text-[#9dabb9] text-sm mb-4">
               Commencez par créer votre premier sprint
             </p>
             <Link
@@ -220,7 +220,7 @@ export default function SprintsPage() {
         {!isLoading && sprints.length > 0 && (
           <>
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-white text-xl font-bold">Sprints ({sprints.length})</h2>
+              <h2 className="text-slate-900 dark:text-white text-xl font-bold">Sprints ({sprints.length})</h2>
               {selectedProject && (
                 <Link
                   href={`${ROUTES.SCRUM_MASTER}/sprints/new?project=${selectedProject}`}
@@ -235,22 +235,22 @@ export default function SprintsPage() {
             {sprints.map((sprint) => (
               <div
                 key={sprint.id}
-                className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors"
+                className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-white text-lg font-bold">{sprint.nom}</h3>
+                      <h3 className="text-slate-900 dark:text-white text-lg font-bold">{sprint.nom}</h3>
                       <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(sprint.statut)}`}>
                         {getStatusLabel(sprint.statut)}
                       </span>
                     </div>
                     {sprint.objectifSprint && (
-                      <p className="text-[#9dabb9] text-sm mb-3">{sprint.objectifSprint}</p>
+                      <p className="text-slate-500 dark:text-[#9dabb9] text-sm mb-3">{sprint.objectifSprint}</p>
                     )}
                     <div className="flex items-center gap-4 text-sm">
                       {sprint.dateDebut && sprint.dateFin && (
-                        <div className="flex items-center gap-1 text-[#9dabb9]">
+                        <div className="flex items-center gap-1 text-slate-500 dark:text-[#9dabb9]">
                           <span className="material-symbols-outlined text-[16px]">event</span>
                           <span>
                             {new Date(sprint.dateDebut).toLocaleDateString("fr-FR")} -{" "}
@@ -259,13 +259,13 @@ export default function SprintsPage() {
                         </div>
                       )}
                       {sprint.capaciteEquipe && (
-                        <div className="flex items-center gap-1 text-[#9dabb9]">
+                        <div className="flex items-center gap-1 text-slate-500 dark:text-[#9dabb9]">
                           <span className="material-symbols-outlined text-[16px]">speed</span>
                           <span>Capacité: {sprint.capaciteEquipe} pts</span>
                         </div>
                       )}
                       {sprint.userstories && (
-                        <div className="flex items-center gap-1 text-[#9dabb9]">
+                        <div className="flex items-center gap-1 text-slate-500 dark:text-[#9dabb9]">
                           <span className="material-symbols-outlined text-[16px]">description</span>
                           <span>{sprint.userstories.length} user stories</span>
                         </div>
@@ -327,14 +327,14 @@ export default function SprintsPage() {
                 {/* Progress Bar */}
                 {sprint.userstories && sprint.userstories.length > 0 && (
                   <div className="mt-4">
-                    <div className="flex items-center justify-between text-xs text-[#9dabb9] mb-2">
+                    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-[#9dabb9] mb-2">
                       <span>Progression</span>
                       <span>
                         {sprint.userstories.filter((us) => us.statut === "done").length} /{" "}
                         {sprint.userstories.length} terminées
                       </span>
                     </div>
-                    <div className="w-full bg-[#283039] rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-slate-200 dark:bg-[#283039] rounded-full h-2 overflow-hidden">
                       <div
                         className="h-full bg-primary rounded-full transition-all"
                         style={{

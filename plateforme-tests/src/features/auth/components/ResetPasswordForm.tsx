@@ -17,6 +17,10 @@ export function ResetPasswordForm() {
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     setLocalError(null);
+    if (!token) {
+      setLocalError("Reset token is missing. Please use the link from your email.");
+      return;
+    }
     if (password !== confirmPassword) {
       setLocalError("Passwords do not match.");
       return;

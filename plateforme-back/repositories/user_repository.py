@@ -1,11 +1,17 @@
 """
 Repository pour la gestion des utilisateurs, rôles et permissions
 """
+import logging
 from typing import Optional, List
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError, ProgrammingError
+from starlette import status
 
 from models.user import Utilisateur, Role, Permission
 from repositories.base_repository import BaseRepository
+
+logger = logging.getLogger(__name__)
 
 
 class UserRepository(BaseRepository[Utilisateur]):
@@ -16,7 +22,43 @@ class UserRepository(BaseRepository[Utilisateur]):
     
     def get_by_email(self, email: str) -> Optional[Utilisateur]:
         """Récupérer un utilisateur par email"""
-        return self.db.query(Utilisateur).filter(Utilisateur.email == email).first()
+        try:
+            return self.db.query(Utilisateur).filter(Utilisateur.email == email).first()
+        except ProgrammingError as exc:
+            logger.exception("Database schema error while reading user by email: %s", email)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database schema is outdated. Please apply latest migrations.",
+            ) from exc
+        except SQLAlchemyError as exc:
+            logger.exception("Database error while reading user by email: %s", email)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to read user from database.",
+            ) from exc
+
+    def create(self, obj_in: dict) -> Utilisateur:
+        """Créer un utilisateur avec rollback explicite en cas d'erreur."""
+        try:
+            user = Utilisateur(**obj_in)
+            self.db.add(user)
+            self.db.commit()
+            self.db.refresh(user)
+            return user
+        except ProgrammingError as exc:
+            self.db.rollback()
+            logger.exception("Database schema error while creating user")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database schema is outdated. Please apply latest migrations.",
+            ) from exc
+        except SQLAlchemyError as exc:
+            self.db.rollback()
+            logger.exception("Database error while creating user")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create user in database.",
+            ) from exc
     
     def get_active_users(self) -> List[Utilisateur]:
         """Récupérer tous les utilisateurs actifs"""

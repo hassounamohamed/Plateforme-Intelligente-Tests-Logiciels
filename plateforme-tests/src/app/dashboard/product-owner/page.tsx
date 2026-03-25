@@ -90,8 +90,7 @@ export default function ProductOwnerDashboard() {
     { href: `${ROUTES.PRODUCT_OWNER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.PRODUCT_OWNER}/epics`, icon: "content_cut", label: "Epics" },
     { href: `${ROUTES.PRODUCT_OWNER}/sprints`, icon: "event", label: "Sprints" },
-    { href: `${ROUTES.PRODUCT_OWNER}/ai-backlog`, icon: "smart_toy", label: "AI Backlog" },
-    { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
+        { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
     { href: `${ROUTES.PRODUCT_OWNER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.PRODUCT_OWNER}/roadmap`, icon: "map", label: "Roadmap" },
     { href: `${ROUTES.PRODUCT_OWNER}/profile`, icon: "account_circle", label: "Mon Profil" },
@@ -176,30 +175,30 @@ export default function ProductOwnerDashboard() {
         </div>
 
         {/* Activity Chart Section */}
-        <div className="w-full bg-surface-dark border border-[#3b4754] rounded-xl p-6">
+        <div className="w-full bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <h3 className="text-white text-lg font-bold">
                 Progression des Projets
               </h3>
-              <p className="text-[#9dabb9] text-sm">
+              <p className="text-slate-500 dark:text-[#9dabb9] text-sm">
                 Vue d&apos;ensemble de l&apos;avancement de vos projets actifs
               </p>
             </div>
-            <div className="flex bg-[#283039] rounded-lg p-1 self-start sm:self-auto">
+            <div className="flex bg-slate-100 dark:bg-[#283039] rounded-lg p-1 self-start sm:self-auto">
               <button className="px-3 py-1 bg-primary text-white text-xs font-bold rounded shadow-sm">
                 30 Jours
               </button>
-              <button className="px-3 py-1 text-[#9dabb9] hover:text-white text-xs font-medium rounded transition-colors">
+              <button className="px-3 py-1 text-slate-500 dark:text-[#9dabb9] hover:text-white text-xs font-medium rounded transition-colors">
                 7 Jours
               </button>
-              <button className="px-3 py-1 text-[#9dabb9] hover:text-white text-xs font-medium rounded transition-colors">
+              <button className="px-3 py-1 text-slate-500 dark:text-[#9dabb9] hover:text-white text-xs font-medium rounded transition-colors">
                 24 Heures
               </button>
             </div>
           </div>
           <div className="h-60 w-full flex items-center justify-center">
-            <p className="text-[#9dabb9]">
+            <p className="text-slate-500 dark:text-[#9dabb9]">
               Graphique de progression en développement
             </p>
           </div>
@@ -208,7 +207,7 @@ export default function ProductOwnerDashboard() {
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Link href={`${ROUTES.PRODUCT_OWNER}/projects`}>
-            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
+            <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
               <div className="flex items-center gap-4 mb-3">
                 <div className="bg-primary/20 rounded-full h-12 w-12 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
                   <span className="material-symbols-outlined text-primary text-[28px]">
@@ -217,17 +216,17 @@ export default function ProductOwnerDashboard() {
                 </div>
                 <div>
                   <h3 className="text-white text-lg font-bold">Projets</h3>
-                  <p className="text-[#9dabb9] text-xs">Gérer mes projets</p>
+                  <p className="text-slate-500 dark:text-[#9dabb9] text-xs">Gérer mes projets</p>
                 </div>
               </div>
-              <p className="text-[#9dabb9] text-sm">
+              <p className="text-slate-500 dark:text-[#9dabb9] text-sm">
                 Créer, modifier et organiser vos projets et leurs modules
               </p>
             </div>
           </Link>
 
           <Link href={`${ROUTES.PRODUCT_OWNER}/epics`}>
-            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
+            <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
               <div className="flex items-center gap-4 mb-3">
                 <div className="bg-purple-500/20 rounded-full h-12 w-12 flex items-center justify-center group-hover:bg-purple-500/30 transition-colors">
                   <span className="material-symbols-outlined text-purple-400 text-[28px]">
@@ -236,17 +235,17 @@ export default function ProductOwnerDashboard() {
                 </div>
                 <div>
                   <h3 className="text-white text-lg font-bold">Epics</h3>
-                  <p className="text-[#9dabb9] text-xs">Gérer la priorisation</p>
+                  <p className="text-slate-500 dark:text-[#9dabb9] text-xs">Gérer la priorisation</p>
                 </div>
               </div>
-              <p className="text-[#9dabb9] text-sm">
+              <p className="text-slate-500 dark:text-[#9dabb9] text-sm">
                 Créer et prioriser les epics avec leur valeur métier
               </p>
             </div>
           </Link>
 
           <Link href={`${ROUTES.PRODUCT_OWNER}/roadmap`}>
-            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
+            <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
               <div className="flex items-center gap-4 mb-3">
                 <div className="bg-green-500/20 rounded-full h-12 w-12 flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
                   <span className="material-symbols-outlined text-green-400 text-[28px]">
@@ -255,17 +254,17 @@ export default function ProductOwnerDashboard() {
                 </div>
                 <div>
                   <h3 className="text-white text-lg font-bold">Roadmap</h3>
-                  <p className="text-[#9dabb9] text-xs">Vision stratégique</p>
+                  <p className="text-slate-500 dark:text-[#9dabb9] text-xs">Vision stratégique</p>
                 </div>
               </div>
-              <p className="text-[#9dabb9] text-sm">
+              <p className="text-slate-500 dark:text-[#9dabb9] text-sm">
                 Visualiser la roadmap produit et les jalons clés
               </p>
             </div>
           </Link>
 
           <Link href={`${ROUTES.PRODUCT_OWNER}/sprints`}>
-            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
+            <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
               <div className="flex items-center gap-4 mb-3">
                 <div className="bg-orange-500/20 rounded-full h-12 w-12 flex items-center justify-center group-hover:bg-orange-500/30 transition-colors">
                   <span className="material-symbols-outlined text-orange-400 text-[28px]">
@@ -274,17 +273,17 @@ export default function ProductOwnerDashboard() {
                 </div>
                 <div>
                   <h3 className="text-white text-lg font-bold">Sprints</h3>
-                  <p className="text-[#9dabb9] text-xs">Avancement des sprints</p>
+                  <p className="text-slate-500 dark:text-[#9dabb9] text-xs">Avancement des sprints</p>
                 </div>
               </div>
-              <p className="text-[#9dabb9] text-sm">
+              <p className="text-slate-500 dark:text-[#9dabb9] text-sm">
                 Consulter l&apos;avancement et les métriques des sprints
               </p>
             </div>
           </Link>
 
           <Link href={`${ROUTES.PRODUCT_OWNER}/validation-tests`}>
-            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
+            <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
               <div className="flex items-center gap-4 mb-3">
                 <div className="bg-cyan-500/20 rounded-full h-12 w-12 flex items-center justify-center group-hover:bg-cyan-500/30 transition-colors">
                   <span className="material-symbols-outlined text-cyan-400 text-[28px]">
@@ -293,17 +292,17 @@ export default function ProductOwnerDashboard() {
                 </div>
                 <div>
                   <h3 className="text-white text-lg font-bold">Validation Tests</h3>
-                  <p className="text-[#9dabb9] text-xs">Livrables et tests</p>
+                  <p className="text-slate-500 dark:text-[#9dabb9] text-xs">Livrables et tests</p>
                 </div>
               </div>
-              <p className="text-[#9dabb9] text-sm">
+              <p className="text-slate-500 dark:text-[#9dabb9] text-sm">
                 Valider les livrables et les résultats de tests
               </p>
             </div>
           </Link>
 
           <Link href={`${ROUTES.PRODUCT_OWNER}/rapports-qa`}>
-            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
+            <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
               <div className="flex items-center gap-4 mb-3">
                 <div className="bg-pink-500/20 rounded-full h-12 w-12 flex items-center justify-center group-hover:bg-pink-500/30 transition-colors">
                   <span className="material-symbols-outlined text-pink-400 text-[28px]">
@@ -312,10 +311,10 @@ export default function ProductOwnerDashboard() {
                 </div>
                 <div>
                   <h3 className="text-white text-lg font-bold">Rapports QA</h3>
-                  <p className="text-[#9dabb9] text-xs">Métriques qualité</p>
+                  <p className="text-slate-500 dark:text-[#9dabb9] text-xs">Métriques qualité</p>
                 </div>
               </div>
-              <p className="text-[#9dabb9] text-sm">
+              <p className="text-slate-500 dark:text-[#9dabb9] text-sm">
                 Accéder aux rapports QA globaux et recommandations
               </p>
             </div>
@@ -324,7 +323,7 @@ export default function ProductOwnerDashboard() {
 
         {/* Recent Projects */}
         {projects.length > 0 && (
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
+          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-white text-lg font-bold">Projets Récents</h3>
               <Link
@@ -338,17 +337,17 @@ export default function ProductOwnerDashboard() {
               {projects.slice(0, 3).map((project) => (
                 <div
                   key={project.id}
-                  className="p-4 rounded-lg border border-[#3b4754] hover:border-primary/50 transition-all"
+                  className="p-4 rounded-lg border border-slate-200 dark:border-[#3b4754] hover:border-primary/50 transition-all"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     {project.key && (
-                      <span className="text-[#9dabb9] text-xs font-mono bg-[#283039] px-2 py-0.5 rounded">
+                      <span className="text-slate-500 dark:text-[#9dabb9] text-xs font-mono bg-slate-100 dark:bg-[#283039] px-2 py-0.5 rounded">
                         {project.key}
                       </span>
                     )}
                     <h4 className="text-white font-bold">{project.nom}</h4>
                   </div>
-                  <p className="text-sm text-[#9dabb9] line-clamp-2 mb-2">
+                  <p className="text-sm text-slate-500 dark:text-[#9dabb9] line-clamp-2 mb-2">
                     {project.description || "Aucune description"}
                   </p>
                   <span

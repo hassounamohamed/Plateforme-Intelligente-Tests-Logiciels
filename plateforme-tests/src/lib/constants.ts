@@ -6,6 +6,8 @@ export const REFRESH_TOKEN_KEY = "refresh_token";
 
 export const ROUTES = {
   LOGIN: "/auth/login",
+  OAUTH_CALLBACK: "/auth/oauth/callback",
+  SELECT_ROLE: "/select-role",
   REGISTER: "/auth/register",
   FORGOT_PASSWORD: "/auth/forgot-password",
   RESET_PASSWORD: "/auth/reset-password",

@@ -8,6 +8,12 @@ from schemas.role import (
     AssignPermissionsRequest,
     AssignRoleToUserRequest
 )
+from schemas.oauth import (
+    OAuthProviderUser,
+    OAuthLoginResponse,
+    SelectRoleRequest,
+    SelectRoleResponse,
+)
 
 __all__ = [
     "Token",
@@ -18,4 +24,8 @@ __all__ = [
     "UpdateRoleRequest",
     "AssignPermissionsRequest",
     "AssignRoleToUserRequest",
+    "OAuthProviderUser",
+    "OAuthLoginResponse",
+    "SelectRoleRequest",
+    "SelectRoleResponse",
 ]

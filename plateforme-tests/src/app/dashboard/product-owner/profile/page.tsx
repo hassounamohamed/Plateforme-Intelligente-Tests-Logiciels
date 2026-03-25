@@ -37,8 +37,7 @@ export default function ProfilePage() {
     { href: `${ROUTES.PRODUCT_OWNER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.PRODUCT_OWNER}/epics`, icon: "content_cut", label: "Epics" },
     { href: `${ROUTES.PRODUCT_OWNER}/sprints`, icon: "event", label: "Sprints" },
-    { href: `${ROUTES.PRODUCT_OWNER}/ai-backlog`, icon: "smart_toy", label: "AI Backlog" },
-    { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
+        { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
     { href: `${ROUTES.PRODUCT_OWNER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.PRODUCT_OWNER}/roadmap`, icon: "map", label: "Roadmap" },
     { href: `${ROUTES.PRODUCT_OWNER}/profile`, icon: "account_circle", label: "Mon Profil" },
@@ -123,7 +122,7 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Profile Card */}
           <div className="lg:col-span-1">
-            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 text-center">
+            <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6 text-center">
               <div className="bg-primary/20 rounded-full h-32 w-32 flex items-center justify-center mx-auto mb-4">
                 <span className="material-symbols-outlined text-primary text-[80px]">
                   account_circle
@@ -132,7 +131,7 @@ export default function ProfilePage() {
               <h3 className="text-white text-xl font-bold mb-1">
                 {profile.nom}
               </h3>
-              <p className="text-[#9dabb9] text-sm mb-4">{profile.email}</p>
+              <p className="text-slate-500 dark:text-[#9dabb9] text-sm mb-4">{profile.email}</p>
               {profile.role && (
                 <div className="inline-flex px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold mb-4">
                   {profile.role.nom}
@@ -140,14 +139,14 @@ export default function ProfilePage() {
               )}
               <div className="border-t border-[#283039] pt-4 mt-4 space-y-2 text-left">
                 <div className="flex justify-between text-sm">
-                  <span className="text-[#9dabb9]">Statut</span>
+                  <span className="text-slate-500 dark:text-[#9dabb9]">Statut</span>
                   <span className={`font-medium ${profile.actif ? 'text-green-400' : 'text-red-400'}`}>
                     {profile.actif ? 'Actif' : 'Inactif'}
                   </span>
                 </div>
                 {profile.telephone && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-[#9dabb9]">Téléphone</span>
+                    <span className="text-slate-500 dark:text-[#9dabb9]">Téléphone</span>
                     <span className="text-white font-medium">
                       {profile.telephone}
                     </span>
@@ -160,11 +159,11 @@ export default function ProfilePage() {
           {/* Profile Information */}
           <div className="lg:col-span-2 space-y-6">
             {/* Personal Information */}
-            <div className="bg-surface-dark border border-[#3b4754] rounded-xl overflow-hidden">
+            <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl overflow-hidden">
               <div className="p-5 border-b border-[#283039] flex items-center justify-between">
                 <div>
                   <h3 className="text-white text-lg font-bold">Informations Personnelles</h3>
-                  <p className="text-[#9dabb9] text-xs mt-1">
+                  <p className="text-slate-500 dark:text-[#9dabb9] text-xs mt-1">
                     Gérer vos données personnelles
                   </p>
                 </div>
@@ -196,7 +195,7 @@ export default function ProfilePage() {
                     value={formData.nom}
                     onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
                     disabled={!isEditing}
-                    className="w-full bg-[#1e293b] border border-[#3b4754] rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-[#1e293b] border border-slate-200 dark:border-[#3b4754] rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -207,9 +206,9 @@ export default function ProfilePage() {
                     type="email"
                     value={profile.email}
                     disabled
-                    className="w-full bg-[#1e293b] border border-[#3b4754] rounded-lg px-4 py-2.5 text-[#9dabb9] text-sm focus:outline-none cursor-not-allowed opacity-50"
+                    className="w-full bg-[#1e293b] border border-slate-200 dark:border-[#3b4754] rounded-lg px-4 py-2.5 text-slate-500 dark:text-[#9dabb9] text-sm focus:outline-none cursor-not-allowed opacity-50"
                   />
-                  <p className="text-[#9dabb9] text-xs mt-1">
+                  <p className="text-slate-500 dark:text-[#9dabb9] text-xs mt-1">
                     L&apos;email ne peut pas être modifié
                   </p>
                 </div>
@@ -222,7 +221,7 @@ export default function ProfilePage() {
                     value={formData.telephone}
                     onChange={(e) => setFormData({ ...formData, telephone: e.target.value })}
                     disabled={!isEditing}
-                    className="w-full bg-[#1e293b] border border-[#3b4754] rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-[#1e293b] border border-slate-200 dark:border-[#3b4754] rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
                 {isEditing && (
@@ -240,10 +239,10 @@ export default function ProfilePage() {
             </div>
 
             {/* Change Password */}
-            <div className="bg-surface-dark border border-[#3b4754] rounded-xl overflow-hidden">
+            <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl overflow-hidden">
               <div className="p-5 border-b border-[#283039]">
                 <h3 className="text-white text-lg font-bold">Changer le Mot de Passe</h3>
-                <p className="text-[#9dabb9] text-xs mt-1">
+                <p className="text-slate-500 dark:text-[#9dabb9] text-xs mt-1">
                   Assurez-vous d&apos;utiliser un mot de passe fort
                 </p>
               </div>
@@ -256,7 +255,7 @@ export default function ProfilePage() {
                     type="password"
                     value={formData.ancienMotDePasse}
                     onChange={(e) => setFormData({ ...formData, ancienMotDePasse: e.target.value })}
-                    className="w-full bg-[#1e293b] border border-[#3b4754] rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full bg-[#1e293b] border border-slate-200 dark:border-[#3b4754] rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="••••••••"
                   />
                 </div>
@@ -268,7 +267,7 @@ export default function ProfilePage() {
                     type="password"
                     value={formData.nouveauMotDePasse}
                     onChange={(e) => setFormData({ ...formData, nouveauMotDePasse: e.target.value })}
-                    className="w-full bg-[#1e293b] border border-[#3b4754] rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full bg-[#1e293b] border border-slate-200 dark:border-[#3b4754] rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="••••••••"
                   />
                 </div>
@@ -280,7 +279,7 @@ export default function ProfilePage() {
                     type="password"
                     value={formData.confirmerMotDePasse}
                     onChange={(e) => setFormData({ ...formData, confirmerMotDePasse: e.target.value })}
-                    className="w-full bg-[#1e293b] border border-[#3b4754] rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full bg-[#1e293b] border border-slate-200 dark:border-[#3b4754] rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="••••••••"
                   />
                 </div>
