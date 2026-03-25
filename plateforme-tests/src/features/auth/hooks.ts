@@ -39,12 +39,14 @@ function extractApiError(err: unknown, fallback: string): string {
 export function useLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const { signIn } = useAuthStore();
   const router = useRouter();
 
   const handleLogin = async (payload: LoginPayload) => {
     setIsLoading(true);
     setError(null);
+    setInfoMessage(null);
     try {
       console.log('[Login] Attempting login with:', { username: payload.username });
       const response = await loginApi(payload);
@@ -74,16 +76,30 @@ export function useLogin() {
       const targetRoute = roleRoutes[roleCode] ?? ROUTES.DASHBOARD;
       console.log('[Login] Redirecting to:', targetRoute);
       router.replace(targetRoute);
-    } catch (err: any) {
-      console.error('[Login] Error:', err);
-      const errorMessage = err.response?.data?.detail || err.message || "Identifiants incorrects.";
-      setError(errorMessage);
+    } catch (err: unknown) {
+      const errorMessage = extractApiError(
+        err,
+        "Email ou mot de passe incorrect."
+      );
+
+      const lower = errorMessage.toLowerCase();
+      const isAccountNotFound =
+        lower.includes("n'existe pas") ||
+        lower.includes("email non trouvé") ||
+        lower.includes("email introuvable");
+
+      if (isAccountNotFound) {
+        setInfoMessage("Ce compte n'existe pas. Veuillez vous inscrire.");
+      } else {
+        console.error('[Login] Error:', err);
+        setError(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  return { handleLogin, isLoading, error };
+  return { handleLogin, isLoading, error, infoMessage };
 }
 
 // ─── useRegister ─────────────────────────────────────────────────────────────
@@ -94,6 +110,16 @@ export function useRegister() {
   const [success, setSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const router = useRouter();
+
+  const isEmailAlreadyExistsError = (message: string) => {
+    const normalized = message.toLowerCase();
+    return (
+      normalized.includes("email deja utilise") ||
+      normalized.includes("email déjà utilisé") ||
+      normalized.includes("email already") ||
+      (normalized.includes("email") && normalized.includes("existe"))
+    );
+  };
 
   const handleRegister = async (payload: RegisterPayload) => {
     setIsLoading(true);
@@ -117,6 +143,13 @@ export function useRegister() {
       console.error('[Register] Error response:', err.response);
       const errorMessage = err.response?.data?.detail || err.message || "Erreur lors de l'inscription.";
       console.error('[Register] Error message:', errorMessage);
+
+      if (isEmailAlreadyExistsError(errorMessage)) {
+        const emailQuery = encodeURIComponent(payload.email);
+        router.replace(`${ROUTES.LOGIN}?email_exists=1&email=${emailQuery}`);
+        return;
+      }
+
       setError(errorMessage);
     } finally {
       setIsLoading(false);

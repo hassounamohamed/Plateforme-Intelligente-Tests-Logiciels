@@ -1,11 +1,14 @@
 from typing import Optional
+import logging
+from urllib.parse import urlencode
 
 from fastapi import HTTPException
+from fastapi.responses import RedirectResponse
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from starlette import status
 
-from core.config import SECRET_KEY, ALGORITHM
+from core.config import FRONTEND_BASE_URL
 from core.security import create_access_token
 from models.user import Utilisateur, Role
 from repositories.user_repository import UserRepository
@@ -13,6 +16,7 @@ from repositories.log_repository import AuditLogRepository
 from schemas.user import CreateUserRequest
 
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -60,6 +64,185 @@ class AuthService:
                 "code": user.role.code,
                 "niveau_acces": user.role.niveau_acces,
             } if user.role else None,
+        }
+
+    def _oauth_select_role_redirect(self, user_id: int) -> RedirectResponse:
+        base = FRONTEND_BASE_URL.rstrip("/")
+        url = f"{base}/select-role?{urlencode({'user_id': str(user_id)})}"
+        return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
+
+    def _oauth_dashboard_redirect(self, token: str) -> RedirectResponse:
+        base = FRONTEND_BASE_URL.rstrip("/")
+        url = f"{base}/dashboard?{urlencode({'token': token})}"
+        return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
+
+    def _frontend_login_redirect(self, params: dict[str, str]) -> RedirectResponse:
+        base = FRONTEND_BASE_URL.rstrip("/")
+        url = f"{base}/auth/login?{urlencode(params)}"
+        return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
+
+    def _oauth_role_dashboard_redirect(self, token: str, user: Utilisateur, role_code: str | None) -> RedirectResponse:
+        base = FRONTEND_BASE_URL.rstrip("/")
+        callback_qs = {
+            "need_role": "false",
+            "user_id": str(user.id),
+            "access_token": token,
+            "token_type": "bearer",
+            "email": user.email,
+            "nom": user.nom or "",
+            "role": (role_code or ""),
+        }
+        # Go through frontend callback page first so signIn() persists token/cookie
+        # before navigating to role dashboard (middleware then allows access).
+        url = f"{base}/auth/oauth/callback?{urlencode(callback_qs)}"
+        return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
+
+    def handle_oauth_login(self, provider: str, profile: dict, intent: str = "login") -> RedirectResponse:
+        """
+        OAuth flow:
+        - Email n'existe pas: créer utilisateur avec role_id=NULL
+        - Email existe + role_id NULL: redirect /select-role
+        - Email existe + role existant: JWT puis redirect dashboard selon rôle
+        """
+        email = profile.get("email")
+        name = profile.get("name") or profile.get("nom")
+        picture = profile.get("picture")
+
+        if not email:
+            logger.error("OAuth profile without email from provider=%s", provider)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="OAuth provider did not return an email",
+            )
+
+        logger.info("OAuth login started provider=%s email=%s", provider, email)
+        if picture:
+            logger.debug("OAuth picture received provider=%s email=%s", provider, email)
+
+        user = self.user_repo.get_by_email(email)
+        normalized_intent = (intent or "login").strip().lower()
+
+        if user and normalized_intent == "register":
+            print(f"[DEBUG] OAuth registration attempt provider={provider} email={email}")
+            print(f"[DEBUG] Email already exists: {email}")
+            logger.info(
+                "OAuth register blocked: email already exists user_id=%s provider=%s",
+                user.id,
+                provider,
+            )
+            return self._frontend_login_redirect(
+                {
+                    "email_exists": "1",
+                    "email": email,
+                    "oauth_error": "Email déjà utilisé",
+                }
+            )
+
+        if not user:
+            # Créer nouvel utilisateur via OAuth avec role_id NULL et actif=False (attente super admin)
+            user = self.user_repo.create(
+                {
+                    "nom": name or email.split("@")[0],
+                    "email": email,
+                    "motDePasse": None,
+                    "provider": provider,
+                    "role_id": None,
+                    "actif": False,
+                }
+            )
+            logger.info("OAuth user created user_id=%s provider=%s (pending activation)", user.id, provider)
+
+        if user.provider and user.provider != provider:
+            logger.warning(
+                "OAuth provider mismatch user_id=%s existing=%s incoming=%s",
+                user.id,
+                user.provider,
+                provider,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"This account is already linked to provider '{user.provider}'",
+            )
+
+        if not user.provider:
+            user.provider = provider
+
+        self.user_repo.update_last_login(user.id)
+
+        # Si rôle pas encore choisi, rediriger select-role
+        if user.role_id is None:
+            logger.info("OAuth login requires role selection user_id=%s actif=%s", user.id, user.actif)
+            return self._oauth_select_role_redirect(user.id)
+
+        # Si compte pas activé par super admin, rediriger vers page d'attente
+        if not user.actif:
+            logger.info("OAuth login denied: account pending activation user_id=%s", user.id)
+            base = FRONTEND_BASE_URL.rstrip("/")
+            url = f"{base}/auth/login?oauth_error={urlencode({'message': 'Votre compte est en attente d\'activation par un administrateur.'}).split('=', 1)[1]}"
+            return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
+
+        token = self.generate_token(user)
+        logger.info("OAuth login success user_id=%s role_id=%s", user.id, user.role_id)
+        return self._oauth_role_dashboard_redirect(token, user, user.role.code if user.role else None)
+
+    def select_oauth_role(self, user_id: int, role_code: str) -> dict:
+        user = self.user_repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+        if user.role_id is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Role can only be selected once",
+            )
+
+        if user.provider not in {"google", "github"}:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only OAuth users can use this endpoint",
+            )
+
+        normalized_code = role_code.strip().upper()
+        role = self.db.query(Role).filter(Role.code == normalized_code).first()
+        if not role:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Role '{role_code}' does not exist",
+            )
+
+        user.role_id = role.id
+        self.db.commit()
+        self.db.refresh(user)
+
+        # Si compte pas activé, pas d'accès au dashboard (envoyer alerte au frontend)
+        if not user.actif:
+            logger.info("Role selected but account pending activation user_id=%s role_id=%s", user.id, role.id)
+            return {
+                "access_token": None,
+                "token_type": "bearer",
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "nom": user.nom,
+                    "provider": user.provider,
+                    "role": role.code,
+                },
+                "pending_activation": True,
+                "message": "Votre compte est en attente d'activation par un administrateur. Veuillez revenir après activation.",
+            }
+
+        access_token = create_access_token({"sub": str(user.id), "role": role.code})
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "nom": user.nom,
+                "provider": user.provider,
+                "role": role.code,
+            },
+            "pending_activation": False,
         }
 
     # =========================================================
@@ -141,17 +324,19 @@ class AuthService:
     # LOGIN
     # =========================================================
 
-    def authenticate(self, email: str, password: str) -> Optional[Utilisateur]:
+    def authenticate(self, email: str, password: str) -> tuple[Optional[Utilisateur], Optional[str]]:
         """
         Vérifier les identifiants.
-        Retourne l'utilisateur si valide, None sinon.
+        Retourne (utilisateur, error_message) si valide (utilisateur, None).
+        Si email n'existe pas, retourne (None, message_email_not_found).
+        Si mot de passe invalide, retourne (None, message_password_wrong).
         """
         user = self.user_repo.get_by_email(email)
         if not user:
-            return None
+            return None, "Cet email n'existe pas. Veuillez vous enregistrer d'abord."
         if not self.verify_password(password, user.motDePasse):
-            return None
-        return user
+            return None, "Mot de passe incorrect"
+        return user, None
 
     def login(self, email: str, password: str, ip_address: Optional[str] = None) -> dict:
         """
@@ -159,11 +344,11 @@ class AuthService:
         Lève HTTP 401 si les identifiants sont invalides.
         Lève HTTP 403 si le compte n'est pas activé.
         """
-        user = self.authenticate(email, password)
+        user, error_message = self.authenticate(email, password)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Email ou mot de passe incorrect",
+                detail=error_message or "Email ou mot de passe incorrect",
             )
 
         # Vérifier si le compte est activé par le Super Administrateur

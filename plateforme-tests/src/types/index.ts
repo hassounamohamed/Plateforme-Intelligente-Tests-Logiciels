@@ -77,6 +77,35 @@ export interface LoginResponse {
   role?: RoleDetails;
 }
 
+export interface OAuthCallbackPayload {
+  need_role: boolean;
+  user_id: number;
+  access_token?: string;
+  token_type?: string;
+  email?: string;
+  nom?: string;
+  role?: string;
+}
+
+export interface OAuthSelectRolePayload {
+  user_id: number;
+  role: string;
+}
+
+export interface OAuthSelectRoleResponse {
+  access_token: string;
+  token_type: string;
+  pending_activation?: boolean;
+  message?: string;
+  user: {
+    id: number;
+    email: string;
+    nom?: string;
+    provider?: "google" | "github";
+    role?: string;
+  };
+}
+
 export interface RegisterResponse {
   message: string;
   user_id: number;

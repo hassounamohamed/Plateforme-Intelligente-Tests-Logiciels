@@ -1,12 +1,13 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
 
-from core.config import ENVIRONMENT
+from core.config import ENVIRONMENT, SESSION_COOKIE_NAME, SESSION_SAME_SITE, SESSION_SECRET_KEY
 from db.database import engine, get_db, Base
 
 # Import all models to register them with SQLAlchemy
@@ -49,10 +50,23 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_SECRET_KEY,
+    https_only=(ENVIRONMENT == "production"),
+    same_site=SESSION_SAME_SITE,
+    session_cookie=SESSION_COOKIE_NAME,
+)
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],  # Next.js default ports
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -13,12 +13,13 @@ class Utilisateur(Base):
     nom = Column(String)
     email = Column(String, unique=True)
     motDePasse = Column(String)
+    provider = Column(String(20), nullable=True)
     telephone = Column(EncryptedString)  # chiffre en base (Fernet)
     dateCreation = Column(DateTime, default=datetime.utcnow)
     derniereConnexion = Column(DateTime, nullable=True)
     actif = Column(Boolean, default=False)
 
-    role_id = Column(Integer, ForeignKey("role.id"))
+    role_id = Column(Integer, ForeignKey("role.id"), nullable=True)
 
     # Relations
     role = relationship("Role", back_populates="users")
