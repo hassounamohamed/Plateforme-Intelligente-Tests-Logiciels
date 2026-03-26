@@ -39,6 +39,8 @@ export default function CahierTestsManager({
   const [generating, setGenerating] = useState(false);
   const [currentGeneration, setCurrentGeneration] =
     useState<AIGeneration | null>(null);
+  const [creatingManual, setCreatingManual] = useState(false);
+  const [showRegenerateMenu, setShowRegenerateMenu] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
@@ -51,9 +53,6 @@ export default function CahierTestsManager({
         (generation) =>
           generation.status === "pending" || generation.status === "processing"
       );
-      const hasCompletedGeneration = generations.some(
-        (generation) => generation.status === "completed"
-      );
 
       if (activeGeneration) {
         setGenerating(true);
@@ -65,13 +64,6 @@ export default function CahierTestsManager({
 
       setGenerating(false);
       setCurrentGeneration(null);
-
-      if (!hasCompletedGeneration) {
-        setCahier(null);
-        setStats(null);
-        setError("Aucun cahier de tests disponible pour ce projet.");
-        return;
-      }
 
       const [cahierData, statsData] = await Promise.all([
         getCahierDetail(projectId),
@@ -99,16 +91,41 @@ export default function CahierTestsManager({
   }, [projectId]);
 
   const handleGenerate = async () => {
+    setShowRegenerateMenu(false);
     setGenerating(true);
     setError(null);
     try {
       const generation = await genererCahier(projectId, { version: "1.0.0" });
-      setCurrentGeneration(generation);
+      if ("status" in generation) {
+        setCurrentGeneration(generation);
+      } else {
+        setGenerating(false);
+        await loadCahier();
+      }
     } catch (err: any) {
       setError(
         err.response?.data?.detail || "Erreur lors du lancement de la génération"
       );
       setGenerating(false);
+    }
+  };
+
+  const handleCreateManual = async () => {
+    setShowRegenerateMenu(false);
+    setCreatingManual(true);
+    setError(null);
+    try {
+      await genererCahier(projectId, {
+        version: "1.0.0",
+        mode_generation: "manuelle",
+      });
+      await loadCahier();
+    } catch (err: any) {
+      setError(
+        err.response?.data?.detail || "Erreur lors de la création manuelle"
+      );
+    } finally {
+      setCreatingManual(false);
     }
   };
 
@@ -211,12 +228,21 @@ export default function CahierTestsManager({
           </h3>
           <p className="text-[#9dabb9] mb-6">{error}</p>
           {canGenerate && (
-            <button
-              onClick={handleGenerate}
-              className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
-            >
-              🤖 Générer le Cahier avec l'IA
-            </button>
+            <div className="flex items-center justify-center gap-3 flex-wrap">
+              <button
+                onClick={handleGenerate}
+                className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+              >
+                🤖 Générer le Cahier avec l'IA
+              </button>
+              <button
+                onClick={handleCreateManual}
+                disabled={creatingManual}
+                className="px-6 py-3 border border-[#3b4754] text-white rounded-md hover:bg-[#283039] font-medium disabled:opacity-60"
+              >
+                {creatingManual ? "Création..." : "✍️ Créer manuellement"}
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -249,12 +275,39 @@ export default function CahierTestsManager({
           <div className="flex items-center gap-3">
             {/* Bouton Regénérer - uniquement pour les testeurs */}
             {canGenerate && (
-              <button
-                onClick={handleGenerate}
-                className="px-4 py-2 border border-[#3b4754] rounded-md text-white hover:bg-[#283039] font-medium"
-              >
-                🔄 Regénérer
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowRegenerateMenu(!showRegenerateMenu)}
+                  className="px-4 py-2 border border-[#3b4754] rounded-md text-white hover:bg-[#283039] font-medium"
+                >
+                  🔄 Regénérer
+                </button>
+                {showRegenerateMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowRegenerateMenu(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-56 bg-surface-dark rounded-md shadow-lg z-20 border border-[#3b4754]">
+                      <button
+                        onClick={handleGenerate}
+                        className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-[#283039]"
+                      >
+                        🤖 Regénérer avec l'IA
+                      </button>
+                      <button
+                        onClick={handleCreateManual}
+                        disabled={creatingManual}
+                        className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-[#283039] disabled:opacity-50"
+                      >
+                        {creatingManual
+                          ? "⏳ Création manuelle..."
+                          : "✍️ Régénérer en manuel"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             )}
 
             {/* Bouton Valider - uniquement pour les testeurs */}

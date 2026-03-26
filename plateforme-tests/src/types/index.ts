@@ -683,6 +683,20 @@ export interface StatistiquesCahier {
 
 export interface GenererCahierPayload {
   version?: string; // Default: "1.0.0"
+  mode_generation?: "ai" | "manuelle";
+}
+
+export interface CreateCasTestPayload {
+  sprint?: string;
+  module?: string;
+  sous_module?: string;
+  test_case: string;
+  test_purpose?: string;
+  type_utilisateur?: string;
+  scenario_test?: string;
+  resultat_attendu?: string;
+  type_test?: TypeTest;
+  commentaire?: string;
 }
 
 export interface UpdateCasTestPayload {

@@ -7,6 +7,7 @@ import {
   AIGeneration,
   AIGenerationDetail,
   GenererCahierPayload,
+  CreateCasTestPayload,
   UpdateCasTestPayload,
   ValiderCahierPayload,
 } from "@/types";
@@ -24,8 +25,8 @@ const getCahierBase = (projectId: number) => `/projets/${projectId}/cahier-tests
 export const genererCahier = async (
   projectId: number,
   payload: GenererCahierPayload = {}
-): Promise<AIGeneration> => {
-  const response = await axiosInstance.post<AIGeneration>(
+): Promise<AIGeneration | CahierTestGlobal> => {
+  const response = await axiosInstance.post<AIGeneration | CahierTestGlobal>(
     `${getCahierBase(projectId)}/generate`,
     payload
   );
@@ -129,6 +130,21 @@ export const updateCasTest = async (
 ): Promise<CasTest> => {
   const response = await axiosInstance.patch<CasTest>(
     `${getCahierBase(projectId)}/${cahierId}/cas-tests/${casId}`,
+    payload
+  );
+  return response.data;
+};
+
+/**
+ * Créer un cas de test manuel
+ */
+export const createCasTest = async (
+  projectId: number,
+  cahierId: number,
+  payload: CreateCasTestPayload
+): Promise<CasTest> => {
+  const response = await axiosInstance.post<CasTest>(
+    `${getCahierBase(projectId)}/${cahierId}/cas-tests`,
     payload
   );
   return response.data;

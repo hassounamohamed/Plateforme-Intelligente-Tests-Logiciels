@@ -29,6 +29,7 @@ from repositories.ai_generation_repository import AIGenerationRepository
 from repositories.cahier_test_global_repository import CahierTestGlobalRepository
 from schemas.cahier_test_global import (
     AICahierResponse,
+    CreateCasTestRequest,
     UpdateCasTestRequest,
 )
 
@@ -97,7 +98,13 @@ class CahierTestGlobalService:
 
     # ─── Points d'entrée publics ──────────────────────────────────────────
 
-    def demarrer_generation(self, projet_id: int, user_id: int, version: str = "1.0.0") -> AIGeneration:
+    def demarrer_generation(
+        self,
+        projet_id: int,
+        user_id: int,
+        version: str = "1.0.0",
+        mode_generation: str = "ai",
+    ) -> AIGeneration | CahierTestGlobal:
         """
         Crée le job AIGeneration + initialise le CahierTestGlobal.
         Retourne immédiatement le job (status=pending).
@@ -106,6 +113,39 @@ class CahierTestGlobalService:
         projet = self.db.query(Projet).filter(Projet.id == projet_id).first()
         if not projet:
             raise HTTPException(status_code=404, detail="Projet introuvable.")
+
+        # Mode manuel : initialise un cahier vide, sans job IA.
+        if mode_generation == "manuelle":
+            cahier = self.repo.get_by_projet(projet_id)
+            if cahier:
+                self.repo.delete_cas_tests(cahier.id)
+                cahier.version = version
+                cahier.statut = "brouillon"
+                cahier.date_generation = datetime.utcnow()
+                cahier.generated_by_id = user_id
+                cahier.ai_generation_id = None
+                cahier.nombre_total = 0
+                cahier.nombre_reussi = 0
+                cahier.nombre_echoue = 0
+                cahier.nombre_bloque = 0
+                self.db.commit()
+                self.db.refresh(cahier)
+            else:
+                cahier = CahierTestGlobal(
+                    projet_id=projet_id,
+                    generated_by_id=user_id,
+                    version=version,
+                    statut="brouillon",
+                    ai_generation_id=None,
+                    nombre_total=0,
+                    nombre_reussi=0,
+                    nombre_echoue=0,
+                    nombre_bloque=0,
+                )
+                self.db.add(cahier)
+                self.db.commit()
+                self.db.refresh(cahier)
+            return cahier
 
         # Créer le job de génération IA (type=generate_tests)
         gen = self.ai_repo.create_generation(projet_id, user_id, "generate_tests")
@@ -129,6 +169,68 @@ class CahierTestGlobalService:
             cahier = self.repo.create_cahier(projet_id, user_id, version, ai_generation_id=gen.id)
 
         return gen
+
+    def create_cas_test(
+        self,
+        cahier_id: int,
+        projet_id: int,
+        data: CreateCasTestRequest,
+    ) -> CasTest:
+        """Créer un cas de test manuel dans un cahier existant."""
+        self._verifier_appartenance(cahier_id, projet_id)
+
+        last_cas = (
+            self.db.query(CasTest)
+            .filter(CasTest.cahier_id == cahier_id)
+            .order_by(CasTest.ordre.desc())
+            .first()
+        )
+        next_order = (last_cas.ordre + 1) if last_cas else 1
+
+        cas = self.repo.add_cas_test(
+            cahier_id=cahier_id,
+            sprint=data.sprint or "",
+            module=data.module or "",
+            sous_module=data.sous_module or "",
+            test_ref=f"TC-{next_order:03d}",
+            test_case=data.test_case,
+            test_purpose=data.test_purpose or "",
+            type_utilisateur=data.type_utilisateur or "",
+            scenario_test=data.scenario_test or "",
+            resultat_attendu=data.resultat_attendu or "",
+            type_test=data.type_test,
+            ordre=next_order,
+        )
+
+        if data.commentaire is not None:
+            cas.commentaire = data.commentaire
+            self.db.commit()
+            self.db.refresh(cas)
+
+        # Toute création manuelle d'un cas incrémente la version mineure du cahier.
+        cahier = self.repo.get_by_id(cahier_id)
+        if cahier:
+            cahier.version = self._increment_cahier_minor_version(cahier.version)
+
+        self.repo.recalculer_stats(cahier_id)
+        return cas
+
+    def _increment_cahier_minor_version(self, current_version: Optional[str]) -> str:
+        """
+        Incrémente la version mineure du cahier : X.Y.Z -> X.(Y+1).0
+        Exemple: 1.0.0 -> 1.1.0
+        """
+        default_major, default_minor, default_patch = 1, 0, 0
+        if not current_version:
+            major, minor, patch = default_major, default_minor, default_patch
+        else:
+            match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", current_version.strip())
+            if not match:
+                major, minor, patch = default_major, default_minor, default_patch
+            else:
+                major, minor, patch = map(int, match.groups())
+
+        return f"{major}.{minor + 1}.0"
 
     def executer_generation(self, generation_id: int) -> None:
         """
