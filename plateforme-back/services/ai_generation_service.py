@@ -10,6 +10,10 @@ Flux :
   6. Passer le status en completed (ou failed)
 
 L'appel IA s'exécute dans une BackgroundTask FastAPI pour ne pas bloquer la réponse HTTP.
+
+Support pour les clés API personnalisées :
+  - Si l'utilisateur a configuré sa propre clé API (OpenRouter), elle sera utilisée
+  - Sinon, la clé API partagée de la plateforme est utilisée
 """
 from __future__ import annotations
 
@@ -99,6 +103,34 @@ class AIGenerationService:
     def __init__(self, db: Session):
         self.db   = db
         self.repo = AIGenerationRepository(db)
+        self.current_user_id: Optional[int] = None  # Set during generation
+        self.api_key_service = None  # Lazy loaded when needed
+
+    def _get_api_key_service(self):
+        """Lazy load APIKeyService to avoid circular imports."""
+        if self.api_key_service is None:
+            from services.api_key_service import APIKeyService
+            self.api_key_service = APIKeyService(self.db)
+        return self.api_key_service
+
+    def _get_api_key_for_request(self) -> str:
+        """
+        Get the appropriate API key for the current request.
+        
+        Returns:
+            - User's custom API key if they have one enabled
+            - Platform API key otherwise
+        """
+        if self.current_user_id:
+            api_key_svc = self._get_api_key_service()
+            custom_key = api_key_svc.get_api_key_for_user(self.current_user_id)
+            if custom_key:
+                return custom_key
+        
+        # Fall back to platform key
+        if not AI_API_KEY:
+            raise ValueError("No API key available (platform key not configured)")
+        return AI_API_KEY
 
     # ─── Point d'entrée public ────────────────────────────────────────────
 
@@ -135,6 +167,8 @@ class AIGenerationService:
                           "Recherche du cahier des charges…", 5)
 
         gen = self.repo.get_by_id(generation_id)
+        # Set the user_id for API key selection
+        self.current_user_id = gen.user_id
 
         # ── Étape 2 : Lecture du fichier ───────────────────────────────────
         content = self._lire_cahier_des_charges(gen.projet_id)
@@ -289,11 +323,13 @@ class AIGenerationService:
 
         En cas d'erreur 429 (quota dépassé), attend le délai suggéré par l'API
         puis réessaie (3 tentatives max).
+        
+        Utilise la clé API personnalisée de l'utilisateur si disponible,
+        sinon la clé API partagée de la plateforme.
         """
-        if not AI_API_KEY:
-            raise ValueError("Clé API IA manquante. Définir ai_api_key dans .env")
+        api_key = self._get_api_key_for_request()
 
-        # Tronquer si trop long (≈ 12 000 tokens max ≈ 48 000 caractères)
+        # Tronquer si trop long (≈ 12 000 tokens max ≈ 48 000 caractères)
         max_chars = 48_000
         if len(content) > max_chars:
             content = content[:max_chars] + "\n[... contenu tronqué ...]"
@@ -303,7 +339,7 @@ class AIGenerationService:
 
         for attempt in range(max_retries):
             try:
-                return self._appeler_google(content)
+                return self._appeler_google(content, api_key)
             except Exception as exc:
                 err_str = str(exc)
                 is_quota = (
@@ -328,8 +364,7 @@ class AIGenerationService:
 
         raise RuntimeError("Échec après toutes les tentatives.")
 
-    @staticmethod
-    def _appeler_google(content: str) -> str:
+    def _appeler_google(self, content: str, api_key: str) -> str:
         """Appel unique vers l'API OpenRouter (compatible OpenAI)."""
         import requests
 
@@ -345,7 +380,7 @@ class AIGenerationService:
             "max_tokens": 8192,
         }
         headers = {
-            "Authorization": f"Bearer {AI_API_KEY}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type":  "application/json",
         }
 
