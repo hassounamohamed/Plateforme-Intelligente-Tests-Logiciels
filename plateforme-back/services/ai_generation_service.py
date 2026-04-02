@@ -125,12 +125,12 @@ class AIGenerationService:
             api_key_svc = self._get_api_key_service()
             custom_key = api_key_svc.get_api_key_for_user(self.current_user_id)
             if custom_key:
-                return custom_key
+                return custom_key.strip().strip('"').strip("'")
         
         # Fall back to platform key
         if not AI_API_KEY:
             raise ValueError("No API key available (platform key not configured)")
-        return AI_API_KEY
+        return AI_API_KEY.strip().strip('"').strip("'")
 
     # ─── Point d'entrée public ────────────────────────────────────────────
 
@@ -389,6 +389,12 @@ class AIGenerationService:
         if resp.status_code == 429:
             # Propager comme exception pour que la boucle retry la capte
             raise Exception(f"429 Quota dépassé : {resp.text}")
+
+        if resp.status_code == 401:
+            raise ValueError(
+                "Erreur OpenRouter 401 : clé API invalide/expirée ou non autorisée pour ce compte. "
+                "Vérifiez la clé API active (personnelle ou plateforme)."
+            )
 
         if not resp.ok:
             raise ValueError(f"Erreur OpenRouter {resp.status_code} : {resp.text}")

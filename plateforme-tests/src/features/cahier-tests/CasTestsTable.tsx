@@ -24,6 +24,7 @@ export default function CasTestsTable({
   const [filterStatut, setFilterStatut] = useState<StatutTest | "all">("all");
   const [filterSprint, setFilterSprint] = useState<string>("all");
   const [filterModule, setFilterModule] = useState<string>("all");
+  const [filterSousModule, setFilterSousModule] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -34,6 +35,9 @@ export default function CasTestsTable({
   const modules = Array.from(
     new Set(casTests.map((c) => c.module).filter(Boolean))
   );
+  const sousModules = Array.from(
+    new Set(casTests.map((c) => c.sous_module).filter(Boolean))
+  );
 
   // Filtrer les cas de tests
   const filteredCas = casTests.filter((cas) => {
@@ -41,6 +45,8 @@ export default function CasTestsTable({
       return false;
     if (filterSprint !== "all" && cas.sprint !== filterSprint) return false;
     if (filterModule !== "all" && cas.module !== filterModule) return false;
+    if (filterSousModule !== "all" && cas.sous_module !== filterSousModule)
+      return false;
     if (
       searchQuery &&
       !cas.test_case.toLowerCase().includes(searchQuery.toLowerCase()) &&
@@ -129,6 +135,22 @@ export default function CasTestsTable({
               {modules.map((module) => (
                 <option key={module} value={module!}>
                   {module}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {/* Filtre Sous-module */}
+          {sousModules.length > 0 && (
+            <select
+              className="px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
+              value={filterSousModule}
+              onChange={(e) => setFilterSousModule(e.target.value)}
+            >
+              <option value="all">Tous les sous-modules</option>
+              {sousModules.map((sousModule) => (
+                <option key={sousModule} value={sousModule!}>
+                  {sousModule}
                 </option>
               ))}
             </select>
