@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { CasTest, StatutTest, TypeTest, UpdateCasTestPayload } from "@/types";
 import { updateCasTest, uploadCasTestCapture, getCasTestCaptureUrl } from "./api";
 import axiosInstance from "@/lib/axios";
+import { getProjectById } from "@/features/projects/api";
 
 interface EditCasTestModalProps {
   projectId: number;
@@ -38,6 +39,8 @@ export default function EditCasTestModal({
   const [error, setError] = useState<string | null>(null);
   const [captureFile, setCaptureFile] = useState<File | null>(null);
   const [capturePreview, setCapturePreview] = useState<string | null>(null);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [projectMembers, setProjectMembers] = useState<{ id: number; nom: string; email: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load existing capture as authenticated blob URL
@@ -55,6 +58,45 @@ export default function EditCasTestModal({
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [casTest.id, casTest.capture]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setFormData({
+      sprint: casTest.sprint || "",
+      module: casTest.module || "",
+      sous_module: casTest.sous_module || "",
+      test_case: casTest.test_case,
+      test_purpose: casTest.test_purpose || "",
+      type_utilisateur: casTest.type_utilisateur || "",
+      scenario_test: casTest.scenario_test || "",
+      resultat_attendu: casTest.resultat_attendu || "",
+      resultat_obtenu: casTest.resultat_obtenu || "",
+      fail_logs: casTest.fail_logs || "",
+      type_test: casTest.type_test,
+      statut_test: casTest.statut_test,
+      commentaire: casTest.commentaire || "",
+    });
+  }, [isOpen, casTest]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadProjectMembers = async () => {
+      setLoadingMembers(true);
+      try {
+        const project = await getProjectById(projectId);
+        setProjectMembers(project.membres ?? []);
+      } catch (err) {
+        console.error("Erreur lors du chargement des membres du projet:", err);
+        setProjectMembers([]);
+      } finally {
+        setLoadingMembers(false);
+      }
+    };
+
+    loadProjectMembers();
+  }, [isOpen, projectId]);
 
   const handleCaptureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -94,8 +136,9 @@ export default function EditCasTestModal({
       Bloqué: "bg-orange-500/20 text-orange-400",
     };
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-        <div className="bg-surface-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-[#3b4754]">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+        <div className="relative bg-surface-dark rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-[#3b4754]">
           {/* Header */}
           <div className="sticky top-0 bg-surface-dark border-b border-[#3b4754] px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -113,8 +156,8 @@ export default function EditCasTestModal({
                 {casTest.type_test}
               </span>
             </div>
-            <button onClick={onClose} className="text-[#9dabb9] hover:text-white text-2xl">
-              ×
+            <button onClick={onClose} className="text-[#9dabb9] hover:text-white transition-colors">
+              <span className="material-symbols-outlined text-[24px]">close</span>
             </button>
           </div>
 
@@ -231,17 +274,18 @@ export default function EditCasTestModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-surface-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-[#3b4754]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-surface-dark rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-[#3b4754]">
         <div className="sticky top-0 bg-surface-dark border-b border-[#3b4754] px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-white">
             Modifier le Test - {casTest.test_ref}
           </h2>
           <button
             onClick={onClose}
-            className="text-[#9dabb9] hover:text-white text-2xl"
+            className="text-[#9dabb9] hover:text-white transition-colors"
           >
-            ×
+            <span className="material-symbols-outlined text-[24px]">close</span>
           </button>
         </div>
 
@@ -296,6 +340,28 @@ export default function EditCasTestModal({
                 setFormData({ ...formData, scenario_test: e.target.value })
               }
             />
+          </div>
+
+          {/* Membre assigné */}
+          <div>
+            <label className="block text-sm font-medium text-white mb-1">
+              Membre assigné
+            </label>
+            <select
+              className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
+              value={formData.type_utilisateur || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, type_utilisateur: e.target.value })
+              }
+              disabled={loadingMembers}
+            >
+              <option value="">{loadingMembers ? "Chargement des membres..." : "Non assigné"}</option>
+              {projectMembers.map((member) => (
+                <option key={member.id} value={member.nom}>
+                  {member.nom} ({member.email})
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Résultat Attendu */}

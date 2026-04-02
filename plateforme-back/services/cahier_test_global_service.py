@@ -863,6 +863,8 @@ class CahierTestGlobalService:
         """Appel unique vers l'API OpenRouter (compatible OpenAI)."""
         import requests
 
+        clean_api_key = api_key.strip().strip('"').strip("'")
+
         payload = {
             "model": AI_MODEL,
             "messages": [
@@ -873,11 +875,23 @@ class CahierTestGlobalService:
             "max_tokens":  8192,
         }
         headers = {
-            "Authorization": f"Bearer {api_key}",
+            "Authorization": f"Bearer {clean_api_key}",
             "Content-Type":  "application/json",
         }
         resp = requests.post(AI_API_URL, json=payload, headers=headers, timeout=120)
-        resp.raise_for_status()
+
+        if resp.status_code == 429:
+            raise Exception(f"429 Quota dépassé : {resp.text}")
+
+        if resp.status_code == 401:
+            raise ValueError(
+                "Erreur OpenRouter 401 : clé API invalide/expirée ou non autorisée pour ce compte. "
+                "Vérifiez la clé API active (personnelle ou plateforme)."
+            )
+
+        if not resp.ok:
+            raise ValueError(f"Erreur OpenRouter {resp.status_code} : {resp.text}")
+
         data = resp.json()
         return data["choices"][0]["message"]["content"]
 

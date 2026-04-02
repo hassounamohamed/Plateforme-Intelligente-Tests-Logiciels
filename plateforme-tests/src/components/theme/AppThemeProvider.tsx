@@ -7,6 +7,8 @@ import {
   localStorageColorSchemeManager,
   useComputedColorScheme,
 } from "@mantine/core";
+import { AlertBridge } from "@/components/ui/AlertBridge";
+import { Toaster } from "@/components/ui/sonner";
 
 interface AppThemeProviderProps {
   children: ReactNode;
@@ -41,6 +43,8 @@ export function AppThemeProvider({ children }: AppThemeProviderProps) {
       }}
     >
       <ThemeClassSync />
+      <AlertBridge />
+      <Toaster />
       {children}
     </MantineProvider>
   );

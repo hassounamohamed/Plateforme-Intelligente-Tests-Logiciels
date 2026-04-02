@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { CreateCasTestPayload, TypeTest } from "@/types";
 import { createCasTest } from "./api";
+import { getProjectById } from "@/features/projects/api";
 
 interface CreateCasTestModalProps {
   projectId: number;
@@ -34,7 +35,28 @@ export default function CreateCasTestModal({
 }: CreateCasTestModalProps) {
   const [formData, setFormData] = useState<CreateCasTestPayload>(initialState);
   const [loading, setLoading] = useState(false);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [projectMembers, setProjectMembers] = useState<{ id: number; nom: string; email: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadProjectMembers = async () => {
+      setLoadingMembers(true);
+      try {
+        const project = await getProjectById(projectId);
+        setProjectMembers(project.membres ?? []);
+      } catch (err) {
+        console.error("Erreur lors du chargement des membres du projet:", err);
+        setProjectMembers([]);
+      } finally {
+        setLoadingMembers(false);
+      }
+    };
+
+    loadProjectMembers();
+  }, [isOpen, projectId]);
 
   const updateField = (field: keyof CreateCasTestPayload, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -73,8 +95,9 @@ export default function CreateCasTestModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-surface-dark rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-[#3b4754]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
+      <div className="relative bg-surface-dark rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-[#3b4754]">
         <div className="sticky top-0 bg-surface-dark border-b border-[#3b4754] px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-white">
             Nouveau cas de test
@@ -82,9 +105,9 @@ export default function CreateCasTestModal({
           <button
             type="button"
             onClick={handleClose}
-            className="text-[#9dabb9] hover:text-white text-2xl"
+            className="text-[#9dabb9] hover:text-white transition-colors"
           >
-            ×
+            <span className="material-symbols-outlined text-[24px]">close</span>
           </button>
         </div>
 
@@ -177,14 +200,20 @@ export default function CreateCasTestModal({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-white mb-1">Type utilisateur</label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md"
+              <label className="block text-sm font-medium text-white mb-1">Membre assigné</label>
+              <select
+                className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md disabled:opacity-60"
                 value={formData.type_utilisateur || ""}
                 onChange={(e) => updateField("type_utilisateur", e.target.value)}
-                placeholder="Ex: QA"
-              />
+                disabled={loadingMembers}
+              >
+                <option value="">{loadingMembers ? "Chargement des membres..." : "Non assigné"}</option>
+                {projectMembers.map((member) => (
+                  <option key={member.id} value={member.nom}>
+                    {member.nom} ({member.email})
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-white mb-1">Type de test</label>

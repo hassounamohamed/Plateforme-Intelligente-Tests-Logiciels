@@ -418,7 +418,8 @@ class UnitTestService:
         us_criteres:  str,
         generation_id: int,
     ) -> str:
-        if not AI_API_KEY:
+        clean_api_key = (AI_API_KEY or "").strip().strip('"').strip("'")
+        if not clean_api_key:
             raise ValueError("Clé API IA manquante. Définir ai_api_key dans .env")
 
         max_chars = 40_000
@@ -436,7 +437,7 @@ class UnitTestService:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                return self._appeler_openrouter(full_prompt)
+                return self._appeler_openrouter(full_prompt, clean_api_key)
             except Exception as exc:
                 err_str  = str(exc)
                 is_quota = "429" in err_str or "quota" in err_str.lower() or "RESOURCE_EXHAUSTED" in err_str
@@ -455,7 +456,7 @@ class UnitTestService:
         raise RuntimeError("Échec après toutes les tentatives IA.")
 
     @staticmethod
-    def _appeler_openrouter(full_prompt: str) -> str:
+    def _appeler_openrouter(full_prompt: str, api_key: str) -> str:
         import requests
         payload = {
             "model":    AI_MODEL,
@@ -467,13 +468,23 @@ class UnitTestService:
             "max_tokens":  8192,
         }
         headers = {
-            "Authorization": f"Bearer {AI_API_KEY}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type":  "application/json",
         }
         resp = requests.post(AI_API_URL, json=payload, headers=headers, timeout=120)
+
         if resp.status_code == 429:
             raise Exception(f"429 Quota dépassé : {resp.text}")
-        resp.raise_for_status()
+
+        if resp.status_code == 401:
+            raise ValueError(
+                "Erreur OpenRouter 401 : clé API invalide/expirée ou non autorisée pour ce compte. "
+                "Vérifiez la clé API active (personnelle ou plateforme)."
+            )
+
+        if not resp.ok:
+            raise ValueError(f"Erreur OpenRouter {resp.status_code} : {resp.text}")
+
         data = resp.json()
         return data["choices"][0]["message"]["content"]
 
