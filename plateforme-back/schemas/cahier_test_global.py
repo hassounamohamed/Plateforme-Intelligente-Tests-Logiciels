@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 StatutCahier  = Literal["brouillon", "valide"]
 TypeTest      = Literal["Manuel", "Automatisé"]
 StatutTest    = Literal["Non exécuté", "Réussi", "Échoué", "Bloqué"]
+ModeGeneration = Literal["ai", "manuelle"]
 
 
 # ─── Requêtes ─────────────────────────────────────────────────────────────────
@@ -21,6 +22,24 @@ StatutTest    = Literal["Non exécuté", "Réussi", "Échoué", "Bloqué"]
 class GenererCahierRequest(BaseModel):
     """Corps optionnel pour lancer la génération du cahier de tests global."""
     version: str = Field("1.0.0", description="Numéro de version du cahier")
+    mode_generation: ModeGeneration = Field(
+        "ai",
+        description="Mode de création du cahier: 'ai' pour génération IA, 'manuelle' pour saisie manuelle par le testeur.",
+    )
+
+
+class CreateCasTestRequest(BaseModel):
+    """Créer un nouveau cas de test manuel dans le cahier."""
+    sprint:           Optional[str] = None
+    module:           Optional[str] = None
+    sous_module:      Optional[str] = None
+    test_case:        str
+    test_purpose:     Optional[str] = None
+    type_utilisateur: Optional[str] = None
+    scenario_test:    Optional[str] = None
+    resultat_attendu: Optional[str] = None
+    type_test:        TypeTest = Field("Manuel", description="Type du cas de test")
+    commentaire:      Optional[str] = None
 
 
 class UpdateCasTestRequest(BaseModel):

@@ -18,6 +18,10 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Import every model so autogenerate can detect all tables
+# Use sys.path to ensure local db module is imported, not conflicting pip package
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
 from db.database import Base  # noqa: E402
 import models  # noqa: F401, E402  – registers all ORM classes against Base
 

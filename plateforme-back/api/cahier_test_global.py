@@ -18,7 +18,7 @@ Endpoints :
 """
 import os
 import uuid
-from typing import Annotated, List, Optional
+from typing import Annotated, List, Optional, Union
 
 from fastapi import APIRouter, Body, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, Response
@@ -32,6 +32,7 @@ from schemas.cahier_test_global import (
     CahierTestGlobalDetailResponse,
     CahierTestGlobalResponse,
     CasTestResponse,
+    CreateCasTestRequest,
     GenererCahierRequest,
     StatistiquesResponse,
     UpdateCasTestRequest,
@@ -53,9 +54,9 @@ def get_service(db: Session = Depends(get_db)) -> CahierTestGlobalService:
 
 @router.post(
     "/generate",
-    response_model=AIGenerationResponse,
+    response_model=Union[AIGenerationResponse, CahierTestGlobalResponse],
     status_code=status.HTTP_202_ACCEPTED,
-    summary="Générer le Cahier de Tests Global via l'IA (non-bloquant)",
+    summary="Créer le cahier global via IA ou en mode manuel",
 )
 async def generer_cahier(
     projet_id: int,
@@ -71,9 +72,17 @@ async def generer_cahier(
     Interroger **GET /generations/{id}** pour suivre la progression et les logs.
     Dès que status=completed, le cahier est disponible via **GET /detail**.
     """
-    gen = svc.demarrer_generation(projet_id, current_user.id, body.version)
-    background_tasks.add_task(svc.executer_generation, gen.id)
-    return gen
+    result = svc.demarrer_generation(
+        projet_id,
+        current_user.id,
+        body.version,
+        body.mode_generation,
+    )
+
+    if body.mode_generation == "ai":
+        background_tasks.add_task(svc.executer_generation, result.id)
+
+    return result
 
 
 # ─── Générations (polling) ────────────────────────────────────────────────────
@@ -166,6 +175,22 @@ async def list_cas_tests(
     svc: CahierTestGlobalService = Depends(get_service),
 ):
     return svc.list_cas_tests(cahier_id, projet_id)
+
+
+@router.post(
+    "/{cahier_id}/cas-tests",
+    response_model=CasTestResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Créer un cas de test manuel dans le cahier",
+)
+async def create_cas_test(
+    projet_id: int,
+    cahier_id: int,
+    body: CreateCasTestRequest,
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: CahierTestGlobalService = Depends(get_service),
+):
+    return svc.create_cas_test(cahier_id, projet_id, body)
 
 
 @router.patch(

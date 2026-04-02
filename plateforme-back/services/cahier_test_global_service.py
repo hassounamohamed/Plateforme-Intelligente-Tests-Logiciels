@@ -29,6 +29,7 @@ from repositories.ai_generation_repository import AIGenerationRepository
 from repositories.cahier_test_global_repository import CahierTestGlobalRepository
 from schemas.cahier_test_global import (
     AICahierResponse,
+    CreateCasTestRequest,
     UpdateCasTestRequest,
 )
 
@@ -94,10 +95,43 @@ class CahierTestGlobalService:
         self.db      = db
         self.repo    = CahierTestGlobalRepository(db)
         self.ai_repo = AIGenerationRepository(db)
+        self.api_key_service = None
+
+    def _get_api_key_service(self):
+        """Lazy load APIKeyService to avoid circular imports."""
+        if self.api_key_service is None:
+            from services.api_key_service import APIKeyService
+            self.api_key_service = APIKeyService(self.db)
+        return self.api_key_service
+
+    def _get_api_key_for_request(self, user_id: Optional[int]) -> str:
+        """
+        Resolve API key for AI call.
+
+        Priority:
+        1) User custom key (if enabled)
+        2) Shared platform key from environment
+        """
+        if user_id:
+            api_key_svc = self._get_api_key_service()
+            custom_key = api_key_svc.get_api_key_for_user(user_id)
+            if custom_key:
+                return custom_key
+
+        if not AI_API_KEY:
+            raise ValueError("Clé API IA manquante. Ajoutez votre clé API dans le profil ou définissez AI_API_KEY dans .env")
+
+        return AI_API_KEY
 
     # ─── Points d'entrée publics ──────────────────────────────────────────
 
-    def demarrer_generation(self, projet_id: int, user_id: int, version: str = "1.0.0") -> AIGeneration:
+    def demarrer_generation(
+        self,
+        projet_id: int,
+        user_id: int,
+        version: str = "1.0.0",
+        mode_generation: str = "ai",
+    ) -> AIGeneration | CahierTestGlobal:
         """
         Crée le job AIGeneration + initialise le CahierTestGlobal.
         Retourne immédiatement le job (status=pending).
@@ -106,6 +140,39 @@ class CahierTestGlobalService:
         projet = self.db.query(Projet).filter(Projet.id == projet_id).first()
         if not projet:
             raise HTTPException(status_code=404, detail="Projet introuvable.")
+
+        # Mode manuel : initialise un cahier vide, sans job IA.
+        if mode_generation == "manuelle":
+            cahier = self.repo.get_by_projet(projet_id)
+            if cahier:
+                self.repo.delete_cas_tests(cahier.id)
+                cahier.version = version
+                cahier.statut = "brouillon"
+                cahier.date_generation = datetime.utcnow()
+                cahier.generated_by_id = user_id
+                cahier.ai_generation_id = None
+                cahier.nombre_total = 0
+                cahier.nombre_reussi = 0
+                cahier.nombre_echoue = 0
+                cahier.nombre_bloque = 0
+                self.db.commit()
+                self.db.refresh(cahier)
+            else:
+                cahier = CahierTestGlobal(
+                    projet_id=projet_id,
+                    generated_by_id=user_id,
+                    version=version,
+                    statut="brouillon",
+                    ai_generation_id=None,
+                    nombre_total=0,
+                    nombre_reussi=0,
+                    nombre_echoue=0,
+                    nombre_bloque=0,
+                )
+                self.db.add(cahier)
+                self.db.commit()
+                self.db.refresh(cahier)
+            return cahier
 
         # Créer le job de génération IA (type=generate_tests)
         gen = self.ai_repo.create_generation(projet_id, user_id, "generate_tests")
@@ -129,6 +196,68 @@ class CahierTestGlobalService:
             cahier = self.repo.create_cahier(projet_id, user_id, version, ai_generation_id=gen.id)
 
         return gen
+
+    def create_cas_test(
+        self,
+        cahier_id: int,
+        projet_id: int,
+        data: CreateCasTestRequest,
+    ) -> CasTest:
+        """Créer un cas de test manuel dans un cahier existant."""
+        self._verifier_appartenance(cahier_id, projet_id)
+
+        last_cas = (
+            self.db.query(CasTest)
+            .filter(CasTest.cahier_id == cahier_id)
+            .order_by(CasTest.ordre.desc())
+            .first()
+        )
+        next_order = (last_cas.ordre + 1) if last_cas else 1
+
+        cas = self.repo.add_cas_test(
+            cahier_id=cahier_id,
+            sprint=data.sprint or "",
+            module=data.module or "",
+            sous_module=data.sous_module or "",
+            test_ref=f"TC-{next_order:03d}",
+            test_case=data.test_case,
+            test_purpose=data.test_purpose or "",
+            type_utilisateur=data.type_utilisateur or "",
+            scenario_test=data.scenario_test or "",
+            resultat_attendu=data.resultat_attendu or "",
+            type_test=data.type_test,
+            ordre=next_order,
+        )
+
+        if data.commentaire is not None:
+            cas.commentaire = data.commentaire
+            self.db.commit()
+            self.db.refresh(cas)
+
+        # Toute création manuelle d'un cas incrémente la version mineure du cahier.
+        cahier = self.repo.get_by_id(cahier_id)
+        if cahier:
+            cahier.version = self._increment_cahier_minor_version(cahier.version)
+
+        self.repo.recalculer_stats(cahier_id)
+        return cas
+
+    def _increment_cahier_minor_version(self, current_version: Optional[str]) -> str:
+        """
+        Incrémente la version mineure du cahier : X.Y.Z -> X.(Y+1).0
+        Exemple: 1.0.0 -> 1.1.0
+        """
+        default_major, default_minor, default_patch = 1, 0, 0
+        if not current_version:
+            major, minor, patch = default_major, default_minor, default_patch
+        else:
+            match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", current_version.strip())
+            if not match:
+                major, minor, patch = default_major, default_minor, default_patch
+            else:
+                major, minor, patch = map(int, match.groups())
+
+        return f"{major}.{minor + 1}.0"
 
     def executer_generation(self, generation_id: int) -> None:
         """
@@ -253,7 +382,11 @@ class CahierTestGlobalService:
         self.ai_repo.update_progress(generation_id, 35)
 
         raw_json = self._appeler_ia(
-            projet.nom, projet.description or "", sprints_content, generation_id
+            projet.nom,
+            projet.description or "",
+            sprints_content,
+            generation_id,
+            gen.user_id,
         )
 
         self.ai_repo.update_progress(generation_id, 65)
@@ -689,10 +822,9 @@ class CahierTestGlobalService:
         return "\n".join(lines)
 
     def _appeler_ia(self, projet_nom: str, projet_description: str,
-                    sprints_content: str, generation_id: int) -> str:
+                    sprints_content: str, generation_id: int, user_id: Optional[int]) -> str:
         """Envoie le prompt à l'IA et retourne la réponse brute."""
-        if not AI_API_KEY:
-            raise ValueError("Clé API IA manquante. Définir ai_api_key dans .env")
+        api_key = self._get_api_key_for_request(user_id)
 
         # Limiter la taille du contenu
         max_chars = 40_000
@@ -708,7 +840,7 @@ class CahierTestGlobalService:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                return self._appeler_openrouter(full_prompt)
+                return self._appeler_openrouter(full_prompt, api_key)
             except Exception as exc:
                 err_str = str(exc)
                 is_quota = "429" in err_str or "quota" in err_str.lower() or "RESOURCE_EXHAUSTED" in err_str
@@ -727,7 +859,7 @@ class CahierTestGlobalService:
         raise RuntimeError("Échec après toutes les tentatives IA.")
 
     @staticmethod
-    def _appeler_openrouter(full_prompt: str) -> str:
+    def _appeler_openrouter(full_prompt: str, api_key: str) -> str:
         """Appel unique vers l'API OpenRouter (compatible OpenAI)."""
         import requests
 
@@ -741,7 +873,7 @@ class CahierTestGlobalService:
             "max_tokens":  8192,
         }
         headers = {
-            "Authorization": f"Bearer {AI_API_KEY}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type":  "application/json",
         }
         resp = requests.post(AI_API_URL, json=payload, headers=headers, timeout=120)

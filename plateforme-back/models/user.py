@@ -21,6 +21,12 @@ class Utilisateur(Base):
 
     role_id = Column(Integer, ForeignKey("role.id"), nullable=True)
 
+    # Custom API Key for AI services
+    custom_api_key = Column(EncryptedString, nullable=True)  # User's own API key (encrypted)
+    use_custom_api_key = Column(Boolean, default=False)  # Use custom key instead of platform key
+    api_key_created_at = Column(DateTime, nullable=True)  # When user added their API key
+    api_key_last_used = Column(DateTime, nullable=True)  # When custom key was last used
+
     # Relations
     role = relationship("Role", back_populates="users")
     

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { CasTest, StatutTest } from "@/types";
 import EditCasTestModal from "./EditCasTestModal";
+import CreateCasTestModal from "./CreateCasTestModal";
 
 interface CasTestsTableProps {
   projectId: number;
@@ -24,6 +25,7 @@ export default function CasTestsTable({
   const [filterSprint, setFilterSprint] = useState<string>("all");
   const [filterModule, setFilterModule] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Extraire les valeurs uniques pour les filtres
   const sprints = Array.from(
@@ -69,6 +71,15 @@ export default function CasTestsTable({
       {/* Filtres */}
       <div className="p-4 border-b border-[#3b4754] space-y-3">
         <div className="flex items-center gap-3 flex-wrap">
+          {!readOnly && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+            >
+              + Nouveau cas 
+            </button>
+          )}
+
           {/* Recherche */}
           <input
             type="text"
@@ -242,6 +253,14 @@ export default function CasTestsTable({
           }}
         />
       )}
+
+      <CreateCasTestModal
+        projectId={projectId}
+        cahierId={cahierId}
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={onRefresh}
+      />
     </div>
   );
 }
