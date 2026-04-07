@@ -6,15 +6,33 @@ import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout, StatCard } from "@/components/dashboard/DashboardLayout";
 import { ROUTES } from "@/lib/constants";
-import { getDashboardStatsApi, DashboardStats } from "@/features/dashboard/api";
+import {
+  getDashboardStatsApi,
+  getActivityDataApi,
+  DashboardStats,
+  ActivityData,
+} from "@/features/dashboard/api";
+
+type ActivityRange = 30 | 7 | 1;
+
+const CHART_WIDTH = 1000;
+const CHART_HEIGHT = 260;
+const CHART_PADDING = { top: 20, right: 20, bottom: 36, left: 20 };
 
 export default function SuperAdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [activityRange, setActivityRange] = useState<ActivityRange>(30);
+  const [activityData, setActivityData] = useState<ActivityData[]>([]);
+  const [isActivityLoading, setIsActivityLoading] = useState(true);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    loadActivityData(activityRange);
+  }, [activityRange]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -27,6 +45,64 @@ export default function SuperAdminDashboard() {
       setIsLoading(false);
     }
   };
+
+  const loadActivityData = async (days: ActivityRange) => {
+    setIsActivityLoading(true);
+    try {
+      const activity = await getActivityDataApi(days);
+      setActivityData(activity);
+    } catch (error) {
+      console.error("Failed to load activity data:", error);
+      setActivityData([]);
+    } finally {
+      setIsActivityLoading(false);
+    }
+  };
+
+  const maxValue = Math.max(
+    1,
+    ...activityData.flatMap((point) => [point.logins, point.testExecutions]),
+  );
+
+  const chartInnerWidth = CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right;
+  const chartInnerHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
+
+  const toChartX = (index: number) => {
+    if (activityData.length <= 1) {
+      return CHART_PADDING.left + chartInnerWidth / 2;
+    }
+    return CHART_PADDING.left + (index / (activityData.length - 1)) * chartInnerWidth;
+  };
+
+  const toChartY = (value: number) => {
+    const normalized = value / maxValue;
+    return CHART_PADDING.top + (1 - normalized) * chartInnerHeight;
+  };
+
+  const buildPath = (values: number[]) =>
+    values
+      .map((value, index) => `${index === 0 ? "M" : "L"}${toChartX(index)},${toChartY(value)}`)
+      .join(" ");
+
+  const loginPath = buildPath(activityData.map((point) => point.logins));
+  const testsPath = buildPath(activityData.map((point) => point.testExecutions));
+
+  const formatLabel = (rawDate: string) => {
+    const parsed = new Date(rawDate);
+    if (Number.isNaN(parsed.getTime())) {
+      return rawDate;
+    }
+
+    if (activityRange === 1) {
+      return parsed.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    return parsed.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+  };
+
+  const xLabelIndexes = activityData.length
+    ? [0, Math.floor((activityData.length - 1) / 2), activityData.length - 1]
+    : [];
 
   const sidebarLinks = [
     { href: ROUTES.SUPER_ADMIN, icon: "dashboard", label: "Dashboard" },
@@ -89,23 +165,135 @@ export default function SuperAdminDashboard() {
             <div>
               <h3 className="text-white text-lg font-bold">Activité de la Plateforme</h3>
               <p className="text-[#9dabb9] text-sm">
-                Connexions utilisateurs vs Tests automatisés (30 derniers jours)
+                Connexions utilisateurs vs Tests automatisés
               </p>
             </div>
             <div className="flex bg-[#283039] rounded-lg p-1 self-start sm:self-auto">
-              <button className="px-3 py-1 bg-primary text-white text-xs font-bold rounded shadow-sm">
+              <button
+                onClick={() => setActivityRange(30)}
+                className={`px-3 py-1 text-xs rounded transition-colors ${
+                  activityRange === 30
+                    ? "bg-primary text-white font-bold shadow-sm"
+                    : "text-[#9dabb9] hover:text-white font-medium"
+                }`}
+              >
                 30 Jours
               </button>
-              <button className="px-3 py-1 text-[#9dabb9] hover:text-white text-xs font-medium rounded transition-colors">
+              <button
+                onClick={() => setActivityRange(7)}
+                className={`px-3 py-1 text-xs rounded transition-colors ${
+                  activityRange === 7
+                    ? "bg-primary text-white font-bold shadow-sm"
+                    : "text-[#9dabb9] hover:text-white font-medium"
+                }`}
+              >
                 7 Jours
               </button>
-              <button className="px-3 py-1 text-[#9dabb9] hover:text-white text-xs font-medium rounded transition-colors">
+              <button
+                onClick={() => setActivityRange(1)}
+                className={`px-3 py-1 text-xs rounded transition-colors ${
+                  activityRange === 1
+                    ? "bg-primary text-white font-bold shadow-sm"
+                    : "text-[#9dabb9] hover:text-white font-medium"
+                }`}
+              >
                 24 Heures
               </button>
             </div>
           </div>
-          <div className="h-60 w-full flex items-center justify-center">
-            <p className="text-[#9dabb9]">Graphique d&apos;activité en développement</p>
+          <div className="h-64 w-full">
+            {isActivityLoading ? (
+              <div className="h-full w-full flex items-center justify-center">
+                <p className="text-[#9dabb9]">Chargement des données d&apos;activité...</p>
+              </div>
+            ) : activityData.length === 0 ? (
+              <div className="h-full w-full flex items-center justify-center">
+                <p className="text-[#9dabb9]">Aucune donnée d&apos;activité disponible.</p>
+              </div>
+            ) : (
+              <div className="h-full w-full">
+                <div className="flex items-center gap-5 text-xs mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-3 h-3 rounded-full bg-[#33d17a]" />
+                    <span className="text-[#9dabb9]">Connexions</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-3 h-3 rounded-full bg-[#4da3ff]" />
+                    <span className="text-[#9dabb9]">Tests automatisés</span>
+                  </div>
+                  <span className="text-[#9dabb9] ml-auto">
+                    Pic: {maxValue} événements
+                  </span>
+                </div>
+
+                <svg
+                  viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+                  className="w-full h-[220px] overflow-visible"
+                  role="img"
+                  aria-label="Graphique d'activité: Connexions utilisateurs et tests automatisés"
+                >
+                  <defs>
+                    <linearGradient id="loginsGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#33d17a" stopOpacity="0.25" />
+                      <stop offset="100%" stopColor="#33d17a" stopOpacity="0.02" />
+                    </linearGradient>
+                  </defs>
+
+                  {[0.25, 0.5, 0.75, 1].map((fraction) => {
+                    const y = CHART_PADDING.top + chartInnerHeight * fraction;
+                    return (
+                      <line
+                        key={fraction}
+                        x1={CHART_PADDING.left}
+                        y1={y}
+                        x2={CHART_WIDTH - CHART_PADDING.right}
+                        y2={y}
+                        stroke="#2f3a46"
+                        strokeWidth="1"
+                        strokeDasharray="4 6"
+                      />
+                    );
+                  })}
+
+                  <path
+                    d={`${loginPath} L${toChartX(activityData.length - 1)},${
+                      CHART_HEIGHT - CHART_PADDING.bottom
+                    } L${toChartX(0)},${CHART_HEIGHT - CHART_PADDING.bottom} Z`}
+                    fill="url(#loginsGradient)"
+                  />
+
+                  <path
+                    d={loginPath}
+                    fill="none"
+                    stroke="#33d17a"
+                    strokeWidth="3"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d={testsPath}
+                    fill="none"
+                    stroke="#4da3ff"
+                    strokeWidth="3"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+
+                  {xLabelIndexes.map((index) => (
+                    <text
+                      key={`label-${index}`}
+                      x={toChartX(index)}
+                      y={CHART_HEIGHT - 8}
+                      fill="#9dabb9"
+                      fontSize="12"
+                      textAnchor="middle"
+                    >
+                      {formatLabel(activityData[index].date)}
+                    </text>
+                  ))}
+                </svg>
+              </div>
+            )}
           </div>
         </div>
 

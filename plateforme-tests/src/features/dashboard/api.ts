@@ -53,7 +53,13 @@ export async function getDashboardStatsApi(): Promise<DashboardStats> {
 
 // Get activity data for charts
 export async function getActivityDataApi(days: number = 30): Promise<ActivityData[]> {
-  // TODO: Implement this endpoint in backend
-  // For now, return empty array
-  return [];
+  const response = await axiosInstance.get<ActivityData[]>(`/dashboard/activity`, {
+    params: { days },
+  });
+
+  if (!Array.isArray(response.data)) {
+    return [];
+  }
+
+  return response.data;
 }
