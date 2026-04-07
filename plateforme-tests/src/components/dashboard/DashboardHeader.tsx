@@ -337,16 +337,16 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
   };
 
   return (
-    <header className="flex items-center justify-between border-b px-6 py-4 z-10 sticky top-0 backdrop-blur-md bg-(--background)/95 border-(--border)">
+    <header className="flex items-center justify-between border-b px-6 py-4 z-10 sticky top-0 backdrop-blur-md bg-(--background)/95 border-border">
       <div className="flex items-center gap-4">
-        <button className="md:hidden text-(--muted)">
+        <button className="md:hidden text-muted">
           <span className="material-symbols-outlined">menu</span>
         </button>
         <div className="flex flex-col">
           <h2 className="text-xl font-bold leading-tight tracking-tight text-foreground">
             {title}
           </h2>
-          <p className="text-xs text-(--muted)">{subtitle}</p>
+          <p className="text-xs text-muted">{subtitle}</p>
         </div>
       </div>
       <div className="flex items-center gap-4">
@@ -356,12 +356,12 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
             onSubmit={handleSearchSubmit}
             className="flex items-center rounded-lg h-10 px-3 w-80 focus-within:ring-2 focus-within:ring-primary/50 transition-all bg-(--surface-2)"
           >
-            <span className="material-symbols-outlined text-[20px] text-(--muted)">
+            <span className="material-symbols-outlined text-[20px] text-muted">
               search
             </span>
             <input
               ref={searchInputRef}
-              className="bg-transparent border-none text-sm w-full focus:ring-0 text-foreground placeholder:text-(--muted)"
+              className="bg-transparent border-none text-sm w-full focus:ring-0 text-foreground placeholder:text-muted"
               placeholder="Rechercher une page du dashboard..."
               type="text"
               value={searchQuery}
@@ -378,13 +378,13 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
               }}
               aria-label="Rechercher une page du dashboard"
             />
-            <div className="flex items-center justify-center h-5 w-5 rounded text-[10px] font-bold border-(--border) text-(--muted)">
+            <div className="flex items-center justify-center h-5 w-5 rounded text-[10px] font-bold border-border text-muted">
               /
             </div>
           </form>
 
           {isSearchOpen && normalizedQuery && (
-            <div className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] rounded-xl border border-(--border) bg-(--surface) shadow-2xl overflow-hidden">
+            <div className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-(--surface) shadow-2xl overflow-hidden">
               {searchResults.length > 0 ? (
                 <div className="py-2">
                   {searchResults.map((item) => (
@@ -395,12 +395,12 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
                       className="w-full px-4 py-3 text-left hover:bg-(--surface-2) transition-colors"
                     >
                       <div className="text-sm font-medium text-foreground">{item.title}</div>
-                      <div className="text-xs text-(--muted) mt-1">{item.description}</div>
+                      <div className="text-xs text-muted mt-1">{item.description}</div>
                     </button>
                   ))}
                 </div>
               ) : (
-                <div className="px-4 py-4 text-sm text-(--muted)">
+                <div className="px-4 py-4 text-sm text-muted">
                   Aucun resultat pour cette recherche.
                 </div>
               )}
@@ -409,7 +409,7 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
         </div>
         <ThemeModeToggle />
         {/* Notifications */}
-        <button className="flex items-center justify-center h-10 w-10 rounded-lg relative transition-colors bg-(--surface-2) text-(--muted) hover:text-foreground">
+        <button className="flex items-center justify-center h-10 w-10 rounded-lg relative transition-colors bg-(--surface-2) text-muted hover:text-foreground">
           <span className="material-symbols-outlined">notifications</span>
           <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-background"></span>
         </button>

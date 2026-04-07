@@ -19,9 +19,9 @@ interface StatCardProps {
 
 export function StatCard({ title, value, icon, trend, status }: StatCardProps) {
   return (
-    <div className="bg-(--surface) border border-(--border) rounded-xl p-5 flex flex-col gap-3 hover:border-primary/50 transition-colors group">
+    <div className="bg-(--surface) border border-border rounded-xl p-5 flex flex-col gap-3 hover:border-primary/50 transition-colors group">
       <div className="flex items-center justify-between">
-        <p className="text-(--muted) text-sm font-medium">{title}</p>
+        <p className="text-muted text-sm font-medium">{title}</p>
         <div className="h-8 w-8 rounded-full bg-(--surface-2) flex items-center justify-center text-foreground group-hover:bg-primary/20 group-hover:text-primary transition-colors">
           <span className="material-symbols-outlined text-[18px]">{icon}</span>
         </div>
@@ -57,7 +57,7 @@ export function StatCard({ title, value, icon, trend, status }: StatCardProps) {
                   : "bg-red-500"
               } animate-pulse`}
             ></div>
-            <p className="text-(--muted) text-xs font-medium">{status.text}</p>
+            <p className="text-muted text-xs font-medium">{status.text}</p>
           </div>
         )}
       </div>
