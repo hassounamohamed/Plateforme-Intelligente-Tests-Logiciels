@@ -32,12 +32,32 @@ export interface ChangePasswordData {
   nouveauMotDePasse: string;
 }
 
+const isEncryptedLikeValue = (value?: string): boolean => {
+  if (!value) {
+    return false;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.startsWith("gAAAA") && trimmed.length > 80;
+};
+
+const sanitizeProfile = (profile: UserProfile): UserProfile => {
+  if (!isEncryptedLikeValue(profile.telephone)) {
+    return profile;
+  }
+
+  return {
+    ...profile,
+    telephone: "",
+  };
+};
+
 /**
  * Get current user profile
  */
 export const getMyProfileApi = async (): Promise<UserProfile> => {
   const response = await axios.get("/auth/me");
-  return response.data;
+  return sanitizeProfile(response.data);
 };
 
 /**
@@ -45,7 +65,7 @@ export const getMyProfileApi = async (): Promise<UserProfile> => {
  */
 export const updateMyProfileApi = async (data: UpdateProfileData): Promise<UserProfile> => {
   const response = await axios.patch("/users/me/profile", data);
-  return response.data;
+  return sanitizeProfile(response.data);
 };
 
 /**

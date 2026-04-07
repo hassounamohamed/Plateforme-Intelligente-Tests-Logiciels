@@ -421,7 +421,7 @@ class AuthService:
                 "id": u.id,
                 "nom": u.nom,
                 "email": u.email,
-                "telephone": u.telephone,
+                "telephone": u.telephone if u.telephone else None,
                 "actif": u.actif,
                 "dateCreation": u.dateCreation,
                 "derniereConnexion": u.derniereConnexion,
@@ -438,7 +438,7 @@ class AuthService:
                 "id": u.id,
                 "nom": u.nom,
                 "email": u.email,
-                "telephone": u.telephone,
+                "telephone": u.telephone if u.telephone else None,
                 "actif": u.actif,
                 "dateCreation": u.dateCreation,
                 "derniereConnexion": u.derniereConnexion,
@@ -488,11 +488,14 @@ class AuthService:
                 detail="Utilisateur non trouvé",
             )
 
+        # Always return decrypted phone number (EncryptedString type auto-decrypts on access)
+        telephone = user.telephone if user.telephone else None
+
         response = {
             "id": user.id,
             "nom": user.nom,
             "email": user.email,
-            "telephone": user.telephone,
+            "telephone": telephone,
             "role_id": user.role_id,
             "actif": user.actif,
         }
