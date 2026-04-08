@@ -24,8 +24,10 @@ import { getModules } from "@/features/modules/api";
 import { getEpics } from "@/features/epics/api";
 import { getUserStories } from "@/features/userstories/api";
 import { Project, Sprint, Module, Epic, UserStory, SprintVelocite } from "@/types";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialogProvider";
 
 export default function SprintsPage() {
+  const confirmDialog = useConfirmDialog();
   const searchParams = useSearchParams();
   const projectFromQuery = searchParams.get("project");
   const isProjectTabView = Boolean(projectFromQuery);
@@ -120,7 +122,15 @@ export default function SprintsPage() {
 
   const handleCloseSprint = async (sprintId: number) => {
     if (!selectedProject) return;
-    if (!confirm("Êtes-vous sûr de vouloir clôturer ce sprint ?")) return;
+    const confirmed = await confirmDialog({
+      title: "Clôturer le sprint",
+      description: "Êtes-vous sûr de vouloir clôturer ce sprint ?",
+      confirmText: "Clôturer",
+      cancelText: "Annuler",
+    });
+
+    if (!confirmed) return;
+
     setActionLoading(sprintId);
     try {
       await closeSprint(selectedProject, sprintId);
@@ -134,7 +144,16 @@ export default function SprintsPage() {
 
   const handleDeleteSprint = async (sprintId: number) => {
     if (!selectedProject) return;
-    if (!confirm("Êtes-vous sûr de vouloir supprimer ce sprint ?")) return;
+    const confirmed = await confirmDialog({
+      title: "Supprimer le sprint",
+      description: "Êtes-vous sûr de vouloir supprimer ce sprint ?",
+      confirmText: "Supprimer",
+      cancelText: "Annuler",
+      confirmVariant: "destructive",
+    });
+
+    if (!confirmed) return;
+
     setActionLoading(sprintId);
     try {
       await deleteSprint(selectedProject, sprintId);

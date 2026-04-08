@@ -18,9 +18,11 @@ import {
   deleteUserApi 
 } from "@/features/users/api";
 import { getRolesApi } from "@/features/roles/api";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialogProvider";
 
 export default function UsersPage() {
   const { user: currentUser } = useAuthStore();
+  const confirmDialog = useConfirmDialog();
   const isSuperAdmin = currentUser?.role?.code === ROLES.SUPER_ADMIN;
 
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -70,15 +72,26 @@ export default function UsersPage() {
   };
 
   const handleDeleteUser = async (userId: number) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer définitivement cet utilisateur ? Cette action est irréversible.")) {
-      try {
-        await deleteUserApi(userId);
-        await loadData();
-        alert("Utilisateur supprimé avec succès");
-      } catch (error) {
-        console.error("Failed to delete user:", error);
-        alert("Erreur lors de la suppression de l'utilisateur");
-      }
+    const confirmed = await confirmDialog({
+      title: "Supprimer l'utilisateur",
+      description:
+        "Êtes-vous sûr de vouloir supprimer définitivement cet utilisateur ? Cette action est irréversible.",
+      confirmText: "Supprimer",
+      cancelText: "Annuler",
+      confirmVariant: "destructive",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteUserApi(userId);
+      await loadData();
+      alert("Utilisateur supprimé avec succès");
+    } catch (error) {
+      console.error("Failed to delete user:", error);
+      alert("Erreur lors de la suppression de l'utilisateur");
     }
   };
 

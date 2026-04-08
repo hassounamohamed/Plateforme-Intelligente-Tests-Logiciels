@@ -20,6 +20,7 @@ import {
 import CahierStatistiques from "./CahierStatistiques";
 import CasTestsTable from "./CasTestsTable";
 import GenerationProgress from "./GenerationProgress";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialogProvider";
 
 interface CahierTestsManagerProps {
   projectId: number;
@@ -32,6 +33,7 @@ export default function CahierTestsManager({
   readOnly = false,
   canGenerate = true,
 }: CahierTestsManagerProps) {
+  const confirmDialog = useConfirmDialog();
   const [cahier, setCahier] = useState<CahierTestGlobalDetail | null>(null);
   const [stats, setStats] = useState<StatistiquesCahier | null>(null);
   const [loading, setLoading] = useState(true);
@@ -137,12 +139,14 @@ export default function CahierTestsManager({
 
   const handleValidate = async () => {
     if (!cahier) return;
-    if (
-      !window.confirm(
-        "Êtes-vous sûr de vouloir valider ce cahier de tests ?"
-      )
-    )
-      return;
+    const confirmed = await confirmDialog({
+      title: "Valider le cahier de tests",
+      description: "Êtes-vous sûr de vouloir valider ce cahier de tests ?",
+      confirmText: "Valider",
+      cancelText: "Annuler",
+    });
+
+    if (!confirmed) return;
 
     try {
       await validerCahier(projectId, cahier.id, {});

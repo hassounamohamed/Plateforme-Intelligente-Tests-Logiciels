@@ -114,7 +114,7 @@ export function APIKeyManagement() {
       {/* Alert Messages */}
       {error && (
         <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 flex items-start gap-3">
-          <span className="material-symbols-outlined text-red-600 dark:text-red-400 flex-shrink-0">
+          <span className="material-symbols-outlined text-red-600 dark:text-red-400 shrink-0">
             error
           </span>
           <div className="flex-1">
@@ -131,7 +131,7 @@ export function APIKeyManagement() {
 
       {successMessage && (
         <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 flex items-start gap-3">
-          <span className="material-symbols-outlined text-green-600 dark:text-green-400 flex-shrink-0">
+          <span className="material-symbols-outlined text-green-600 dark:text-green-400 shrink-0">
             check_circle
           </span>
           <div className="flex-1">
@@ -149,7 +149,7 @@ export function APIKeyManagement() {
       {/* Quota Alert */}
       {apiKeyQuota?.quota_exhausted && !apiKeyStatus?.use_custom_api_key && (
         <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-4 flex items-start gap-3">
-          <span className="material-symbols-outlined text-yellow-600 dark:text-yellow-400 flex-shrink-0">
+          <span className="material-symbols-outlined text-yellow-600 dark:text-yellow-400 shrink-0">
             warning
           </span>
           <div className="flex-1">
@@ -346,7 +346,7 @@ export function APIKeyManagement() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 rounded-lg">
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-sm w-full mx-4 p-6">
             <div className="flex items-start gap-4">
-              <div className="flex-shrink-0">
+              <div className="shrink-0">
                 <span className="material-symbols-outlined text-2xl text-red-600">warning</span>
               </div>
               <div className="flex-1">

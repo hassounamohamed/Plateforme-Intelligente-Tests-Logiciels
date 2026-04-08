@@ -34,8 +34,10 @@ import {
   CreateModulePayload,
   UpdateModulePayload,
 } from "@/types";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialogProvider";
 
 export default function ProjectsManagementPage() {
+  const confirmDialog = useConfirmDialog();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
@@ -124,16 +126,26 @@ export default function ProjectsManagementPage() {
   };
 
   const handleDeleteProject = async (projectId: number) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer ce projet ?")) {
-      try {
-        await deleteProject(projectId);
-        await fetchProjects();
-        if (selectedProject?.id === projectId) {
-          setSelectedProject(null);
-        }
-      } catch (err) {
-        alert("Erreur lors de la suppression");
+    const confirmed = await confirmDialog({
+      title: "Supprimer le projet",
+      description: "Êtes-vous sûr de vouloir supprimer ce projet ?",
+      confirmText: "Supprimer",
+      cancelText: "Annuler",
+      confirmVariant: "destructive",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteProject(projectId);
+      await fetchProjects();
+      if (selectedProject?.id === projectId) {
+        setSelectedProject(null);
       }
+    } catch (err) {
+      alert("Erreur lors de la suppression");
     }
   };
 
@@ -168,27 +180,46 @@ export default function ProjectsManagementPage() {
 
   const handleDeleteModule = async (moduleId: number) => {
     if (!selectedProject) return;
-    if (confirm("Êtes-vous sûr de vouloir supprimer ce module ?")) {
-      try {
-        await deleteModule(selectedProject.id, moduleId);
-        await fetchModules(selectedProject.id);
-      } catch (err) {
-        alert("Erreur lors de la suppression");
-      }
+    const confirmed = await confirmDialog({
+      title: "Supprimer le module",
+      description: "Êtes-vous sûr de vouloir supprimer ce module ?",
+      confirmText: "Supprimer",
+      cancelText: "Annuler",
+      confirmVariant: "destructive",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteModule(selectedProject.id, moduleId);
+      await fetchModules(selectedProject.id);
+    } catch (err) {
+      alert("Erreur lors de la suppression");
     }
   };
 
   const handleArchiveProject = async (projectId: number) => {
-    if (confirm("Êtes-vous sûr de vouloir archiver ce projet ?")) {
-      try {
-        await archiveProject(projectId);
-        await fetchProjects();
-        if (selectedProject?.id === projectId) {
-          setSelectedProject(null);
-        }
-      } catch (err) {
-        alert("Erreur lors de l'archivage");
+    const confirmed = await confirmDialog({
+      title: "Archiver le projet",
+      description: "Êtes-vous sûr de vouloir archiver ce projet ?",
+      confirmText: "Archiver",
+      cancelText: "Annuler",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await archiveProject(projectId);
+      await fetchProjects();
+      if (selectedProject?.id === projectId) {
+        setSelectedProject(null);
       }
+    } catch (err) {
+      alert("Erreur lors de l'archivage");
     }
   };
 

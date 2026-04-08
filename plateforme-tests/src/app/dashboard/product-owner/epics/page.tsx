@@ -23,8 +23,10 @@ import {
   UpdateEpicPayload,
   EpicStatus,
 } from "@/types";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialogProvider";
 
 export default function EpicsManagementPage() {
+  const confirmDialog = useConfirmDialog();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
@@ -144,13 +146,23 @@ export default function EpicsManagementPage() {
 
   const handleDeleteEpic = async (epicId: number) => {
     if (!selectedProject || !selectedModule) return;
-    if (confirm("Êtes-vous sûr de vouloir supprimer cet epic ?")) {
-      try {
-        await deleteEpic(selectedProject.id, selectedModule.id, epicId);
-        await loadEpics(selectedProject.id, selectedModule.id);
-      } catch (err) {
-        alert("Erreur lors de la suppression");
-      }
+    const confirmed = await confirmDialog({
+      title: "Supprimer l'epic",
+      description: "Êtes-vous sûr de vouloir supprimer cet epic ?",
+      confirmText: "Supprimer",
+      cancelText: "Annuler",
+      confirmVariant: "destructive",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteEpic(selectedProject.id, selectedModule.id, epicId);
+      await loadEpics(selectedProject.id, selectedModule.id);
+    } catch (err) {
+      alert("Erreur lors de la suppression");
     }
   };
 

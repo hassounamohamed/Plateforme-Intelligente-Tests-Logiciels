@@ -8,6 +8,7 @@ import {
   useComputedColorScheme,
 } from "@mantine/core";
 import { AlertBridge } from "@/components/ui/AlertBridge";
+import { ConfirmDialogProvider } from "@/components/ui/ConfirmDialogProvider";
 import { Toaster } from "@/components/ui/sonner";
 
 interface AppThemeProviderProps {
@@ -42,10 +43,12 @@ export function AppThemeProvider({ children }: AppThemeProviderProps) {
         primaryColor: "blue",
       }}
     >
-      <ThemeClassSync />
-      <AlertBridge />
-      <Toaster />
-      {children}
+      <ConfirmDialogProvider>
+        <ThemeClassSync />
+        <AlertBridge />
+        <Toaster />
+        {children}
+      </ConfirmDialogProvider>
     </MantineProvider>
   );
 }

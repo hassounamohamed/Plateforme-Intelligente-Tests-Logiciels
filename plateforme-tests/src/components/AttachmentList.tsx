@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Attachment } from "@/types";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialogProvider";
 
 interface AttachmentListProps {
   attachments: Attachment[];
@@ -22,6 +23,7 @@ export function AttachmentList({
   maxFileSizeMB = 10,
   allowedExtensions = [".pdf", ".docx", ".png", ".jpg", ".jpeg", ".txt", ".log"],
 }: AttachmentListProps) {
+  const confirmDialog = useConfirmDialog();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -159,12 +161,17 @@ export function AttachmentList({
                 )}
                 {!readonly && onDelete && (
                   <button
-                    onClick={() => {
-                      if (
-                        confirm(
-                          "Êtes-vous sûr de vouloir supprimer cette pièce jointe ?"
-                        )
-                      ) {
+                    onClick={async () => {
+                      const confirmed = await confirmDialog({
+                        title: "Supprimer la pièce jointe",
+                        description:
+                          "Êtes-vous sûr de vouloir supprimer cette pièce jointe ?",
+                        confirmText: "Supprimer",
+                        cancelText: "Annuler",
+                        confirmVariant: "destructive",
+                      });
+
+                      if (confirmed) {
                         onDelete(attachment.id);
                       }
                     }}
