@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ROUTES } from "@/lib/constants";
 import { getMyProjectsAsMember } from "@/features/projects/api";
 import { getBacklog, getBacklogIndicateurs, reordonnancerBacklog } from "@/features/backlog/api";
@@ -297,15 +298,20 @@ export default function BacklogPage() {
                 <option value="statut">Statut</option>
               </select>
             </div>
-            <div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filters.non_planifiees}
-                  onChange={(e) => setFilters({ ...filters, non_planifiees: e.target.checked })}
-                  className="w-4 h-4 rounded border-[#3b4754] bg-[#283039] text-primary focus:ring-primary focus:ring-offset-0"
-                />
-                <span className="text-white text-sm">Non planifiées uniquement</span>
+            <div className="flex items-center gap-2 pt-5.5">
+              <Checkbox
+                id="non-planifiees"
+                checked={filters.non_planifiees}
+                onCheckedChange={(checked: boolean | "indeterminate") =>
+                  setFilters({ ...filters, non_planifiees: checked === true })
+                }
+                className="border-[#3b4754] data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+              />
+              <label
+                htmlFor="non-planifiees"
+                className="text-white text-sm font-medium leading-none cursor-pointer select-none"
+              >
+                Non planifiées uniquement
               </label>
             </div>
           </div>
