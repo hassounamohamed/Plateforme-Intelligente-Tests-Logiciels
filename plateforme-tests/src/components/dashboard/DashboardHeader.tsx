@@ -3,6 +3,7 @@
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ThemeModeToggle } from "@/components/theme/ThemeModeToggle";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuthStore } from "@/features/auth/store";
 import { ROLES, ROUTES } from "@/lib/constants";
 
@@ -339,9 +340,7 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
   return (
     <header className="flex items-center justify-between border-b px-6 py-4 z-10 sticky top-0 backdrop-blur-md bg-(--background)/95 border-border">
       <div className="flex items-center gap-4">
-        <button className="md:hidden text-muted">
-          <span className="material-symbols-outlined">menu</span>
-        </button>
+        <SidebarTrigger className="-ml-3" />
         <div className="flex flex-col">
           <h2 className="text-xl font-bold leading-tight tracking-tight text-foreground">
             {title}

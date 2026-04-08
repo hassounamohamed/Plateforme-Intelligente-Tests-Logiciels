@@ -1,6 +1,8 @@
 "use client";
 
 import { ReactNode } from "react";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 interface StatCardProps {
   title: string;
@@ -77,20 +79,22 @@ export function DashboardLayout({
   headerContent,
 }: DashboardLayoutProps) {
   return (
-    <div className="dashboard-themed h-screen flex overflow-hidden bg-background text-foreground font-display">
-      {/* Sidebar */}
-      {sidebarContent}
+    <TooltipProvider>
+      <SidebarProvider className="dashboard-themed font-display bg-background text-foreground h-screen overflow-hidden">
+        {/* Sidebar */}
+        {sidebarContent}
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 relative">
-        {/* Header */}
-        {headerContent}
+        {/* Main Content */}
+        <SidebarInset className="flex w-full flex-1 flex-col overflow-hidden relative">
+          {/* Header */}
+          {headerContent}
 
-        {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          {children}
-        </main>
-      </div>
-    </div>
+          {/* Scrollable Content */}
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+            {children}
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </TooltipProvider>
   );
 }

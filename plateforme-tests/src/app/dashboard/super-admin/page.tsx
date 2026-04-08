@@ -228,7 +228,7 @@ export default function SuperAdminDashboard() {
 
                 <svg
                   viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-                  className="w-full h-[220px] overflow-visible"
+                  className="w-full h-55 overflow-visible"
                   role="img"
                   aria-label="Graphique d'activité: Connexions utilisateurs et tests automatisés"
                 >

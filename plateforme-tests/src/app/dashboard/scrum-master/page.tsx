@@ -285,44 +285,73 @@ export default function ScrumMasterDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Indicateurs Backlog */}
           {backlogIndicateurs && (
-            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
-              <h3 className="text-white text-lg font-bold mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">list</span>
-                Indicateurs Backlog
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[#9dabb9] text-sm">Total Stories</span>
-                  <span className="text-white font-bold">{backlogIndicateurs.total_stories}</span>
+            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6 flex flex-col">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="bg-primary/20 p-2 rounded-lg text-primary flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[20px]">view_kanban</span>
+                  </div>
+                  <h3 className="text-white text-lg font-bold">Indicateurs Backlog</h3>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#9dabb9] text-sm">Total Points</span>
-                  <span className="text-white font-bold">{backlogIndicateurs.total_points}</span>
+                <Link
+                  href={`${ROUTES.SCRUM_MASTER}/backlog`}
+                  className="text-primary hover:bg-primary/20 p-1.5 rounded-lg transition-colors flex items-center justify-center"
+                  title="Aller au Backlog"
+                >
+                  <span className="material-symbols-outlined text-[22px]">arrow_forward</span>
+                </Link>
+              </div>
+
+              <div className="flex flex-col gap-3 flex-1">
+                {/* Total Cards */}
+                <div className="grid grid-cols-2 gap-3 mb-1">
+                  <div className="bg-[#283039] rounded-xl p-4 border border-[#3b4754]/50 shadow-sm flex flex-col justify-center">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="material-symbols-outlined text-[#9dabb9] text-[16px]">subject</span>
+                      <p className="text-[#9dabb9] text-xs font-bold uppercase tracking-wider">Stories</p>
+                    </div>
+                    <p className="text-white text-3xl font-black">{backlogIndicateurs.total_stories}</p>
+                  </div>
+                  <div className="bg-[#283039] rounded-xl p-4 border border-[#3b4754]/50 shadow-sm flex flex-col justify-center">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="material-symbols-outlined text-[#9dabb9] text-[16px]">toll</span>
+                      <p className="text-[#9dabb9] text-xs font-bold uppercase tracking-wider">Points</p>
+                    </div>
+                    <p className="text-white text-3xl font-black">{backlogIndicateurs.total_points}</p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#9dabb9] text-sm">Points Terminés</span>
-                  <span className="text-[#0bda5b] font-bold">{backlogIndicateurs.points_done}</span>
+
+                {/* List Items */}
+                <div className="flex items-center justify-between p-3.5 rounded-lg border border-[#0bda5b]/20 bg-[#0bda5b]/5 hover:bg-[#0bda5b]/10 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-[#0bda5b]/20 text-[#0bda5b] p-1.5 rounded-md flex items-center justify-center">
+                      <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                    </div>
+                    <span className="text-sm font-semibold text-[#e1e7ec]">Points Terminés</span>
+                  </div>
+                  <span className="text-[#0bda5b] font-bold text-lg">{backlogIndicateurs.points_done}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#9dabb9] text-sm">Items Prioritaires</span>
-                  <span className="text-yellow-400 font-bold">
-                    {backlogIndicateurs.items_prioritaires}
-                  </span>
+
+                <div className="flex items-center justify-between p-3.5 rounded-lg border border-yellow-500/20 bg-yellow-500/5 hover:bg-yellow-500/10 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-yellow-500/20 text-yellow-500 p-1.5 rounded-md flex items-center justify-center">
+                      <span className="material-symbols-outlined text-[18px]">priority_high</span>
+                    </div>
+                    <span className="text-sm font-semibold text-[#e1e7ec]">Items Prioritaires</span>
+                  </div>
+                  <span className="text-yellow-500 font-bold text-lg">{backlogIndicateurs.items_prioritaires}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#9dabb9] text-sm">Items Non Estimés</span>
-                  <span className="text-red-400 font-bold">
-                    {backlogIndicateurs.items_non_estimes}
-                  </span>
+
+                <div className="flex items-center justify-between p-3.5 rounded-lg border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-red-500/20 text-red-500 p-1.5 rounded-md flex items-center justify-center">
+                      <span className="material-symbols-outlined text-[18px] pl-0.5">question_mark</span>
+                    </div>
+                    <span className="text-sm font-semibold text-[#e1e7ec]">Items Non Estimés</span>
+                  </div>
+                  <span className="text-red-400 font-bold text-lg">{backlogIndicateurs.items_non_estimes}</span>
                 </div>
               </div>
-              <Link
-                href={`${ROUTES.SCRUM_MASTER}/backlog`}
-                className="mt-4 text-primary text-sm font-bold hover:underline flex items-center gap-1"
-              >
-                Voir le Backlog
-                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-              </Link>
             </div>
           )}
 
