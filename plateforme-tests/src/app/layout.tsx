@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import "@mantine/core/styles.css";
 import "./globals.css";
 import { AuthProvider } from "@/features/auth/store";
 import { AppColorSchemeScript, AppThemeProvider } from "@/components/theme/AppThemeProvider";

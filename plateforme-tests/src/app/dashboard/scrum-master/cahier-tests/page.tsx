@@ -33,24 +33,29 @@ export default function CahierTestsScrumMasterPage() {
   useEffect(() => {
     if (projects.length === 0) return;
 
+    const projectNameParam = searchParams.get("project");
+    if (projectNameParam) {
+      const decodedName = decodeURIComponent(projectNameParam);
+      const byName = projects.find((p) => p.nom === decodedName) ?? null;
+      setSelectedProject(byName);
+      return;
+    }
+
+    // Backward compatibility with old URL format (?projectId=...)
     const projectIdParam = searchParams.get("projectId");
-    if (!projectIdParam) {
-      setSelectedProject(null);
-      return;
-    }
-
     const projectId = Number(projectIdParam);
-    if (Number.isNaN(projectId)) {
-      setSelectedProject(null);
-      return;
-    }
-
-    const project = projects.find((p) => p.id === projectId) ?? null;
+    const project = !Number.isNaN(projectId)
+      ? projects.find((p) => p.id === projectId) ?? null
+      : null;
     setSelectedProject(project);
   }, [projects, searchParams]);
 
-  const openProjectInNewTab = (projectId: number) => {
-    window.open(`${ROUTES.SCRUM_MASTER}/cahier-tests?projectId=${projectId}`, "_blank", "noopener,noreferrer");
+  const openProjectInNewTab = (projectName: string) => {
+    window.open(
+      `${ROUTES.SCRUM_MASTER}/cahier-tests?project=${encodeURIComponent(projectName)}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
   };
 
   const loadProjects = async () => {
@@ -108,7 +113,13 @@ export default function CahierTestsScrumMasterPage() {
     <DashboardLayout sidebarContent={sidebarContent} headerContent={headerContent}>
       <div className="max-w-350 mx-auto">
         {selectedProject ? (
-          <CahierTestsManager projectId={selectedProject.id} readOnly />
+          <CahierTestsManager
+            projectId={selectedProject.id}
+            projectName={selectedProject.nom}
+            readOnly
+            canGenerate={false}
+            canAssignMember
+          />
         ) : (
           <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-12">
             <div className="max-w-md mx-auto text-center">
@@ -130,7 +141,9 @@ export default function CahierTestsScrumMasterPage() {
                   onChange={(e) => {
                     const value = e.target.value;
                     if (value !== "") {
-                      openProjectInNewTab(parseInt(value, 10));
+                      const projectId = parseInt(value, 10);
+                      const selected = projects.find((p) => p.id === projectId);
+                      if (selected) openProjectInNewTab(selected.nom);
                     }
                   }}
                   className="w-full h-12 px-4 bg-[#283039] border border-[#3b4754] text-white text-base rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"

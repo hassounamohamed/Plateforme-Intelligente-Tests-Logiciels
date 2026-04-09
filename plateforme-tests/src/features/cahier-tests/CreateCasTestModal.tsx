@@ -22,6 +22,7 @@ const initialState: CreateCasTestPayload = {
   type_utilisateur: "",
   scenario_test: "",
   resultat_attendu: "",
+  execution_time_seconds: undefined,
   type_test: "Manuel",
   commentaire: "",
 };
@@ -241,6 +242,24 @@ export default function CreateCasTestModal({
                 placeholder="Optionnel"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-white mb-1">Duration / Execution Time (sec)</label>
+            <input
+              type="number"
+              min={0}
+              className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md"
+              value={formData.execution_time_seconds ?? ""}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  execution_time_seconds:
+                    e.target.value === "" ? undefined : Math.max(0, Number(e.target.value)),
+                }))
+              }
+              placeholder="Ex: 45"
+            />
           </div>
 
           <div className="flex justify-end gap-3 pt-2">

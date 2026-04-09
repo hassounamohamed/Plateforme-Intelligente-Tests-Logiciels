@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { CasTest, StatutTest } from "@/types";
 import EditCasTestModal from "./EditCasTestModal";
 import CreateCasTestModal from "./CreateCasTestModal";
+import { useAuthStore } from "@/features/auth/store";
 
 interface CasTestsTableProps {
   projectId: number;
@@ -11,6 +12,7 @@ interface CasTestsTableProps {
   casTests: CasTest[];
   onRefresh: () => void;
   readOnly?: boolean;
+  canAssignMember?: boolean;
 }
 
 export default function CasTestsTable({
@@ -19,14 +21,32 @@ export default function CasTestsTable({
   casTests,
   onRefresh,
   readOnly = false,
+  canAssignMember = false,
 }: CasTestsTableProps) {
+  const { user } = useAuthStore();
   const [selectedCas, setSelectedCas] = useState<CasTest | null>(null);
+  const [assignOnlyMode, setAssignOnlyMode] = useState(false);
+  const [selectedReadOnly, setSelectedReadOnly] = useState(false);
   const [filterStatut, setFilterStatut] = useState<StatutTest | "all">("all");
   const [filterSprint, setFilterSprint] = useState<string>("all");
   const [filterModule, setFilterModule] = useState<string>("all");
   const [filterSousModule, setFilterSousModule] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  const normalizeName = (value?: string | null) => (value || "").trim().toLowerCase();
+  const currentRole = user?.role?.code;
+  const currentUserName = normalizeName(user?.nom);
+
+  const canEditCas = (cas: CasTest): boolean => {
+    if (readOnly) return false;
+
+    if (currentRole === "TESTEUR_QA" || currentRole === "DEVELOPPEUR") {
+      return !!currentUserName && normalizeName(cas.type_utilisateur) === currentUserName;
+    }
+
+    return true;
+  };
 
   // Extraire les valeurs uniques pour les filtres
   const sprints = Array.from(
@@ -55,6 +75,9 @@ export default function CasTestsTable({
       return false;
     return true;
   });
+
+  const showActionsColumn =
+    (readOnly && canAssignMember) || (!readOnly && filteredCas.some((cas) => canEditCas(cas)));
 
   const getStatutBadge = (statut: StatutTest) => {
     const styles: Record<StatutTest, string> = {
@@ -184,9 +207,12 @@ export default function CasTestsTable({
                 Type
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#9dabb9] uppercase">
+                Durée
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#9dabb9] uppercase">
                 Statut
               </th>
-              {!readOnly && (
+              {showActionsColumn && (
                 <th className="px-4 py-3 text-left text-xs font-medium text-[#9dabb9] uppercase">
                   Actions
                 </th>
@@ -196,7 +222,7 @@ export default function CasTestsTable({
           <tbody className="divide-y divide-[#3b4754]">
             {filteredCas.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-[#9dabb9]">
+                <td colSpan={showActionsColumn ? 8 : 7} className="px-4 py-8 text-center text-[#9dabb9]">
                   Aucun cas de test trouvé
                 </td>
               </tr>
@@ -205,7 +231,11 @@ export default function CasTestsTable({
                 <tr
                   key={cas.id}
                   className="hover:bg-[#283039] cursor-pointer"
-                  onClick={() => setSelectedCas(cas)}
+                  onClick={() => {
+                    setAssignOnlyMode(false);
+                    setSelectedReadOnly(readOnly || !canEditCas(cas));
+                    setSelectedCas(cas);
+                  }}
                 >
                   <td className="px-4 py-3 text-sm font-medium text-white">
                     {cas.test_ref}
@@ -237,20 +267,56 @@ export default function CasTestsTable({
                       {cas.type_test}
                     </span>
                   </td>
+                  <td className="px-4 py-3 text-sm text-[#9dabb9]">
+                    {cas.execution_time_seconds !== null && cas.execution_time_seconds !== undefined
+                      ? `${cas.execution_time_seconds} s`
+                      : "-"}
+                  </td>
                   <td className="px-4 py-3 text-sm">
                     {getStatutBadge(cas.statut_test)}
+                    {(cas.statut_test === "Échoué" || cas.statut_test === "Bloqué") && (
+                      <div className="mt-2 rounded border border-orange-500/40 bg-orange-500/10 px-2 py-1 text-xs">
+                        <div className="text-[#9dabb9]">Bug</div>
+                        <div className="text-white">
+                          <span className="font-semibold">Correction:</span>{" "}
+                          {cas.bug_titre_correction || "—"}
+                        </div>
+                        <div className="text-white">
+                          <span className="font-semibold">Tâche:</span>{" "}
+                          {cas.bug_nom_tache || "—"}
+                        </div>
+                      </div>
+                    )}
                   </td>
-                  {!readOnly && (
+                  {showActionsColumn && (
                     <td className="px-4 py-3 text-sm">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedCas(cas);
-                        }}
-                        className="text-blue-600 hover:text-blue-800 font-medium"
-                      >
-                        Modifier
-                      </button>
+                      {readOnly && canAssignMember ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAssignOnlyMode(true);
+                            setSelectedReadOnly(false);
+                            setSelectedCas(cas);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          Assigner
+                        </button>
+                      ) : (
+                        canEditCas(cas) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAssignOnlyMode(false);
+                              setSelectedReadOnly(false);
+                              setSelectedCas(cas);
+                            }}
+                            className="text-blue-600 hover:text-blue-800 font-medium"
+                          >
+                            Modifier
+                          </button>
+                        )
+                      )}
                     </td>
                   )}
                 </tr>
@@ -267,11 +333,19 @@ export default function CasTestsTable({
           cahierId={cahierId}
           casTest={selectedCas}
           isOpen={!!selectedCas}
-          onClose={() => setSelectedCas(null)}
-          readOnly={readOnly}
+          onClose={() => {
+            setSelectedCas(null);
+            setAssignOnlyMode(false);
+            setSelectedReadOnly(false);
+          }}
+          readOnly={selectedReadOnly}
+          assignOnly={assignOnlyMode}
+          canAssignMember={canAssignMember}
           onSuccess={() => {
             onRefresh();
             setSelectedCas(null);
+            setAssignOnlyMode(false);
+            setSelectedReadOnly(false);
           }}
         />
       )}

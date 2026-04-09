@@ -15,6 +15,7 @@ import json
 import os
 import re
 import time
+import unicodedata
 from datetime import datetime
 from typing import List, Optional
 
@@ -22,9 +23,11 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
 from core.config import AI_API_KEY, AI_MODEL, AI_API_URL
+from core.rbac.constants import ROLE_DEVELOPPEUR, ROLE_TESTEUR_QA
 from models.ai_generation import AIGeneration
 from models.scrum import Projet, Sprint, UserStory, Module, Epic
 from models.cahier_test_global import CahierTestGlobal, CasTest
+from models.user import Utilisateur
 from repositories.ai_generation_repository import AIGenerationRepository
 from repositories.cahier_test_global_repository import CahierTestGlobalRepository
 from schemas.cahier_test_global import (
@@ -86,6 +89,22 @@ Sprints et User Stories :
 {sprints_content}
 
 Génère le cahier de tests complet en JSON selon le schéma demandé.
+"""
+
+BUG_SUGGESTION_SYSTEM_PROMPT = """\
+Tu es un expert QA et triage de bugs.
+À partir du contexte d'un cas de test en échec ou bloqué, propose:
+1) bug_titre_correction: un titre court, actionnable, orienté correction.
+2) bug_nom_tache: un nom de tâche concis de type backlog/issue.
+
+Contraintes:
+- Réponds UNIQUEMENT en JSON valide.
+- Format strict:
+{
+    "bug_titre_correction": "...",
+    "bug_nom_tache": "..."
+}
+- Longueur max 120 caractères par champ.
 """
 
 
@@ -225,12 +244,18 @@ class CahierTestGlobalService:
             type_utilisateur=data.type_utilisateur or "",
             scenario_test=data.scenario_test or "",
             resultat_attendu=data.resultat_attendu or "",
+            execution_time_seconds=data.execution_time_seconds,
             type_test=data.type_test,
             ordre=next_order,
         )
 
         if data.commentaire is not None:
             cas.commentaire = data.commentaire
+            self.db.commit()
+            self.db.refresh(cas)
+
+        if data.execution_time_seconds is not None:
+            cas.execution_time_seconds = data.execution_time_seconds
             self.db.commit()
             self.db.refresh(cas)
 
@@ -267,15 +292,21 @@ class CahierTestGlobalService:
         try:
             self._run(generation_id)
         except Exception as exc:
-            self.ai_repo.update_status(generation_id, "failed", 0)
-            self.ai_repo.add_log(generation_id, "error", str(exc), 0)
-            # Mettre le cahier en erreur
-            gen = self.ai_repo.get_by_id(generation_id)
-            if gen:
-                cahier = self.repo.get_by_projet(gen.projet_id)
-                if cahier and cahier.ai_generation_id == generation_id:
-                    cahier.statut = "failed"
-                    self.db.commit()
+            # IMPORTANT: remettre la session en état avant toute écriture de statut/log
+            self.db.rollback()
+            try:
+                self.ai_repo.update_status(generation_id, "failed", 0)
+                self.ai_repo.add_log(generation_id, "error", str(exc), 0)
+                # Mettre le cahier en erreur
+                gen = self.ai_repo.get_by_id(generation_id)
+                if gen:
+                    cahier = self.repo.get_by_projet(gen.projet_id)
+                    if cahier and cahier.ai_generation_id == generation_id:
+                        cahier.statut = "failed"
+                        self.db.commit()
+            except Exception:
+                # Ne pas relancer ici pour éviter de perdre la cause d'origine.
+                self.db.rollback()
 
     def get_generation(self, generation_id: int, projet_id: int) -> AIGeneration:
         gen = self.ai_repo.get_detail(generation_id)
@@ -299,18 +330,106 @@ class CahierTestGlobalService:
         return self.repo.valider(cahier_id, version)
 
     def update_cas_test(
-        self, cahier_id: int, cas_id: int, projet_id: int, data: UpdateCasTestRequest
+        self,
+        cahier_id: int,
+        cas_id: int,
+        projet_id: int,
+        data: UpdateCasTestRequest,
+        changed_by_id: Optional[int] = None,
     ) -> CasTest:
         self._verifier_appartenance(cahier_id, projet_id)
         cas = self.repo.get_cas_test(cas_id, cahier_id)
         if not cas:
             raise HTTPException(status_code=404, detail="Cas de test introuvable.")
-        updated = self.repo.update_cas_test(
-            cas_id, cahier_id, data.model_dump(exclude_none=True)
+        before = {
+            "statut_test": cas.statut_test,
+            "type_test": cas.type_test,
+            "commentaire": cas.commentaire,
+            "bug_titre_correction": cas.bug_titre_correction,
+            "bug_nom_tache": cas.bug_nom_tache,
+        }
+        payload = data.model_dump(exclude_none=True)
+
+        statut_cible = payload.get("statut_test", cas.statut_test)
+        bug_titre = payload.get("bug_titre_correction", cas.bug_titre_correction)
+        bug_tache = payload.get("bug_nom_tache", cas.bug_nom_tache)
+
+        if statut_cible in {"Échoué", "Bloqué"}:
+            if not (bug_titre and bug_titre.strip()) or not (bug_tache and bug_tache.strip()):
+                suggested_title, suggested_task = self._generer_bug_fields_ia(cas, None)
+                payload.setdefault("bug_titre_correction", suggested_title)
+                payload.setdefault("bug_nom_tache", suggested_task)
+                bug_titre = payload.get("bug_titre_correction")
+                bug_tache = payload.get("bug_nom_tache")
+            if not (bug_titre and bug_titre.strip()):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Le titre de correction est obligatoire pour un test échoué ou bloqué.",
+                )
+            if not (bug_tache and bug_tache.strip()):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Le nom de tâche est obligatoire pour un test échoué ou bloqué.",
+                )
+
+        updated = self.repo.update_cas_test(cas_id, cahier_id, payload)
+
+        history_changed = any(
+            [
+                before["statut_test"] != updated.statut_test,
+                before["type_test"] != updated.type_test,
+                (before["commentaire"] or "") != (updated.commentaire or ""),
+                (before["bug_titre_correction"] or "") != (updated.bug_titre_correction or ""),
+                (before["bug_nom_tache"] or "") != (updated.bug_nom_tache or ""),
+            ]
         )
+        if history_changed:
+            self.repo.add_cas_test_history(
+                {
+                    "cas_test_id": updated.id,
+                    "cahier_id": cahier_id,
+                    "changed_by_id": changed_by_id,
+                    "old_statut_test": before["statut_test"],
+                    "new_statut_test": updated.statut_test,
+                    "old_type_test": before["type_test"],
+                    "new_type_test": updated.type_test,
+                    "old_commentaire": before["commentaire"],
+                    "new_commentaire": updated.commentaire,
+                    "old_bug_titre_correction": before["bug_titre_correction"],
+                    "new_bug_titre_correction": updated.bug_titre_correction,
+                    "old_bug_nom_tache": before["bug_nom_tache"],
+                    "new_bug_nom_tache": updated.bug_nom_tache,
+                }
+            )
+
         if data.statut_test is not None:
             self.repo.recalculer_stats(cahier_id)
         return updated
+
+    def list_cas_test_history(self, cahier_id: int, cas_id: int, projet_id: int) -> list:
+        self._verifier_appartenance(cahier_id, projet_id)
+        cas = self.repo.get_cas_test(cas_id, cahier_id)
+        if not cas:
+            raise HTTPException(status_code=404, detail="Cas de test introuvable.")
+        return self.repo.list_cas_test_history(cas_id, cahier_id)
+
+    def generer_suggestion_bug(
+        self,
+        cahier_id: int,
+        cas_id: int,
+        projet_id: int,
+        user_id: Optional[int],
+    ) -> dict:
+        self._verifier_appartenance(cahier_id, projet_id)
+        cas = self.repo.get_cas_test(cas_id, cahier_id)
+        if not cas:
+            raise HTTPException(status_code=404, detail="Cas de test introuvable.")
+
+        titre, tache = self._generer_bug_fields_ia(cas, user_id)
+        return {
+            "bug_titre_correction": titre,
+            "bug_nom_tache": tache,
+        }
 
     def get_cahier(self, projet_id: int) -> CahierTestGlobal:
         cahier = self.repo.get_by_projet(projet_id)
@@ -351,6 +470,285 @@ class CahierTestGlobalService:
     def list_cas_tests(self, cahier_id: int, projet_id: int) -> list:
         self._verifier_appartenance(cahier_id, projet_id)
         return self.repo.list_cas_tests(cahier_id)
+
+    def get_assignable_members(self, cahier_id: int, projet_id: int) -> list[dict]:
+        self._verifier_appartenance(cahier_id, projet_id)
+        projet = self.db.query(Projet).filter(Projet.id == projet_id).first()
+        if not projet:
+            raise HTTPException(status_code=404, detail="Projet introuvable.")
+
+        allowed_role_codes = {
+            ROLE_TESTEUR_QA,
+            ROLE_DEVELOPPEUR,
+            "TESTER_QA",
+            "TESTEUR",
+            "DEVELOPER",
+        }
+
+        def normalize_role_code(value: Optional[str]) -> str:
+            if not value:
+                return ""
+            raw = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
+            return raw.strip().upper().replace(" ", "_")
+
+        members: list[dict] = []
+        for member in projet.membres or []:
+            role_code = member.role.code if member.role else ""
+            role_name = member.role.nom if member.role else ""
+            normalized_role_code = normalize_role_code(role_code)
+            normalized_role_name = normalize_role_code(role_name)
+
+            # Safety deny rule: never expose Scrum Master as assignable member.
+            if "SCRUM" in normalized_role_code or "SCRUM" in normalized_role_name:
+                continue
+
+            if not member.actif or normalized_role_code not in allowed_role_codes:
+                continue
+            members.append(
+                {
+                    "id": member.id,
+                    "nom": member.nom,
+                    "email": member.email,
+                    "role_code": normalized_role_code,
+                }
+            )
+
+        return sorted(members, key=lambda x: (x["nom"] or "").lower())
+
+    def importer_excel(
+        self,
+        cahier_id: int,
+        projet_id: int,
+        file_content: bytes,
+        current_user: Utilisateur,
+    ) -> dict:
+        """Importe des mises à jour de cas de tests depuis un fichier Excel."""
+        try:
+            from openpyxl import load_workbook
+        except ImportError:
+            raise HTTPException(
+                status_code=501,
+                detail="La bibliothèque openpyxl est requise pour l'import Excel.",
+            )
+
+        self._verifier_appartenance(cahier_id, projet_id)
+
+        role_code = current_user.role.code if current_user and current_user.role else ""
+        if role_code not in {ROLE_TESTEUR_QA, ROLE_DEVELOPPEUR}:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Import autorisé uniquement pour Testeur QA ou Développeur.",
+            )
+
+        def normalize_text(value: Optional[str]) -> str:
+            raw = unicodedata.normalize("NFKD", value or "").encode("ascii", "ignore").decode("ascii")
+            return raw.strip().lower()
+
+        def normalize_name(value: Optional[str]) -> str:
+            return normalize_text(value)
+
+        def extract_assignee_tokens(value: Optional[str]) -> set[str]:
+            text = (value or "").strip()
+            if not text:
+                return set()
+
+            tokens = {normalize_name(text)}
+            match = re.match(r"^(.*?)\s*\(([^)]+)\)\s*$", text)
+            if match:
+                name_part = normalize_name(match.group(1))
+                email_part = normalize_name(match.group(2))
+                if name_part:
+                    tokens.add(name_part)
+                if email_part:
+                    tokens.add(email_part)
+            return {t for t in tokens if t}
+
+        def clean_cell(value):
+            if value is None:
+                return None
+            if isinstance(value, str):
+                stripped = value.strip()
+                return stripped if stripped != "" else None
+            return value
+
+        def parse_status(value) -> Optional[str]:
+            if value is None:
+                return None
+            mapping = {
+                "non execute": "Non exécuté",
+                "non executee": "Non exécuté",
+                "non execute": "Non exécuté",
+                "reussi": "Réussi",
+                "echoue": "Échoué",
+                "bloque": "Bloqué",
+            }
+            key = normalize_text(str(value))
+            return mapping.get(key)
+
+        def parse_type_test(value) -> Optional[str]:
+            if value is None:
+                return None
+            key = normalize_text(str(value))
+            if key in {"manuel", "manuelle"}:
+                return "Manuel"
+            if key in {"automatise", "automatisee", "automated"}:
+                return "Automatisé"
+            return None
+
+        def parse_int(value) -> Optional[int]:
+            if value is None:
+                return None
+            if isinstance(value, int):
+                return max(0, value)
+            if isinstance(value, float):
+                return max(0, int(value))
+            text = str(value).strip()
+            if not text:
+                return None
+            return max(0, int(float(text)))
+
+        header_aliases = {
+            "test_ref": ["test ref", "ref", "test_ref"],
+            "test_case": ["test case", "cas de test"],
+            "test_purpose": ["test purpose", "objectif", "objectif du test"],
+            "scenario_test": ["scenario test", "scenario", "scenario de test"],
+            "resultat_attendu": ["resultat attendu"],
+            "resultat_obtenu": ["resultat obtenu"],
+            "execution_time_seconds": ["duree execution (s)", "execution time (s)", "duration / execution time (sec)"],
+            "fail_logs": ["fail logs", "logs d'erreur", "logs d erreur"],
+            "type_test": ["type", "type test"],
+            "statut_test": ["statut test", "statut"],
+            "commentaire": ["commentaire", "comment"],
+            "bug_titre_correction": ["titre de correction", "bug titre correction"],
+            "bug_nom_tache": ["nom de tache", "nom de tâche", "bug nom tache"],
+        }
+
+        workbook = load_workbook(io.BytesIO(file_content), data_only=True)
+        sheet = workbook["Cas de Tests"] if "Cas de Tests" in workbook.sheetnames else workbook.active
+
+        raw_headers = [sheet.cell(row=1, column=idx).value for idx in range(1, sheet.max_column + 1)]
+        normalized_headers = {
+            idx: normalize_text(str(value)) if value is not None else ""
+            for idx, value in enumerate(raw_headers, start=1)
+        }
+
+        col_index: dict[str, int] = {}
+        for field_name, aliases in header_aliases.items():
+            for idx, header in normalized_headers.items():
+                if header in aliases:
+                    col_index[field_name] = idx
+                    break
+
+        if "test_ref" not in col_index:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Colonne 'Test REF' introuvable dans le fichier Excel.",
+            )
+
+        imported_count = 0
+        skipped_refs: list[str] = []
+        errors: list[str] = []
+        current_user_tokens = {
+            normalize_name(current_user.nom),
+            normalize_name(current_user.email),
+        }
+
+        for row in range(2, sheet.max_row + 1):
+            test_ref_val = clean_cell(sheet.cell(row=row, column=col_index["test_ref"]).value)
+            if not test_ref_val:
+                continue
+
+            test_ref = str(test_ref_val).strip()
+            cas = (
+                self.db.query(CasTest)
+                .filter(CasTest.cahier_id == cahier_id, CasTest.test_ref == test_ref)
+                .first()
+            )
+
+            if not cas:
+                errors.append(f"Ligne {row} ({test_ref}): cas introuvable.")
+                continue
+
+            assignee_tokens = extract_assignee_tokens(cas.type_utilisateur)
+            if not assignee_tokens.intersection({t for t in current_user_tokens if t}):
+                skipped_refs.append(test_ref)
+                continue
+
+            payload: dict = {}
+
+            for field_name in [
+                "test_case",
+                "test_purpose",
+                "scenario_test",
+                "resultat_attendu",
+                "resultat_obtenu",
+                "fail_logs",
+                "commentaire",
+                "bug_titre_correction",
+                "bug_nom_tache",
+            ]:
+                idx = col_index.get(field_name)
+                if not idx:
+                    continue
+                cell_value = clean_cell(sheet.cell(row=row, column=idx).value)
+                if cell_value is not None:
+                    payload[field_name] = str(cell_value)
+
+            idx_time = col_index.get("execution_time_seconds")
+            if idx_time:
+                try:
+                    parsed_time = parse_int(clean_cell(sheet.cell(row=row, column=idx_time).value))
+                    if parsed_time is not None:
+                        payload["execution_time_seconds"] = parsed_time
+                except Exception:
+                    errors.append(f"Ligne {row} ({test_ref}): durée d'exécution invalide.")
+                    continue
+
+            idx_type = col_index.get("type_test")
+            if idx_type:
+                parsed_type = parse_type_test(clean_cell(sheet.cell(row=row, column=idx_type).value))
+                raw_type = clean_cell(sheet.cell(row=row, column=idx_type).value)
+                if raw_type is not None and parsed_type is None:
+                    errors.append(f"Ligne {row} ({test_ref}): type de test invalide.")
+                    continue
+                if parsed_type is not None:
+                    payload["type_test"] = parsed_type
+
+            idx_status = col_index.get("statut_test")
+            if idx_status:
+                parsed_status = parse_status(clean_cell(sheet.cell(row=row, column=idx_status).value))
+                raw_status = clean_cell(sheet.cell(row=row, column=idx_status).value)
+                if raw_status is not None and parsed_status is None:
+                    errors.append(f"Ligne {row} ({test_ref}): statut invalide.")
+                    continue
+                if parsed_status is not None:
+                    payload["statut_test"] = parsed_status
+
+            if not payload:
+                skipped_refs.append(test_ref)
+                continue
+
+            try:
+                self.update_cas_test(
+                    cahier_id=cahier_id,
+                    cas_id=cas.id,
+                    projet_id=projet_id,
+                    data=UpdateCasTestRequest(**payload),
+                    changed_by_id=current_user.id,
+                )
+                imported_count += 1
+            except HTTPException as exc:
+                errors.append(f"Ligne {row} ({test_ref}): {exc.detail}")
+            except Exception as exc:
+                errors.append(f"Ligne {row} ({test_ref}): {str(exc)}")
+
+        return {
+            "imported_count": imported_count,
+            "skipped_count": len(skipped_refs),
+            "error_count": len(errors),
+            "skipped_refs": skipped_refs,
+            "errors": errors,
+        }
 
     # ─── Logique interne de génération ────────────────────────────────────
 
@@ -407,18 +805,29 @@ class CahierTestGlobalService:
             raise ValueError("Cahier de tests introuvable lors de la sauvegarde.")
 
         for i, cas in enumerate(parsed.cas_tests, start=1):
+            sprint = (cas.sprint or "")[:100]
+            module = (cas.module or "")[:200]
+            sous_module = (cas.sous_module or "")[:200]
+            test_ref = (cas.test_ref or f"TC-{i:03d}")[:30]
+            test_case = (cas.test_case or "")[:500]
+            test_purpose = cas.test_purpose or ""
+            type_utilisateur = (cas.type_utilisateur or "")[:100]
+            scenario_test = cas.scenario_test or ""
+            resultat_attendu = cas.resultat_attendu or ""
+            type_test = cas.type_test if cas.type_test in ("Manuel", "Automatisé") else "Manuel"
             self.repo.add_cas_test(
                 cahier_id=cahier.id,
-                sprint=cas.sprint,
-                module=cas.module,
-                sous_module=cas.sous_module,
-                test_ref=cas.test_ref or f"TC-{i:03d}",
-                test_case=cas.test_case,
-                test_purpose=cas.test_purpose,
-                type_utilisateur=cas.type_utilisateur,
-                scenario_test=cas.scenario_test,
-                resultat_attendu=cas.resultat_attendu,
-                type_test=cas.type_test if cas.type_test in ("Manuel", "Automatisé") else "Manuel",
+                sprint=sprint,
+                module=module,
+                sous_module=sous_module,
+                test_ref=test_ref,
+                test_case=test_case,
+                test_purpose=test_purpose,
+                type_utilisateur=type_utilisateur,
+                scenario_test=scenario_test,
+                resultat_attendu=resultat_attendu,
+                execution_time_seconds=None,
+                type_test=type_test,
                 ordre=i,
             )
 
@@ -496,6 +905,7 @@ class CahierTestGlobalService:
             ("Scénario Test",      50),
             ("Résultat Attendu",   40),
             ("Résultat Obtenu",    40),
+            ("Durée Exécution (s)", 18),
             ("Fail Logs",          30),
             ("Capture",            20),
             ("Date Création",      18),
@@ -536,6 +946,7 @@ class CahierTestGlobalService:
                 cas.scenario_test or "",
                 cas.resultat_attendu or "",
                 cas.resultat_obtenu or "",
+                cas.execution_time_seconds if cas.execution_time_seconds is not None else "",
                 cas.fail_logs or "",
                 cas.capture or "",
                 cas.date_creation.strftime("%d/%m/%Y") if cas.date_creation else "",
@@ -605,7 +1016,7 @@ class CahierTestGlobalService:
         headers = [
             "Sprint", "Module", "Sous-Module", "Test REF", "Test Case",
             "Test Purpose", "Type Utilisateur", "Scénario Test",
-            "Résultat Attendu", "Résultat Obtenu", "Fail Logs",
+            "Résultat Attendu", "Résultat Obtenu", "Durée Exécution (s)", "Fail Logs",
             "Date Création", "Type", "Statut Test", "Commentaire",
         ]
         table = doc.add_table(rows=1, cols=len(headers))
@@ -634,6 +1045,7 @@ class CahierTestGlobalService:
                 cas.scenario_test or "",
                 cas.resultat_attendu or "",
                 cas.resultat_obtenu or "",
+                str(cas.execution_time_seconds) if cas.execution_time_seconds is not None else "",
                 cas.fail_logs or "",
                 cas.date_creation.strftime("%d/%m/%Y") if cas.date_creation else "",
                 cas.type_test,
@@ -859,7 +1271,7 @@ class CahierTestGlobalService:
         raise RuntimeError("Échec après toutes les tentatives IA.")
 
     @staticmethod
-    def _appeler_openrouter(full_prompt: str, api_key: str) -> str:
+    def _appeler_openrouter(full_prompt: str, api_key: str, system_prompt: str = SYSTEM_PROMPT) -> str:
         """Appel unique vers l'API OpenRouter (compatible OpenAI)."""
         import requests
 
@@ -868,7 +1280,7 @@ class CahierTestGlobalService:
         payload = {
             "model": AI_MODEL,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": system_prompt},
                 {"role": "user",   "content": full_prompt},
             ],
             "temperature": 0.2,
@@ -894,6 +1306,51 @@ class CahierTestGlobalService:
 
         data = resp.json()
         return data["choices"][0]["message"]["content"]
+
+    @staticmethod
+    def _fallback_bug_fields(cas: CasTest) -> tuple[str, str]:
+        base_title = (cas.test_case or "Cas de test").strip()
+        base_task = (cas.module or cas.sous_module or cas.test_ref or "Bug").strip()
+        titre = f"Corriger: {base_title}"[:120]
+        tache = f"Fix {base_task} - {cas.test_ref or 'TC'}"[:120]
+        return titre, tache
+
+    @staticmethod
+    def _parser_bug_suggestion(raw: str) -> tuple[str, str]:
+        match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.DOTALL)
+        if match:
+            json_str = match.group(1)
+        else:
+            start = raw.find("{")
+            end = raw.rfind("}") + 1
+            if start == -1 or end == 0:
+                raise ValueError("Réponse IA invalide pour la suggestion de bug.")
+            json_str = raw[start:end]
+
+        data = json.loads(json_str)
+        titre = str(data.get("bug_titre_correction") or "").strip()
+        tache = str(data.get("bug_nom_tache") or "").strip()
+        if not titre or not tache:
+            raise ValueError("Champs manquants dans la suggestion de bug.")
+        return titre[:120], tache[:120]
+
+    def _generer_bug_fields_ia(self, cas: CasTest, user_id: Optional[int]) -> tuple[str, str]:
+        try:
+            api_key = self._get_api_key_for_request(user_id)
+            prompt = (
+                "Propose un titre de correction et un nom de tâche pour ce cas de test.\n"
+                f"Test REF: {cas.test_ref or ''}\n"
+                f"Test case: {cas.test_case or ''}\n"
+                f"Module: {cas.module or ''}\n"
+                f"Sous-module: {cas.sous_module or ''}\n"
+                f"Résultat obtenu: {cas.resultat_obtenu or ''}\n"
+                f"Fail logs: {cas.fail_logs or ''}\n"
+                f"Commentaire: {cas.commentaire or ''}\n"
+            )
+            raw = self._appeler_openrouter(prompt, api_key, BUG_SUGGESTION_SYSTEM_PROMPT)
+            return self._parser_bug_suggestion(raw)
+        except Exception:
+            return self._fallback_bug_fields(cas)
 
     @staticmethod
     def _parser_reponse(raw: str) -> AICahierResponse:

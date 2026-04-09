@@ -5,7 +5,15 @@ import { usePathname, useRouter } from "next/navigation";
 import { ThemeModeToggle } from "@/components/theme/ThemeModeToggle";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuthStore } from "@/features/auth/store";
+import {
+  createDemoNotifications,
+  getUnreadNotificationsCount,
+  listMyNotifications,
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+} from "@/features/notifications/api";
 import { ROLES, ROUTES } from "@/lib/constants";
+import { NotificationItem, NotificationType } from "@/types";
 
 type DashboardRole = (typeof ROLES)[keyof typeof ROLES];
 
@@ -245,6 +253,42 @@ function normalizeSearchValue(value: string) {
     .trim();
 }
 
+function getNotificationIcon(type: NotificationType): string {
+  switch (type) {
+    case "TEST_FAILED":
+      return "❌";
+    case "SPRINT_STARTED":
+      return "🚀";
+    case "ANOMALY_CREATED":
+      return "🐞";
+    case "REPORT_GENERATED":
+      return "📊";
+    case "TEST_PASSED":
+      return "✅";
+    case "SPRINT_ENDED":
+      return "🏁";
+    case "VALIDATION_REQUIRED":
+      return "📝";
+    case "RECOMMENDATION_AVAILABLE":
+      return "💡";
+    default:
+      return "🔔";
+  }
+}
+
+function formatNotificationTime(isoDate: string): string {
+  const dt = new Date(isoDate);
+  if (Number.isNaN(dt.getTime())) {
+    return "";
+  }
+  return dt.toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 interface DashboardHeaderProps {
   title: string;
   subtitle: string;
@@ -257,7 +301,12 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
   const { user } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement | null>(null);
+  const notificationsContainerRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   const currentRole = user?.role?.code as DashboardRole | undefined;
@@ -283,9 +332,45 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
     : [];
 
   useEffect(() => {
+    if (!user) return;
+
+    let isMounted = true;
+    const loadNotifications = async () => {
+      setLoadingNotifications(true);
+      try {
+        const [items, countResp] = await Promise.all([
+          listMyNotifications(false, 20),
+          // Count is kept separate to avoid client-side recount drift.
+          getUnreadNotificationsCount(),
+        ]);
+        if (!isMounted) return;
+        setNotifications(items);
+        setUnreadCount(countResp.unread_count);
+      } catch {
+        if (!isMounted) return;
+        setNotifications([]);
+        setUnreadCount(0);
+      } finally {
+        if (isMounted) setLoadingNotifications(false);
+      }
+    };
+
+    loadNotifications();
+    const interval = window.setInterval(loadNotifications, 30000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(interval);
+    };
+  }, [user]);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (!searchContainerRef.current?.contains(event.target as Node)) {
         setIsSearchOpen(false);
+      }
+      if (!notificationsContainerRef.current?.contains(event.target as Node)) {
+        setIsNotificationsOpen(false);
       }
     };
 
@@ -334,6 +419,46 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
 
     if (searchResults.length > 0) {
       navigateToSearchResult(searchResults[0].href);
+    }
+  };
+
+  const refreshNotifications = async () => {
+    try {
+      const [items, countResp] = await Promise.all([
+        listMyNotifications(false, 20),
+        getUnreadNotificationsCount(),
+      ]);
+      setNotifications(items);
+      setUnreadCount(countResp.unread_count);
+    } catch {
+      // Silent fail in header UI.
+    }
+  };
+
+  const handleMarkAsRead = async (notificationId: number) => {
+    try {
+      await markNotificationAsRead(notificationId);
+      await refreshNotifications();
+    } catch {
+      // Silent fail in header UI.
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllNotificationsAsRead();
+      await refreshNotifications();
+    } catch {
+      // Silent fail in header UI.
+    }
+  };
+
+  const handleCreateDemoNotifications = async () => {
+    try {
+      await createDemoNotifications();
+      await refreshNotifications();
+    } catch {
+      // Silent fail in header UI.
     }
   };
 
@@ -408,10 +533,69 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
         </div>
         <ThemeModeToggle />
         {/* Notifications */}
-        <button className="flex items-center justify-center h-10 w-10 rounded-lg relative transition-colors bg-(--surface-2) text-muted hover:text-foreground">
-          <span className="material-symbols-outlined">notifications</span>
-          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-background"></span>
-        </button>
+        <div className="relative" ref={notificationsContainerRef}>
+          <button
+            onClick={() => setIsNotificationsOpen((prev) => !prev)}
+            className="flex items-center justify-center h-10 w-10 rounded-lg relative transition-colors bg-(--surface-2) text-muted hover:text-foreground"
+          >
+            <span className="material-symbols-outlined">notifications</span>
+            {unreadCount > 0 && (
+              <span className="absolute top-2.5 right-2.5 min-w-2 h-2 px-1 rounded-full text-[10px] leading-2 bg-red-500 text-white border border-background flex items-center justify-center">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {isNotificationsOpen && (
+            <div className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-(--surface) shadow-2xl overflow-hidden z-20">
+              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                <p className="text-sm font-semibold text-foreground">Notifications</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleCreateDemoNotifications}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Demo
+                  </button>
+                  <button
+                    onClick={handleMarkAllAsRead}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Tout lire
+                  </button>
+                </div>
+              </div>
+
+              {loadingNotifications ? (
+                <div className="px-4 py-5 text-sm text-muted">Chargement...</div>
+              ) : notifications.length === 0 ? (
+                <div className="px-4 py-5 text-sm text-muted">Aucune notification.</div>
+              ) : (
+                <div className="max-h-96 overflow-y-auto">
+                  {notifications.map((notif) => (
+                    <button
+                      key={notif.id}
+                      type="button"
+                      onClick={() => handleMarkAsRead(notif.id)}
+                      className="w-full text-left px-4 py-3 border-b border-border/60 hover:bg-(--surface-2) transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {getNotificationIcon(notif.type)} {notif.titre}
+                          </p>
+                          <p className="text-xs text-muted mt-1 line-clamp-2">{notif.message}</p>
+                          <p className="text-[11px] text-muted mt-1">{formatNotificationTime(notif.dateEnvoi)}</p>
+                        </div>
+                        {!notif.lue && <span className="mt-1 w-2 h-2 rounded-full bg-primary shrink-0"></span>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         {/* Custom Actions */}
         {actions}
       </div>

@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session, joinedload
 
-from models.cahier_test_global import CahierTestGlobal, CasTest
+from models.cahier_test_global import CahierTestGlobal, CasTest, CasTestHistory
 from repositories.base_repository import BaseRepository
 
 
@@ -100,6 +100,7 @@ class CahierTestGlobalRepository(BaseRepository[CahierTestGlobal]):
         type_utilisateur: str,
         scenario_test: str,
         resultat_attendu: str,
+        execution_time_seconds: int | None,
         type_test: str,
         ordre: int,
     ) -> CasTest:
@@ -114,6 +115,7 @@ class CahierTestGlobalRepository(BaseRepository[CahierTestGlobal]):
             type_utilisateur=type_utilisateur,
             scenario_test=scenario_test,
             resultat_attendu=resultat_attendu,
+            execution_time_seconds=execution_time_seconds,
             type_test=type_test,
             statut_test="Non exécuté",
             ordre=ordre,
@@ -146,5 +148,20 @@ class CahierTestGlobalRepository(BaseRepository[CahierTestGlobal]):
             self.db.query(CasTest)
             .filter(CasTest.cahier_id == cahier_id)
             .order_by(CasTest.ordre.asc())
+            .all()
+        )
+
+    def add_cas_test_history(self, payload: dict) -> CasTestHistory:
+        entry = CasTestHistory(**payload)
+        self.db.add(entry)
+        self.db.commit()
+        self.db.refresh(entry)
+        return entry
+
+    def list_cas_test_history(self, cas_id: int, cahier_id: int) -> List[CasTestHistory]:
+        return (
+            self.db.query(CasTestHistory)
+            .filter(CasTestHistory.cas_test_id == cas_id, CasTestHistory.cahier_id == cahier_id)
+            .order_by(CasTestHistory.changed_at.desc())
             .all()
         )

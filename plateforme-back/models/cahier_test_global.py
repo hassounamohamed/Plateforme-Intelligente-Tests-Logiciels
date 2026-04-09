@@ -67,6 +67,9 @@ class CasTest(Base):
     resultat_obtenu = Column(Text,    nullable=True)
     fail_logs       = Column(Text,    nullable=True)
     capture         = Column(String,  nullable=True)
+    execution_time_seconds = Column(Integer, nullable=True)
+    bug_titre_correction = Column(String(255), nullable=True)
+    bug_nom_tache        = Column(String(255), nullable=True)
 
     date_creation   = Column(DateTime, default=datetime.utcnow)
     type_test       = Column(String(20), default="Manuel", nullable=False)   # Manuel | Automatisé
@@ -77,3 +80,34 @@ class CasTest(Base):
 
     # ── Relations ──────────────────────────────────────────────────────────
     cahier = relationship("CahierTestGlobal", back_populates="cas_tests")
+    history_entries = relationship(
+        "CasTestHistory",
+        back_populates="cas_test",
+        cascade="all, delete-orphan",
+        order_by="CasTestHistory.changed_at.desc()",
+    )
+
+
+class CasTestHistory(Base):
+    __tablename__ = "cas_test_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cas_test_id = Column(Integer, ForeignKey("cas_test.id", ondelete="CASCADE"), nullable=False)
+    cahier_id = Column(Integer, ForeignKey("cahier_test_global.id", ondelete="CASCADE"), nullable=False)
+    changed_by_id = Column(Integer, ForeignKey("utilisateur.id", ondelete="SET NULL"), nullable=True)
+
+    old_statut_test = Column(String(30), nullable=True)
+    new_statut_test = Column(String(30), nullable=True)
+    old_type_test = Column(String(20), nullable=True)
+    new_type_test = Column(String(20), nullable=True)
+    old_commentaire = Column(Text, nullable=True)
+    new_commentaire = Column(Text, nullable=True)
+    old_bug_titre_correction = Column(String(255), nullable=True)
+    new_bug_titre_correction = Column(String(255), nullable=True)
+    old_bug_nom_tache = Column(String(255), nullable=True)
+    new_bug_nom_tache = Column(String(255), nullable=True)
+    changed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    cas_test = relationship("CasTest", back_populates="history_entries")
+    cahier = relationship("CahierTestGlobal")
+    changed_by = relationship("Utilisateur")
