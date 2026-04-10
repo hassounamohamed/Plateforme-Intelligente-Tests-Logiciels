@@ -162,7 +162,7 @@ def _ensure_can_update_cas_test(
         if invalid_keys:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Scrum Master peut uniquement assigner le membre testeur.",
+                detail="Scrum Master peut uniquement assigner un membre développeur ou testeur.",
             )
         if "type_utilisateur" in payload:
             assigned_name = _normalize_name(payload.get("type_utilisateur"))
@@ -179,7 +179,7 @@ def _ensure_can_update_cas_test(
         if "type_utilisateur" in payload:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Seul le Scrum Master peut assigner le membre testeur.",
+                detail="Seul le Scrum Master peut assigner un membre développeur ou testeur.",
             )
         if not _is_case_assigned_to_user(cas, current_user):
             raise HTTPException(

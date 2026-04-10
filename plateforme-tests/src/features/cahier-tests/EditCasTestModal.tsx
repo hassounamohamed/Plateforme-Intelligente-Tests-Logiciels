@@ -210,9 +210,15 @@ export default function EditCasTestModal({
     }
 
     try {
-      await updateCasTest(projectId, cahierId, casTest.id, formData);
+      const payload = assignOnly
+        ? { type_utilisateur: formData.type_utilisateur || "" }
+        : formData;
+      await updateCasTest(projectId, cahierId, casTest.id, payload);
       if (captureFile) {
         await uploadCasTestCapture(projectId, cahierId, casTest.id, captureFile);
+      }
+      if (assignOnly && formData.type_utilisateur?.trim()) {
+        window.alert(`L'utilisateur ${formData.type_utilisateur} a été assigné correctement.`);
       }
       onSuccess();
       onClose();
@@ -274,7 +280,7 @@ export default function EditCasTestModal({
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
         <div className="relative bg-surface-dark rounded-xl shadow-2xl max-w-xl w-full border border-[#3b4754]">
           <div className="sticky top-0 bg-surface-dark border-b border-[#3b4754] px-6 py-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">Assigner membre testeur - {casTest.test_ref}</h2>
+            <h2 className="text-xl font-semibold text-white">Assigner membre développeur / testeur - {casTest.test_ref}</h2>
             <button onClick={onClose} className="text-[#9dabb9] hover:text-white transition-colors">
               <span className="material-symbols-outlined text-[24px]">close</span>
             </button>

@@ -90,3 +90,14 @@ export const applyGeneration = async (
   );
   return response.data;
 };
+
+/** Rejeter une génération IA terminée */
+export const rejectGeneration = async (
+  projectId: number,
+  generationId: number
+): Promise<{ generation_id: number; status: string }> => {
+  const response = await axiosInstance.post<{ generation_id: number; status: string }>(
+    `${base(projectId)}/generations/${generationId}/reject`
+  );
+  return response.data;
+};

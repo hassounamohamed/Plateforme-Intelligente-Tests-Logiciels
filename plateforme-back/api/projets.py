@@ -17,6 +17,8 @@ from schemas.projet import (
     AssignerMembresRequest,
     ProjetResponse,
     ProjetStatistiquesResponse,
+    ProjectAISuggestionRequest,
+    ProjectAISuggestionResponse,
 )
 from schemas.user import MembreDisponibleResponse
 from services.projet_service import ProjetService
@@ -71,7 +73,18 @@ async def get_membres_disponibles(
     svc: ProjetService = Depends(get_projet_service),
 ):
     """Récupérer la liste des utilisateurs disponibles pour assignation — Product Owner uniquement."""
-    return svc.get_membres_disponibles()
+    return svc.get_membres_disponibles(current_user.id)
+
+
+@router.post("/ai-suggestion", response_model=ProjectAISuggestionResponse)
+@require_role(ROLE_PRODUCT_OWNER)
+async def suggest_project_fields(
+    data: ProjectAISuggestionRequest,
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: ProjetService = Depends(get_projet_service),
+):
+    """Suggérer les champs du formulaire projet via IA — Product Owner uniquement."""
+    return svc.suggest_project_fields(data.prompt, current_user.id)
 
 
 @router.get("/{projet_id}", response_model=ProjetResponse)
@@ -107,6 +120,17 @@ async def archiver_projet(
 ):
     """Archiver un projet — réservé au Product Owner du projet."""
     return svc.archiver_projet(projet_id, current_user.id)
+
+
+@router.delete("/{projet_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def supprimer_projet(
+    projet_id: int,
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: ProjetService = Depends(get_projet_service),
+):
+    """Supprimer un projet — réservé au Product Owner du projet."""
+    svc.supprimer_projet(projet_id, current_user.id)
+    return None
 
 
 # ─── Membres ──────────────────────────────────────────────────────────────────

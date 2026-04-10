@@ -52,7 +52,7 @@ class AIGenerationRepository(BaseRepository[AIGeneration]):
             gen.status = status
             if progress is not None:
                 gen.progress = progress
-            if status in ("completed", "failed"):
+            if status in ("completed", "failed", "rejected"):
                 gen.completed_at = datetime.utcnow()
             self.db.commit()
             self.db.refresh(gen)

@@ -63,6 +63,10 @@ class UserRepository(BaseRepository[Utilisateur]):
     def get_active_users(self) -> List[Utilisateur]:
         """Récupérer tous les utilisateurs actifs"""
         return self.db.query(Utilisateur).filter(Utilisateur.actif == True).all()
+
+    def get_all_users(self) -> List[Utilisateur]:
+        """Récupérer tous les utilisateurs (actifs et inactifs)."""
+        return self.db.query(Utilisateur).all()
     
     def get_by_role(self, role_id: int) -> List[Utilisateur]:
         """Récupérer tous les utilisateurs d'un rôle spécifique"""

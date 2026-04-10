@@ -12,6 +12,25 @@ class ReordonnerBacklogRequest(BaseModel):
     )
 
 
+class BacklogAISuggestionRequest(BaseModel):
+    prompt: str = Field(
+        ...,
+        min_length=5,
+        description="Contexte métier pour suggérer une user story backlog.",
+    )
+
+
+class BacklogAISuggestionResponse(BaseModel):
+    titre: Optional[str] = None
+    role: Optional[str] = None
+    action: Optional[str] = None
+    benefice: Optional[str] = None
+    criteresAcceptation: Optional[str] = None
+    priorite: Optional[str] = None
+    points: Optional[int] = None
+    duree_estimee: Optional[float] = None
+
+
 # ─── Réponses ─────────────────────────────────────────────────────────────────
 
 class EpicInfo(BaseModel):

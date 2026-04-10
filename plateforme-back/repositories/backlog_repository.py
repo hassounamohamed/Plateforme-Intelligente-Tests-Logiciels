@@ -33,6 +33,7 @@ class BacklogRepository:
     def get_backlog(
         self,
         projet_id: int,
+        module_id: Optional[int] = None,
         epic_id: Optional[int] = None,
         statut: Optional[str] = None,
         priorite: Optional[str] = None,
@@ -42,6 +43,7 @@ class BacklogRepository:
         """
         Retourne les user stories du projet avec filtres optionnels.
 
+        - module_id      : filtrer par module
         - epic_id        : filtrer par epic
         - statut         : to_do | in_progress | done
         - priorite       : must_have | should_have | could_have | wont_have
@@ -50,6 +52,8 @@ class BacklogRepository:
         """
         q = self._query_projet(projet_id)
 
+        if module_id:
+            q = q.filter(Epic.module_id == module_id)
         if epic_id:
             q = q.filter(UserStory.epic_id == epic_id)
         if statut:

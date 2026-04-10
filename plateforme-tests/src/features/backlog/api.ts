@@ -5,12 +5,24 @@ import {
   ReordonnancerBacklogPayload,
 } from "@/types";
 
+export interface BacklogAISuggestionResponse {
+  titre?: string | null;
+  role?: string | null;
+  action?: string | null;
+  benefice?: string | null;
+  criteresAcceptation?: string | null;
+  priorite?: "must_have" | "should_have" | "could_have" | "wont_have" | null;
+  points?: number | null;
+  duree_estimee?: number | null;
+}
+
 /**
  * Obtenir le backlog d'un projet
  */
 export const getBacklog = async (
   projectId: number,
   params?: {
+    module_id?: number;
     epic_id?: number;
     statut?: string;
     priorite?: string;
@@ -47,6 +59,20 @@ export const reordonnancerBacklog = async (
   const response = await axiosInstance.patch<BacklogItem[]>(
     `/projets/${projectId}/backlog/reordonner`,
     { ordre: payload.ordre_ids }
+  );
+  return response.data;
+};
+
+/**
+ * Suggérer des champs de user story backlog via IA
+ */
+export const suggestBacklogItem = async (
+  projectId: number,
+  prompt: string
+): Promise<BacklogAISuggestionResponse> => {
+  const response = await axiosInstance.post<BacklogAISuggestionResponse>(
+    `/projets/${projectId}/backlog/ai-suggestion`,
+    { prompt }
   );
   return response.data;
 };

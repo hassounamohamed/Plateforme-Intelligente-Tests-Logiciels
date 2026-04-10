@@ -115,10 +115,21 @@ export default function ProjectsManagementPage() {
   };
 
   const handleProjectSubmit = async (
-    data: CreateProjectPayload | UpdateProjectPayload
+    data: CreateProjectPayload | UpdateProjectPayload,
+    options?: { initialAttachment?: File | null }
   ) => {
     if (projectModalMode === "create") {
-      await createProject(data as CreateProjectPayload);
+      const createdProject = await createProject(data as CreateProjectPayload);
+      if (options?.initialAttachment) {
+        try {
+          await uploadProjectAttachment(createdProject.id, options.initialAttachment);
+          alert("Projet créé avec succès et fichier attaché.");
+        } catch (uploadErr) {
+          alert("Projet créé, mais le fichier n'a pas pu être attaché.");
+        }
+      } else {
+        alert("Projet créé avec succès");
+      }
     } else if (editingProject) {
       await updateProject(editingProject.id, data as UpdateProjectPayload);
     }
@@ -140,6 +151,7 @@ export default function ProjectsManagementPage() {
 
     try {
       await deleteProject(projectId);
+        alert("Projet supprimé avec succès");
       await fetchProjects();
       if (selectedProject?.id === projectId) {
         setSelectedProject(null);

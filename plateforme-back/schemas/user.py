@@ -49,6 +49,7 @@ class MembreDisponibleResponse(BaseModel):
     id: int
     nom: str
     email: str
+    actif: bool
     role: Optional[RoleSimple] = None
 
     class Config:

@@ -170,3 +170,17 @@ async def appliquer_generation(
     svc: AIGenerationService = Depends(get_ai_service),
 ):
     return svc.appliquer_generation(generation_id, projet_id, current_user.id)
+
+
+@router.post(
+    "/generations/{generation_id}/reject",
+    summary="Rejeter une génération IA terminée",
+)
+@require_role(ROLE_PRODUCT_OWNER)
+async def rejeter_generation(
+    projet_id: int,
+    generation_id: int,
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: AIGenerationService = Depends(get_ai_service),
+):
+    return svc.rejeter_generation(generation_id, projet_id, current_user.id)
