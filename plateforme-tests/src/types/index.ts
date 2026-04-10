@@ -443,6 +443,7 @@ export interface BacklogItem {
   points?: number;
   statut: string;
   ordre?: number;
+  developerId?: number;
 }
 
 export interface BacklogIndicateurs {

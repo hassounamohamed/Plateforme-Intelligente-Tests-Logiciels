@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 
 from repositories.sprint_repository import SprintRepository, STATUTS_VALIDES
 from repositories.projet_repository import ProjetRepository
+from models.notification import TypeNotification
+from services.notification_service import NotificationService
 from schemas.sprint import (
     CreateSprintRequest,
     UpdateSprintRequest,
@@ -19,6 +21,37 @@ class SprintService:
     def __init__(self, db: Session):
         self.repo = SprintRepository(db)
         self.projet_repo = ProjetRepository(db)
+        self.notification_service = NotificationService(db)
+
+    def _notify_sprint_related_users(
+        self,
+        sprint,
+        notification_type: TypeNotification,
+        titre: str,
+        message: str,
+        priorite: str = "moyenne",
+        exclude_user_id: int | None = None,
+    ):
+        user_ids: set[int] = set()
+        for us in sprint.userstories or []:
+            if us.developerId:
+                user_ids.add(us.developerId)
+            if us.assigneeId:
+                user_ids.add(us.assigneeId)
+            if us.testerId:
+                user_ids.add(us.testerId)
+
+        if not user_ids:
+            return
+
+        self.notification_service.notify_users(
+            user_ids=list(user_ids),
+            titre=titre,
+            message=message,
+            notification_type=notification_type,
+            priorite=priorite,
+            exclude_user_id=exclude_user_id,
+        )
 
     # ── Helpers ────────────────────────────────────────────────────────────
 
@@ -129,7 +162,22 @@ class SprintService:
         if self.repo.get_actif(projet_id):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail="Un sprint est déjà en cours dans ce projet.")
-        return self.repo.demarrer(sprint_id)
+        updated = self.repo.demarrer(sprint_id)
+        if updated:
+            sprint_with_stories = self.repo.get_with_userstories(updated.id)
+            if sprint_with_stories:
+                self._notify_sprint_related_users(
+                    sprint=sprint_with_stories,
+                    notification_type=TypeNotification.SPRINT_STARTED,
+                    titre=f"Sprint demarre: {sprint_with_stories.nom}",
+                    message=(
+                        f"Le sprint {sprint_with_stories.nom} vient de demarrer pour le projet "
+                        f"{sprint_with_stories.projet_id}."
+                    ),
+                    priorite="moyenne",
+                    exclude_user_id=current_user_id,
+                )
+        return updated
 
     def demarrer_sprint_flexible(self, projet_id: int, sprint_id: int, current_user_id: int):
         """Version flexible qui accepte n'importe quel projet_id"""
@@ -144,14 +192,44 @@ class SprintService:
         if self.repo.get_actif(sprint.projet_id):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail="Un sprint est déjà en cours dans ce projet.")
-        return self.repo.demarrer(sprint_id)
+        updated = self.repo.demarrer(sprint_id)
+        if updated:
+            sprint_with_stories = self.repo.get_with_userstories(updated.id)
+            if sprint_with_stories:
+                self._notify_sprint_related_users(
+                    sprint=sprint_with_stories,
+                    notification_type=TypeNotification.SPRINT_STARTED,
+                    titre=f"Sprint demarre: {sprint_with_stories.nom}",
+                    message=(
+                        f"Le sprint {sprint_with_stories.nom} vient de demarrer pour le projet "
+                        f"{sprint_with_stories.projet_id}."
+                    ),
+                    priorite="moyenne",
+                    exclude_user_id=current_user_id,
+                )
+        return updated
 
     def cloturer_sprint(self, projet_id: int, sprint_id: int, current_user_id: int):
         sprint = self._get_sprint_ou_404(sprint_id, projet_id)
         if sprint.statut != "en_cours":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail=f"Seul un sprint 'en_cours' peut être clôturé (statut actuel: {sprint.statut}).")
-        return self.repo.cloturer(sprint_id)
+        updated = self.repo.cloturer(sprint_id)
+        if updated:
+            sprint_with_stories = self.repo.get_with_userstories(updated.id)
+            if sprint_with_stories:
+                self._notify_sprint_related_users(
+                    sprint=sprint_with_stories,
+                    notification_type=TypeNotification.SPRINT_ENDED,
+                    titre=f"Sprint cloture: {sprint_with_stories.nom}",
+                    message=(
+                        f"Le sprint {sprint_with_stories.nom} est termine. "
+                        f"Velocite: {sprint_with_stories.velocite}."
+                    ),
+                    priorite="moyenne",
+                    exclude_user_id=current_user_id,
+                )
+        return updated
 
     def cloturer_sprint_flexible(self, projet_id: int, sprint_id: int, current_user_id: int):
         """Version flexible qui accepte n'importe quel projet_id"""
@@ -162,7 +240,22 @@ class SprintService:
         if sprint.statut != "en_cours":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail=f"Seul un sprint 'en_cours' peut être clôturé (statut actuel: {sprint.statut}).")
-        return self.repo.cloturer(sprint_id)
+        updated = self.repo.cloturer(sprint_id)
+        if updated:
+            sprint_with_stories = self.repo.get_with_userstories(updated.id)
+            if sprint_with_stories:
+                self._notify_sprint_related_users(
+                    sprint=sprint_with_stories,
+                    notification_type=TypeNotification.SPRINT_ENDED,
+                    titre=f"Sprint cloture: {sprint_with_stories.nom}",
+                    message=(
+                        f"Le sprint {sprint_with_stories.nom} est termine. "
+                        f"Velocite: {sprint_with_stories.velocite}."
+                    ),
+                    priorite="moyenne",
+                    exclude_user_id=current_user_id,
+                )
+        return updated
 
     # ── User Stories ─────────────────────────────────────────────────────────
 
@@ -171,7 +264,28 @@ class SprintService:
         if sprint.statut == "termine":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail="Impossible d'ajouter des stories à un sprint terminé.")
-        return self.repo.ajouter_userstories(sprint_id, data.userstory_ids)
+        before_ids = {us.id for us in sprint.userstories or []}
+        updated = self.repo.ajouter_userstories(sprint_id, data.userstory_ids)
+        if updated:
+            added_stories = [us for us in updated.userstories if us.id not in before_ids]
+            target_ids: set[int] = set()
+            for us in added_stories:
+                if us.developerId:
+                    target_ids.add(us.developerId)
+                if us.assigneeId:
+                    target_ids.add(us.assigneeId)
+                if us.testerId:
+                    target_ids.add(us.testerId)
+            if target_ids:
+                self.notification_service.notify_users(
+                    user_ids=list(target_ids),
+                    titre="Nouvelle story planifiee",
+                    message=f"Une user story vous concernant a ete ajoutee au sprint {updated.nom}.",
+                    notification_type=TypeNotification.RECOMMENDATION_AVAILABLE,
+                    priorite="moyenne",
+                    exclude_user_id=current_user_id,
+                )
+        return updated
 
     def ajouter_userstories_flexible(self, projet_id: int, sprint_id: int, data: AjouterUserStoriesRequest, current_user_id: int):
         """Version flexible qui accepte n'importe quel projet_id"""
@@ -182,14 +296,55 @@ class SprintService:
         if sprint.statut == "termine":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail="Impossible d'ajouter des stories à un sprint terminé.")
-        return self.repo.ajouter_userstories(sprint_id, data.userstory_ids)
+        sprint_with_stories = self.repo.get_with_userstories(sprint_id)
+        before_ids = {us.id for us in (sprint_with_stories.userstories if sprint_with_stories else [])}
+        updated = self.repo.ajouter_userstories(sprint_id, data.userstory_ids)
+        if updated:
+            added_stories = [us for us in updated.userstories if us.id not in before_ids]
+            target_ids: set[int] = set()
+            for us in added_stories:
+                if us.developerId:
+                    target_ids.add(us.developerId)
+                if us.assigneeId:
+                    target_ids.add(us.assigneeId)
+                if us.testerId:
+                    target_ids.add(us.testerId)
+            if target_ids:
+                self.notification_service.notify_users(
+                    user_ids=list(target_ids),
+                    titre="Nouvelle story planifiee",
+                    message=f"Une user story vous concernant a ete ajoutee au sprint {updated.nom}.",
+                    notification_type=TypeNotification.RECOMMENDATION_AVAILABLE,
+                    priorite="moyenne",
+                    exclude_user_id=current_user_id,
+                )
+        return updated
 
     def retirer_userstories(self, projet_id: int, sprint_id: int, data: RetirerUserStoriesRequest, current_user_id: int):
         sprint = self._get_sprint_ou_404(sprint_id, projet_id)
         if sprint.statut == "termine":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail="Impossible de retirer des stories d'un sprint terminé.")
-        return self.repo.retirer_userstories(sprint_id, data.userstory_ids)
+        removed_stories = [us for us in sprint.userstories if us.id in set(data.userstory_ids)]
+        updated = self.repo.retirer_userstories(sprint_id, data.userstory_ids)
+        target_ids: set[int] = set()
+        for us in removed_stories:
+            if us.developerId:
+                target_ids.add(us.developerId)
+            if us.assigneeId:
+                target_ids.add(us.assigneeId)
+            if us.testerId:
+                target_ids.add(us.testerId)
+        if target_ids and updated:
+            self.notification_service.notify_users(
+                user_ids=list(target_ids),
+                titre="Story retiree du sprint",
+                message=f"Une user story vous concernant a ete retiree du sprint {updated.nom}.",
+                notification_type=TypeNotification.RECOMMENDATION_AVAILABLE,
+                priorite="basse",
+                exclude_user_id=current_user_id,
+            )
+        return updated
 
     def retirer_userstories_flexible(self, projet_id: int, sprint_id: int, data: RetirerUserStoriesRequest, current_user_id: int):
         """Version flexible qui accepte n'importe quel projet_id"""
@@ -200,7 +355,30 @@ class SprintService:
         if sprint.statut == "termine":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail="Impossible de retirer des stories d'un sprint terminé.")
-        return self.repo.retirer_userstories(sprint_id, data.userstory_ids)
+        sprint_with_stories = self.repo.get_with_userstories(sprint_id)
+        removed_stories = [
+            us for us in (sprint_with_stories.userstories if sprint_with_stories else [])
+            if us.id in set(data.userstory_ids)
+        ]
+        updated = self.repo.retirer_userstories(sprint_id, data.userstory_ids)
+        target_ids: set[int] = set()
+        for us in removed_stories:
+            if us.developerId:
+                target_ids.add(us.developerId)
+            if us.assigneeId:
+                target_ids.add(us.assigneeId)
+            if us.testerId:
+                target_ids.add(us.testerId)
+        if target_ids and updated:
+            self.notification_service.notify_users(
+                user_ids=list(target_ids),
+                titre="Story retiree du sprint",
+                message=f"Une user story vous concernant a ete retiree du sprint {updated.nom}.",
+                notification_type=TypeNotification.RECOMMENDATION_AVAILABLE,
+                priorite="basse",
+                exclude_user_id=current_user_id,
+            )
+        return updated
 
     # ── Vélocité ─────────────────────────────────────────────────────────────
 

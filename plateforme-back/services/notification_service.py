@@ -37,6 +37,61 @@ class NotificationService:
     def mark_all_as_read(self, user_id: int) -> int:
         return self.repo.mark_all_as_read(user_id)
 
+    def notify_user(
+        self,
+        user_id: int,
+        titre: str,
+        message: str,
+        notification_type: TypeNotification,
+        priorite: str = "moyenne",
+        dedupe_window_seconds: int = 300,
+    ):
+        """Create a notification for one user, skipping near-duplicates in a short window."""
+        recent = self.repo.get_by_destinataire(user_id)[:20]
+        now = datetime.utcnow()
+        for notif in recent:
+            if notif.titre != titre:
+                continue
+            if (now - notif.dateEnvoi).total_seconds() < dedupe_window_seconds:
+                return notif
+
+        return self.repo.create(
+            {
+                "titre": titre,
+                "message": message,
+                "type": notification_type,
+                "priorite": priorite,
+                "destinataireId": user_id,
+            }
+        )
+
+    def notify_users(
+        self,
+        user_ids: list[int],
+        titre: str,
+        message: str,
+        notification_type: TypeNotification,
+        priorite: str = "moyenne",
+        exclude_user_id: int | None = None,
+        dedupe_window_seconds: int = 300,
+    ):
+        """Create the same notification for a list of users."""
+        created = []
+        for uid in set(user_ids):
+            if exclude_user_id is not None and uid == exclude_user_id:
+                continue
+            created.append(
+                self.notify_user(
+                    uid,
+                    titre,
+                    message,
+                    notification_type,
+                    priorite=priorite,
+                    dedupe_window_seconds=dedupe_window_seconds,
+                )
+            )
+        return created
+
     def create_demo_notifications(self, user_id: int):
         payloads = [
             {
