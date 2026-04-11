@@ -15,10 +15,10 @@ class RapportQARepository(BaseRepository[RapportQA]):
     def __init__(self, db: Session):
         super().__init__(RapportQA, db)
     
-    def get_by_sprint(self, sprint_id: int) -> Optional[RapportQA]:
-        """Récupérer le rapport QA d'un sprint"""
+    def get_by_cahier(self, cahier_id: int) -> Optional[RapportQA]:
+        """Récupérer le rapport QA d'un cahier global"""
         return self.db.query(RapportQA).filter(
-            RapportQA.sprintId == sprint_id
+            RapportQA.cahierId == cahier_id
         ).first()
     
     def get_by_status(self, statut: str) -> List[RapportQA]:

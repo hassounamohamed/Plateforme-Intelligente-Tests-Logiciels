@@ -45,6 +45,7 @@ class CahierTestGlobal(Base):
         cascade="all, delete-orphan",
         order_by="CasTest.ordre",
     )
+    rapport_qa = relationship("RapportQA", back_populates="cahier", uselist=False, cascade="all, delete-orphan")
 
 
 class CasTest(Base):

@@ -24,12 +24,15 @@ from sqlalchemy.orm import Session, joinedload
 
 from core.config import AI_API_KEY, AI_MODEL, AI_API_URL
 from core.rbac.constants import ROLE_DEVELOPPEUR, ROLE_TESTEUR_QA
+from models.notification import TypeNotification
 from models.ai_generation import AIGeneration
+from models.rapports import RapportQA, IndicateurQualite, RecommandationQualite
 from models.scrum import Projet, Sprint, UserStory, Module, Epic
 from models.cahier_test_global import CahierTestGlobal, CasTest
 from models.user import Utilisateur
 from repositories.ai_generation_repository import AIGenerationRepository
 from repositories.cahier_test_global_repository import CahierTestGlobalRepository
+from services.notification_service import NotificationService
 from schemas.cahier_test_global import (
     AICahierResponse,
     CreateCasTestRequest,
@@ -56,6 +59,7 @@ Règles strictes :
    - type_utilisateur: type d'utilisateur impliqué (ex: Admin, Utilisateur, Testeur)
    - scenario_test   : étapes numérotées du scénario (ex: "1. Ouvrir... 2. Saisir...")
    - resultat_attendu: résultat observable attendu après exécution
+    - execution_time_seconds: durée estimée d'exécution en secondes (entier >= 0)
    - type_test       : "Manuel" ou "Automatisé"
 3. Les test_ref doivent être séquentiels et uniques (TC-001, TC-002, …).
 4. Retourne UNIQUEMENT un objet JSON valide, aucun texte avant ou après.
@@ -73,6 +77,7 @@ Structure JSON attendue :
       "type_utilisateur": "Utilisateur",
       "scenario_test": "1. Ouvrir la page de connexion\\n2. Saisir l'email valide\\n3. Saisir le mot de passe correct\\n4. Cliquer sur Connexion",
       "resultat_attendu": "L'utilisateur est redirigé vers le tableau de bord",
+            "execution_time_seconds": 30,
       "type_test": "Manuel"
     }
   ]
@@ -107,6 +112,21 @@ Contraintes:
 - Longueur max 120 caractères par champ.
 """
 
+RAPPORT_QA_SYSTEM_PROMPT = """\
+Tu es un lead QA.
+Tu reçois les statistiques d'un cahier de tests global.
+Ta mission est de générer un rapport QA concis et actionnable.
+
+Retourne UNIQUEMENT un JSON valide, sans texte autour, au format strict :
+{
+    "statut": "brouillon|valide",
+    "recommandations": "texte multi-lignes",
+    "tendance": "amelioration|stable|degradation",
+    "indice_qualite": 0.0,
+    "nombre_anomalies_critiques": 0
+}
+"""
+
 
 class CahierTestGlobalService:
 
@@ -114,6 +134,7 @@ class CahierTestGlobalService:
         self.db      = db
         self.repo    = CahierTestGlobalRepository(db)
         self.ai_repo = AIGenerationRepository(db)
+        self.notification_service = NotificationService(db)
         self.api_key_service = None
 
     def _get_api_key_service(self):
@@ -141,6 +162,16 @@ class CahierTestGlobalService:
             raise ValueError("Clé API IA manquante. Ajoutez votre clé API dans le profil ou définissez AI_API_KEY dans .env")
 
         return AI_API_KEY
+
+    @staticmethod
+    def _parse_execution_time_seconds(value: object) -> Optional[int]:
+        if value is None:
+            return None
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return None
+        return max(0, parsed)
 
     # ─── Points d'entrée publics ──────────────────────────────────────────
 
@@ -466,6 +497,256 @@ class CahierTestGlobalService:
             "pct_bloque":         pct(bloque),
             "pct_non_execute":    pct(non_execute),
         }
+
+    @staticmethod
+    def _increment_report_minor_version(current_version: Optional[str]) -> str:
+        major, minor, patch = 1, 0, 0
+        if current_version:
+            match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", current_version.strip())
+            if match:
+                major, minor, patch = map(int, match.groups())
+        return f"{major}.{minor + 1}.0"
+
+    @staticmethod
+    def _compute_rapport_stats(cahier: CahierTestGlobal) -> dict:
+        total = cahier.nombre_total or 0
+        reussi = cahier.nombre_reussi or 0
+        echoue = cahier.nombre_echoue or 0
+        bloque = cahier.nombre_bloque or 0
+        executes = max(0, reussi + echoue + bloque)
+        taux = round((reussi / executes) * 100, 2) if executes > 0 else 0.0
+        return {
+            "total": total,
+            "reussi": reussi,
+            "echoue": echoue,
+            "bloque": bloque,
+            "executes": executes,
+            "taux_reussite": taux,
+        }
+
+    def _generer_rapport_qa_ia(self, cahier: CahierTestGlobal, user_id: Optional[int]) -> dict:
+        stats = self._compute_rapport_stats(cahier)
+        prompt = (
+            "Genere un rapport QA base sur ces statistiques de cahier de tests global.\n"
+            f"Version cahier: {cahier.version}\n"
+            f"Total tests: {stats['total']}\n"
+            f"Tests executes: {stats['executes']}\n"
+            f"Tests reussis: {stats['reussi']}\n"
+            f"Tests echoues: {stats['echoue']}\n"
+            f"Tests bloques: {stats['bloque']}\n"
+            f"Taux de reussite: {stats['taux_reussite']}\n"
+        )
+        try:
+            api_key = self._get_api_key_for_request(user_id)
+            raw = self._appeler_openrouter(prompt, api_key, RAPPORT_QA_SYSTEM_PROMPT)
+            match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.DOTALL)
+            if match:
+                payload = json.loads(match.group(1))
+            else:
+                start = raw.find("{")
+                end = raw.rfind("}") + 1
+                payload = json.loads(raw[start:end])
+            return {
+                "statut": str(payload.get("statut") or "brouillon"),
+                "recommandations": str(payload.get("recommandations") or "").strip(),
+                "tendance": str(payload.get("tendance") or "stable"),
+                "indice_qualite": float(payload.get("indice_qualite") or 0.0),
+                "nombre_anomalies_critiques": int(payload.get("nombre_anomalies_critiques") or 0),
+            }
+        except Exception:
+            return {
+                "statut": "brouillon",
+                "recommandations": "Prioriser la correction des tests echoues et stabiliser les tests bloques.",
+                "tendance": "stable",
+                "indice_qualite": 0.0,
+                "nombre_anomalies_critiques": 0,
+            }
+
+    def generer_rapport_qa(
+        self,
+        cahier_id: int,
+        projet_id: int,
+        user_id: int,
+        mode_generation: str = "manuelle",
+        version: Optional[str] = None,
+        recommandations: Optional[str] = None,
+    ) -> RapportQA:
+        cahier = self._verifier_appartenance(cahier_id, projet_id)
+        stats = self._compute_rapport_stats(cahier)
+
+        ai_payload = None
+        if mode_generation == "ai":
+            ai_payload = self._generer_rapport_qa_ia(cahier, user_id)
+
+        rapport = self.db.query(RapportQA).filter(RapportQA.cahierId == cahier_id).first()
+        next_version = version or self._increment_report_minor_version(rapport.version if rapport else None)
+
+        recommandations_finales = (
+            ai_payload["recommandations"]
+            if ai_payload and ai_payload.get("recommandations")
+            else (recommandations or "")
+        )
+        statut_final = (ai_payload.get("statut") if ai_payload else "brouillon") or "brouillon"
+
+        if not rapport:
+            rapport = RapportQA(
+                cahierId=cahier_id,
+                version=next_version,
+                dateGeneration=datetime.utcnow(),
+                statut=statut_final,
+                tauxReussite=stats["taux_reussite"],
+                nombreTestsExecutes=stats["executes"],
+                nombreTestsReussis=stats["reussi"],
+                nombreTestsEchoues=stats["echoue"],
+                recommandations=recommandations_finales,
+            )
+            self.db.add(rapport)
+            self.db.flush()
+        else:
+            rapport.version = next_version
+            rapport.dateGeneration = datetime.utcnow()
+            rapport.statut = statut_final
+            rapport.tauxReussite = stats["taux_reussite"]
+            rapport.nombreTestsExecutes = stats["executes"]
+            rapport.nombreTestsReussis = stats["reussi"]
+            rapport.nombreTestsEchoues = stats["echoue"]
+            rapport.recommandations = recommandations_finales
+
+            if rapport.indicateurs is None:
+                self.db.add(IndicateurQualite(rapportId=rapport.id))
+
+        indicateur = rapport.indicateurs
+        if indicateur is None:
+            indicateur = IndicateurQualite(rapportId=rapport.id)
+            self.db.add(indicateur)
+
+        indice_qualite = (
+            ai_payload["indice_qualite"]
+            if ai_payload and ai_payload.get("indice_qualite")
+            else round(stats["taux_reussite"] / 20, 2)
+        )
+        tendance = ai_payload["tendance"] if ai_payload else "stable"
+        anomalies_critiques = ai_payload["nombre_anomalies_critiques"] if ai_payload else 0
+
+        indicateur.tauxCouverture = None
+        indicateur.tauxReussite = stats["taux_reussite"]
+        indicateur.nombreAnomalies = max(0, stats["echoue"] + stats["bloque"])
+        indicateur.nombreAnomaliesCritiques = max(0, anomalies_critiques)
+        indicateur.indiceQualite = max(0.0, indice_qualite)
+        indicateur.tendance = tendance
+
+        self.db.commit()
+        self.db.refresh(rapport)
+
+        self.notification_service.notify_user(
+            user_id=user_id,
+            titre="Rapport QA genere",
+            message=f"Le rapport QA v{rapport.version} a ete genere pour le cahier {cahier_id}.",
+            notification_type=TypeNotification.REPORT_GENERATED,
+            priorite="moyenne",
+        )
+
+        return rapport
+
+    def get_rapport_qa(self, cahier_id: int, projet_id: int) -> RapportQA:
+        self._verifier_appartenance(cahier_id, projet_id)
+        rapport = self.db.query(RapportQA).filter(RapportQA.cahierId == cahier_id).first()
+        if not rapport:
+            raise HTTPException(status_code=404, detail="Aucun rapport QA généré pour ce cahier.")
+        return rapport
+
+    def update_rapport_qa(
+        self,
+        cahier_id: int,
+        projet_id: int,
+        user_id: int,
+        payload: dict,
+    ) -> RapportQA:
+        rapport = self.get_rapport_qa(cahier_id, projet_id)
+
+        if payload.get("statut") is not None:
+            rapport.statut = payload["statut"]
+        if payload.get("recommandations") is not None:
+            rapport.recommandations = payload["recommandations"]
+
+        rapport.version = payload.get("version") or self._increment_report_minor_version(rapport.version)
+        rapport.dateGeneration = datetime.utcnow()
+
+        self.db.commit()
+        self.db.refresh(rapport)
+
+        self.notification_service.notify_user(
+            user_id=user_id,
+            titre="Rapport QA modifie",
+            message=f"Le rapport QA v{rapport.version} a ete mis a jour.",
+            notification_type=TypeNotification.REPORT_GENERATED,
+            priorite="moyenne",
+        )
+
+        return rapport
+
+    def exporter_rapport_qa_pdf(self, cahier_id: int, projet_id: int) -> bytes:
+        try:
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib.styles import getSampleStyleSheet
+            from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+        except ImportError:
+            raise HTTPException(
+                status_code=501,
+                detail="La bibliothèque reportlab est requise pour l'export PDF. Installez-la avec : pip install reportlab",
+            )
+
+        rapport = self.get_rapport_qa(cahier_id, projet_id)
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4)
+        styles = getSampleStyleSheet()
+        story = []
+
+        story.append(Paragraph(f"Rapport QA v{rapport.version}", styles["Title"]))
+        story.append(Spacer(1, 8))
+        story.append(Paragraph(f"Projet ID: {projet_id} | Cahier ID: {cahier_id}", styles["Normal"]))
+        story.append(Paragraph(f"Date: {rapport.dateGeneration}", styles["Normal"]))
+        story.append(Paragraph(f"Statut: {rapport.statut}", styles["Normal"]))
+        story.append(Paragraph(f"Taux de reussite: {rapport.tauxReussite}%", styles["Normal"]))
+        story.append(Paragraph(f"Tests executes: {rapport.nombreTestsExecutes}", styles["Normal"]))
+        story.append(Paragraph(f"Tests reussis: {rapport.nombreTestsReussis}", styles["Normal"]))
+        story.append(Paragraph(f"Tests echoues: {rapport.nombreTestsEchoues}", styles["Normal"]))
+        story.append(Spacer(1, 12))
+        story.append(Paragraph("Recommandations", styles["Heading2"]))
+        story.append(Paragraph((rapport.recommandations or "Aucune recommandation."), styles["Normal"]))
+
+        doc.build(story)
+        buf.seek(0)
+        return buf.read()
+
+    def exporter_rapport_qa_word(self, cahier_id: int, projet_id: int) -> bytes:
+        try:
+            from docx import Document
+        except ImportError:
+            raise HTTPException(
+                status_code=501,
+                detail="La bibliothèque python-docx est requise pour l'export Word. Installez-la avec : pip install python-docx",
+            )
+
+        rapport = self.get_rapport_qa(cahier_id, projet_id)
+
+        doc = Document()
+        doc.add_heading(f"Rapport QA v{rapport.version}", 0)
+        doc.add_paragraph(f"Projet ID: {projet_id}")
+        doc.add_paragraph(f"Cahier ID: {cahier_id}")
+        doc.add_paragraph(f"Date: {rapport.dateGeneration}")
+        doc.add_paragraph(f"Statut: {rapport.statut}")
+        doc.add_paragraph(f"Taux de reussite: {rapport.tauxReussite}%")
+        doc.add_paragraph(f"Tests executes: {rapport.nombreTestsExecutes}")
+        doc.add_paragraph(f"Tests reussis: {rapport.nombreTestsReussis}")
+        doc.add_paragraph(f"Tests echoues: {rapport.nombreTestsEchoues}")
+        doc.add_heading("Recommandations", level=1)
+        doc.add_paragraph(rapport.recommandations or "Aucune recommandation.")
+
+        buf = io.BytesIO()
+        doc.save(buf)
+        buf.seek(0)
+        return buf.read()
 
     def list_cas_tests(self, cahier_id: int, projet_id: int) -> list:
         self._verifier_appartenance(cahier_id, projet_id)
@@ -814,6 +1095,7 @@ class CahierTestGlobalService:
             type_utilisateur = (cas.type_utilisateur or "")[:100]
             scenario_test = cas.scenario_test or ""
             resultat_attendu = cas.resultat_attendu or ""
+            execution_time_seconds = self._parse_execution_time_seconds(cas.execution_time_seconds)
             type_test = cas.type_test if cas.type_test in ("Manuel", "Automatisé") else "Manuel"
             self.repo.add_cas_test(
                 cahier_id=cahier.id,
@@ -826,7 +1108,7 @@ class CahierTestGlobalService:
                 type_utilisateur=type_utilisateur,
                 scenario_test=scenario_test,
                 resultat_attendu=resultat_attendu,
-                execution_time_seconds=None,
+                execution_time_seconds=execution_time_seconds,
                 type_test=type_test,
                 ordre=i,
             )

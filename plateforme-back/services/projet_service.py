@@ -9,8 +9,10 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from core.config import AI_API_KEY, AI_API_URL, AI_MODEL
+from models.notification import TypeNotification
 from repositories.projet_repository import ProjetRepository
 from repositories.user_repository import UserRepository
+from services.notification_service import NotificationService
 from schemas.projet import (
     CreateProjetRequest,
     UpdateProjetRequest,
@@ -26,6 +28,14 @@ class ProjetService:
         self.user_repo = UserRepository(db)
         self.db = db
         self.api_key_service = None
+        self.notification_service = NotificationService(db)
+
+    @staticmethod
+    def _member_ids(projet) -> set[int]:
+        ids = {m.id for m in (projet.membres or [])}
+        if projet.productOwnerId:
+            ids.add(projet.productOwnerId)
+        return ids
 
     def _get_api_key_service(self):
         """Lazy load APIKeyService to avoid circular imports."""
@@ -155,7 +165,15 @@ class ProjetService:
 
         # Le Product Owner doit toujours faire partie de l'équipe du projet.
         self.repo.assigner_membres(projet.id, [product_owner_id])
-        return self.repo.get_by_id(projet.id)
+        created_project = self.repo.get_by_id(projet.id)
+        self.notification_service.notify_user(
+            user_id=product_owner_id,
+            titre="Nouveau projet cree",
+            message=f"Le projet {created_project.nom} a ete cree avec succes.",
+            notification_type=TypeNotification.PROJECT_CREATED,
+            priorite="moyenne",
+        )
+        return created_project
 
     # ── Lecture ─────────────────────────────────────────────────────────────
 
@@ -205,7 +223,17 @@ class ProjetService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Seul le Product Owner du projet peut le modifier.",
             )
-        return self.repo.update(projet_id, data.model_dump(exclude_none=True))
+        updated = self.repo.update(projet_id, data.model_dump(exclude_none=True))
+        target_ids = self._member_ids(updated)
+        self.notification_service.notify_users(
+            user_ids=list(target_ids),
+            titre="Projet modifie",
+            message=f"Le projet {updated.nom} a ete modifie.",
+            notification_type=TypeNotification.PROJECT_UPDATED,
+            priorite="moyenne",
+            exclude_user_id=current_user_id,
+        )
+        return updated
 
     # ── Archivage ────────────────────────────────────────────────────────────
 
@@ -216,7 +244,17 @@ class ProjetService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Seul le Product Owner du projet peut l'archiver.",
             )
-        return self.repo.archiver(projet_id)
+        archived = self.repo.archiver(projet_id)
+        target_ids = self._member_ids(archived)
+        self.notification_service.notify_users(
+            user_ids=list(target_ids),
+            titre="Projet archive",
+            message=f"Le projet {archived.nom} a ete archive.",
+            notification_type=TypeNotification.PROJECT_ARCHIVED,
+            priorite="basse",
+            exclude_user_id=current_user_id,
+        )
+        return archived
 
     def supprimer_projet(self, projet_id: int, current_user_id: int) -> None:
         projet = self.get_projet(projet_id)
@@ -263,9 +301,32 @@ class ProjetService:
                 detail="Seul le Product Owner du projet peut assigner des membres.",
             )
 
+        before_member_ids = self._member_ids(projet)
+
         # Empêcher la suppression du Product Owner de la liste des membres.
         member_ids = list(set([*data.membre_ids, projet.productOwnerId]))
-        return self.repo.assigner_membres(projet_id, member_ids)
+        updated = self.repo.assigner_membres(projet_id, member_ids)
+
+        after_member_ids = self._member_ids(updated)
+        added_member_ids = list(after_member_ids - before_member_ids)
+        if added_member_ids:
+            self.notification_service.notify_users(
+                user_ids=added_member_ids,
+                titre="Tu as ete ajoute a un projet",
+                message=f"Vous avez ete ajoute au projet {updated.nom}.",
+                notification_type=TypeNotification.ADDED_TO_PROJECT,
+                priorite="moyenne",
+            )
+            self.notification_service.notify_users(
+                user_ids=list(after_member_ids),
+                titre="Nouveau membre ajoute au projet",
+                message=f"Un nouveau membre a ete ajoute au projet {updated.nom}.",
+                notification_type=TypeNotification.PROJECT_MEMBER_ADDED,
+                priorite="moyenne",
+                exclude_user_id=current_user_id,
+            )
+
+        return updated
 
     # ── Statistiques ─────────────────────────────────────────────────────────
 

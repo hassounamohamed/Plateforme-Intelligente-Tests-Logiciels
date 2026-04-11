@@ -512,43 +512,59 @@ export interface CahierTests {
 
 export interface RapportQA {
   id: number;
+  version: string;
   dateGeneration: string;
-  statut: string;
-  tauxReussite: number;
+  statut: string | null;
+  tauxReussite: number | null;
   nombreTestsExecutes: number;
   nombreTestsReussis: number;
   nombreTestsEchoues: number;
-  recommandations?: string;
+  recommandations?: string | null;
+  cahierId?: number;
   sprintId?: number;
   sprint?: {
     nom: string;
     dateDebut?: string;
     dateFin?: string;
   };
-  indicateurs?: IndicateurQualite;
+  indicateurs?: IndicateurQualite | null;
   recommandations_qualite?: RecommandationQualite[];
 }
 
 export interface IndicateurQualite {
   id: number;
-  tauxCouverture: number;
-  tauxReussite: number;
+  tauxCouverture: number | null;
+  tauxReussite: number | null;
   nombreAnomalies: number;
   nombreAnomaliesCritiques: number;
-  indiceQualite: number;
-  tendance: "croissante" | "stable" | "decroissante";
-  rapportId: number;
+  indiceQualite: number | null;
+  tendance: "croissante" | "stable" | "decroissante" | string | null;
+  rapportId?: number;
 }
 
 export interface RecommandationQualite {
   id: number;
-  titre: string;
-  description?: string;
-  categorie: string;
-  priorite: "haute" | "moyenne" | "basse";
-  impact: number;
-  statut: "en_attente" | "en_cours" | "appliquee" | "rejetee";
-  rapportId: number;
+  titre: string | null;
+  description?: string | null;
+  categorie: string | null;
+  priorite: "haute" | "moyenne" | "basse" | string | null;
+  impact: number | null;
+  statut: "en_attente" | "en_cours" | "appliquee" | "rejetee" | string | null;
+  rapportId?: number;
+}
+
+export type ModeGenerationRapport = "ai" | "manuelle";
+
+export interface GenererRapportQAPayload {
+  version?: string;
+  mode_generation?: ModeGenerationRapport;
+  recommandations?: string;
+}
+
+export interface UpdateRapportQAPayload {
+  version?: string;
+  statut?: string;
+  recommandations?: string;
 }
 
 // ─── AI Generation ────────────────────────────────────────────────────────────
@@ -714,10 +730,35 @@ export interface ImportExcelResult {
 // ─── Notifications ───────────────────────────────────────────────────────────
 
 export type NotificationType =
+  | "PROJECT_CREATED"
+  | "PROJECT_UPDATED"
+  | "PROJECT_ARCHIVED"
+  | "PROJECT_MEMBER_ADDED"
+  | "ADDED_TO_PROJECT"
+  | "USER_STORY_CREATED"
+  | "USER_STORY_UPDATED"
+  | "USER_STORY_DELETED"
+  | "USER_STORY_VALIDATED"
+  | "USER_STORY_ASSIGNED_TO_ME"
+  | "SPRINT_CREATED"
   | "TEST_FAILED"
   | "TEST_PASSED"
   | "SPRINT_STARTED"
   | "SPRINT_ENDED"
+  | "SPRINT_COMPLETED"
+  | "USER_STORY_ADDED_TO_SPRINT"
+  | "USER_STORY_REMOVED_FROM_SPRINT"
+  | "BACKLOG_UPDATED"
+  | "TEST_CREATED"
+  | "TEST_ASSIGNED_TO_ME"
+  | "TEST_EXECUTED"
+  | "TEST_RESULT_VALIDATED"
+  | "BUG_DETECTED"
+  | "REPORT_EXPORTED"
+  | "AI_FAILED"
+  | "DEADLINE_NEAR"
+  | "SPRINT_DELAYED"
+  | "NEW_ASSIGNMENT"
   | "REPORT_GENERATED"
   | "ANOMALY_CREATED"
   | "VALIDATION_REQUIRED"

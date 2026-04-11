@@ -28,3 +28,15 @@ class MarkAllReadResponse(BaseModel):
 class DemoNotificationsResponse(BaseModel):
     created_count: int
     notifications: List[NotificationResponse]
+
+
+class NotificationCatalogItemResponse(BaseModel):
+    type: str
+    title: str
+    severity: str
+    domain: str
+    priorite: str
+
+
+class NotificationCatalogResponse(BaseModel):
+    items: List[NotificationCatalogItemResponse]

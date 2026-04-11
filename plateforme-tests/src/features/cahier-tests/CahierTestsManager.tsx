@@ -6,6 +6,7 @@ import {
   StatistiquesCahier,
   AIGeneration,
   ImportExcelResult,
+  RapportQA,
 } from "@/types";
 import {
   getCahierDetail,
@@ -19,6 +20,15 @@ import {
   importerExcel,
   downloadFile,
 } from "./api";
+import {
+  exporterRapportQAPdf,
+  exporterRapportQAWord,
+  genererRapportQA,
+  getRapportQA,
+  updateRapportQA,
+} from "@/features/rapports/api";
+import { GenererRapportQAPayload, UpdateRapportQAPayload } from "@/types";
+import RapportQAPanel from "@/features/rapports/RapportQAPanel";
 import CahierStatistiques from "./CahierStatistiques";
 import CasTestsTable from "./CasTestsTable";
 import GenerationProgress from "./GenerationProgress";
@@ -52,6 +62,15 @@ export default function CahierTestsManager({
   const [exporting, setExporting] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [rapport, setRapport] = useState<RapportQA | null>(null);
+  const [rapportLoading, setRapportLoading] = useState(false);
+  const [generatingRapportMode, setGeneratingRapportMode] = useState<
+    "manuelle" | "ai" | null
+  >(null);
+  const [exportingRapport, setExportingRapport] = useState<
+    "pdf" | "word" | null
+  >(null);
+  const [updatingRapport, setUpdatingRapport] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const getExportFileNameBase = () => {
@@ -79,6 +98,7 @@ export default function CahierTestsManager({
         setCurrentGeneration(activeGeneration);
         setCahier(null);
         setStats(null);
+        setRapport(null);
         return;
       }
 
@@ -91,10 +111,26 @@ export default function CahierTestsManager({
       ]);
       setCahier(cahierData);
       setStats(statsData);
+
+      setRapportLoading(true);
+      try {
+        const rapportData = await getRapportQA(projectId, cahierData.id);
+        setRapport(rapportData);
+      } catch (rapportErr: any) {
+        if (rapportErr?.response?.status === 404) {
+          setRapport(null);
+        } else {
+          console.warn("Erreur lors du chargement du rapport QA:", rapportErr);
+          setRapport(null);
+        }
+      } finally {
+        setRapportLoading(false);
+      }
     } catch (err: any) {
       if (err.response?.status === 404) {
         setCahier(null);
         setStats(null);
+        setRapport(null);
         setError("Aucun cahier de tests disponible pour ce projet.");
       } else {
         setError(
@@ -153,6 +189,68 @@ export default function CahierTestsManager({
     setGenerating(false);
     setCurrentGeneration(null);
     loadCahier();
+  };
+
+  const handleGenerateRapport = async (
+    mode: "manuelle" | "ai",
+    payload?: GenererRapportQAPayload
+  ) => {
+    if (!cahier) return;
+    setGeneratingRapportMode(mode);
+    try {
+      const rapportData = await genererRapportQA(projectId, cahier.id, {
+        mode_generation: mode,
+        ...payload,
+      });
+      setRapport(rapportData);
+      alert(
+        mode === "ai"
+          ? "Rapport QA généré avec IA avec succès."
+          : "Rapport QA généré manuellement avec succès."
+      );
+    } catch (err: any) {
+      alert(
+        err.response?.data?.detail ||
+          "Erreur lors de la génération du rapport QA."
+      );
+    } finally {
+      setGeneratingRapportMode(null);
+    }
+  };
+
+  const handleUpdateRapport = async (payload: UpdateRapportQAPayload) => {
+    if (!cahier || !rapport) return;
+    setUpdatingRapport(true);
+    try {
+      const updated = await updateRapportQA(projectId, cahier.id, payload);
+      setRapport(updated);
+      alert("Rapport QA modifié avec succès.");
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Erreur lors de la modification du rapport QA.");
+    } finally {
+      setUpdatingRapport(false);
+    }
+  };
+
+  const handleExportRapport = async (format: "pdf" | "word") => {
+    if (!cahier || !rapport) return;
+    setExportingRapport(format);
+    try {
+      const blob =
+        format === "pdf"
+          ? await exporterRapportQAPdf(projectId, cahier.id)
+          : await exporterRapportQAWord(projectId, cahier.id);
+      const base = getExportFileNameBase();
+      const extension = format === "pdf" ? "pdf" : "docx";
+      downloadFile(blob, `rapport_qa_${base}.${extension}`);
+    } catch (err: any) {
+      alert(
+        err.response?.data?.detail ||
+          `Erreur lors de l'export ${format.toUpperCase()} du rapport QA.`
+      );
+    } finally {
+      setExportingRapport(null);
+    }
   };
 
   const handleValidate = async () => {
@@ -452,6 +550,26 @@ export default function CahierTestsManager({
           </div>
         </div>
       </div>
+
+      {/* Rapport QA */}
+      {cahier && (
+        <RapportQAPanel
+          projectId={projectId}
+          projectName={projectName}
+          cahierId={cahier.id}
+          cahierName={`Cahier de Tests v${cahier.version}`}
+          rapport={rapport}
+          loading={rapportLoading}
+          canGenerate={canGenerate}
+          readOnly={readOnly}
+          generatingMode={generatingRapportMode}
+          exporting={exportingRapport}
+          updating={updatingRapport}
+          onGenerate={handleGenerateRapport}
+          onUpdate={handleUpdateRapport}
+          onExport={handleExportRapport}
+        />
+      )}
 
       {/* Statistiques */}
       {stats && <CahierStatistiques stats={stats} />}
