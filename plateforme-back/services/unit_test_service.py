@@ -28,6 +28,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session, selectinload
 
 from core.config import AI_API_KEY, AI_MODEL, AI_API_URL
+from models.notification import TypeNotification
 from models.ai_generation import AIGeneration
 from models.execution import ExecutionTest, ResultatTest
 from models.scrum import Epic, Module, UserStory
@@ -40,6 +41,7 @@ from models.tests import (
 )
 from repositories.ai_generation_repository import AIGenerationRepository
 from repositories.test_repository import CahierDeTestsRepository
+from services.notification_service import NotificationService
 from schemas.unit_tests import (
     AIUnitTestResponse,
     UpdateTestUnitaireRequest,
@@ -229,6 +231,16 @@ class UnitTestService:
         self.db          = db
         self.ai_repo     = AIGenerationRepository(db)
         self.cahier_repo = CahierDeTestsRepository(db)
+        self.notification_service = NotificationService(db)
+
+    @staticmethod
+    def _us_related_user_ids(us: UserStory) -> set[int]:
+        ids: set[int] = set()
+        for field in ("developerId", "testerId", "assigneeId"):
+            value = getattr(us, field, None)
+            if value:
+                ids.add(value)
+        return ids
 
     # ─── Vérification d'appartenance ─────────────────────────────────────
 
@@ -595,6 +607,7 @@ class UnitTestService:
         use_docker: bool = False,
     ) -> ExecutionTest:
         t = self.get_test(test_id, us_id, projet_id)
+        us = self._get_us(us_id, projet_id)
         if not getattr(t, "code", None):
             raise HTTPException(status_code=400, detail="Le test n'a pas de code exécutable.")
 
@@ -629,6 +642,27 @@ class UnitTestService:
         self.db.add(resultat)
         self.db.commit()
         self.db.refresh(exec_record)
+
+        related_ids = list(self._us_related_user_ids(us))
+        self.notification_service.notify_users(
+            user_ids=related_ids,
+            titre="Test execute",
+            message=f"Le test {t.nom} vient d'etre execute (statut: {statut}).",
+            notification_type=TypeNotification.TEST_EXECUTED,
+            priorite="moyenne",
+            exclude_user_id=user_id,
+        )
+
+        outcome_type = TypeNotification.TEST_PASSED if statut == "RÉUSSI" else TypeNotification.TEST_FAILED
+        outcome_priority = "basse" if statut == "RÉUSSI" else "haute"
+        self.notification_service.notify_users(
+            user_ids=related_ids,
+            titre="Test reussi" if statut == "RÉUSSI" else "Test echoue",
+            message=f"Le test {t.nom} s'est termine avec le statut {statut}.",
+            notification_type=outcome_type,
+            priorite=outcome_priority,
+            exclude_user_id=user_id,
+        )
 
         return exec_record
 
@@ -699,7 +733,8 @@ class UnitTestService:
         user_id:   int,
         data:      ValiderTestRequest,
     ) -> ValidationTest:
-        self.get_test(test_id, us_id, projet_id)  # vérifie l'accès
+        t = self.get_test(test_id, us_id, projet_id)  # vérifie l'accès
+        us = self._get_us(us_id, projet_id)
         v = ValidationTest(
             testId       = test_id,
             validatorId  = user_id,
@@ -711,6 +746,15 @@ class UnitTestService:
         self.db.add(v)
         self.db.commit()
         self.db.refresh(v)
+
+        self.notification_service.notify_users(
+            user_ids=list(self._us_related_user_ids(us)),
+            titre="Resultat valide",
+            message=f"Le resultat du test {t.nom} a ete valide.",
+            notification_type=TypeNotification.TEST_RESULT_VALIDATED,
+            priorite="moyenne",
+            exclude_user_id=user_id,
+        )
         return v
 
     def get_executions(

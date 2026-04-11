@@ -7,6 +7,7 @@ from core.rbac.dependencies import get_current_user_with_role
 from db.database import get_db
 from models.user import Utilisateur
 from schemas.notification import (
+    NotificationCatalogResponse,
     DemoNotificationsResponse,
     MarkAllReadResponse,
     NotificationResponse,
@@ -29,6 +30,15 @@ async def list_my_notifications(
     svc: NotificationService = Depends(get_notification_service),
 ):
     return svc.list_my_notifications(current_user.id, unread_only=unread_only, limit=limit)
+
+
+@router.get("/catalog", response_model=NotificationCatalogResponse)
+async def get_notifications_catalog(
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: NotificationService = Depends(get_notification_service),
+):
+    _ = current_user
+    return {"items": svc.get_catalog()}
 
 
 @router.get("/me/unread-count", response_model=UnreadCountResponse)

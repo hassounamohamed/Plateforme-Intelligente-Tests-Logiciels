@@ -10,9 +10,13 @@ import { getMyProjectsAsMember } from "@/features/projects/api";
 import { getBacklog } from "@/features/backlog/api";
 import { getSprints } from "@/features/sprints/api";
 import { getMeApi } from "@/features/auth/api";
-import { listMyNotifications } from "@/features/notifications/api";
+import {
+  listMyNotifications,
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+} from "@/features/notifications/api";
 import { getCahier, getCasTestHistory, listCasTests } from "@/features/cahier-tests/api";
-import type { NotificationItem } from "@/types";
+import type { NotificationItem, NotificationType } from "@/types";
 
 type TaskStatus = "to_do" | "in_progress" | "done";
 
@@ -111,12 +115,36 @@ const timeAgo = (isoDate: string): string => {
   return `il y a ${diffDays} j`;
 };
 
+const getNotificationIcon = (type: NotificationType): string => {
+  switch (type) {
+    case "TEST_FAILED":
+      return "cancel";
+    case "TEST_PASSED":
+      return "check_circle";
+    case "TEST_EXECUTED":
+      return "play_arrow";
+    case "BUG_DETECTED":
+      return "bug_report";
+    case "USER_STORY_ASSIGNED_TO_ME":
+      return "assignment_ind";
+    case "SPRINT_STARTED":
+      return "play_circle";
+    case "SPRINT_COMPLETED":
+      return "checkered_flag";
+    case "PROJECT_CREATED":
+      return "rocket_launch";
+    default:
+      return "notifications";
+  }
+};
+
 export default function DeveloperDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<DeveloperTask[]>([]);
   const [recentChanges, setRecentChanges] = useState<RecentChange[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
   const [activeSprintsCount, setActiveSprintsCount] = useState(0);
 
   const sidebarLinks = [
@@ -139,6 +167,7 @@ export default function DeveloperDashboard() {
         ]);
 
         setNotifications(myNotifications);
+        setNotificationsLoading(false);
 
         const projectResults = await Promise.all(
           projects.map(async (project) => {
@@ -278,6 +307,7 @@ export default function DeveloperDashboard() {
       } catch (err) {
         console.error("Erreur de chargement du dashboard développeur:", err);
         setError("Impossible de charger le dashboard développeur.");
+        setNotificationsLoading(false);
       } finally {
         setLoading(false);
       }
@@ -285,6 +315,51 @@ export default function DeveloperDashboard() {
 
     loadDashboard();
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadNotifications = async () => {
+      try {
+        const items = await listMyNotifications(false, 8);
+        if (!isMounted) return;
+        setNotifications(items);
+      } catch {
+        if (!isMounted) return;
+        setNotifications([]);
+      } finally {
+        if (isMounted) setNotificationsLoading(false);
+      }
+    };
+
+    loadNotifications();
+    const interval = window.setInterval(loadNotifications, 30000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  const handleMarkNotificationAsRead = async (notificationId: number) => {
+    try {
+      await markNotificationAsRead(notificationId);
+      const items = await listMyNotifications(false, 8);
+      setNotifications(items);
+    } catch {
+      // Silent fail in card UI.
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllNotificationsAsRead();
+      const items = await listMyNotifications(false, 8);
+      setNotifications(items);
+    } catch {
+      // Silent fail in card UI.
+    }
+  };
 
   const stats = useMemo(() => {
     const activeTasks = tasks.filter((task) => task.status !== "done").length;
@@ -428,8 +503,17 @@ export default function DeveloperDashboard() {
           </div>
 
           <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
-            <h3 className="text-white text-lg font-bold mb-4">My Notifications</h3>
-            {loading ? (
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white text-lg font-bold">My Notifications</h3>
+              <button
+                type="button"
+                onClick={handleMarkAllAsRead}
+                className="text-primary text-xs font-bold hover:underline"
+              >
+                Tout lire
+              </button>
+            </div>
+            {notificationsLoading ? (
               <div className="flex items-center justify-center h-40">
                 <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
               </div>
@@ -438,17 +522,29 @@ export default function DeveloperDashboard() {
             ) : (
               <div className="space-y-3">
                 {notifications.map((notification) => (
-                <div key={notification.id} className="flex items-start gap-3 p-3 bg-[#283039] rounded-lg">
-                  <span className="material-symbols-outlined text-primary text-[20px]">notifications</span>
+                <button
+                  key={notification.id}
+                  type="button"
+                  onClick={() => handleMarkNotificationAsRead(notification.id)}
+                  className="w-full text-left flex items-start gap-3 p-3 bg-[#283039] rounded-lg hover:border-primary/50 border border-transparent transition-colors"
+                >
+                  <span className="material-symbols-outlined text-primary text-[20px]">
+                    {getNotificationIcon(notification.type)}
+                  </span>
                   <div className="flex-1">
-                    <p className="text-white text-sm font-medium">{notification.titre}</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-white text-sm font-medium truncate">{notification.titre}</p>
+                      {!notification.lue && (
+                        <span className="w-2 h-2 rounded-full bg-primary shrink-0"></span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[#9dabb9] text-xs">{notification.message}</span>
+                      <span className="text-[#9dabb9] text-xs line-clamp-1">{notification.message}</span>
                       <span className="text-[#9dabb9] text-xs">•</span>
                       <span className="text-xs font-bold text-blue-400">{timeAgo(notification.dateEnvoi)}</span>
                     </div>
                   </div>
-                </div>
+                </button>
                 ))}
               </div>
             )}

@@ -88,8 +88,8 @@ class SprintService:
     # ── Création ────────────────────────────────────────────────────────────
 
     def creer_sprint(self, projet_id: int, data: CreateSprintRequest, current_user_id: int):
-        self._verifier_projet(projet_id)
-        return self.repo.create({
+        projet = self._verifier_projet(projet_id)
+        created = self.repo.create({
             "nom": data.nom,
             "objectifSprint": data.objectifSprint,
             "dateDebut": data.dateDebut,
@@ -100,6 +100,18 @@ class SprintService:
             "projet_id": projet_id,
             "scrumMasterId": current_user_id,
         })
+        target_ids = {m.id for m in (projet.membres or [])}
+        if projet.productOwnerId:
+            target_ids.add(projet.productOwnerId)
+        self.notification_service.notify_users(
+            user_ids=list(target_ids),
+            titre=f"Nouveau sprint cree: {created.nom}",
+            message=f"Le sprint {created.nom} a ete cree pour le projet {projet_id}.",
+            notification_type=TypeNotification.SPRINT_CREATED,
+            priorite="moyenne",
+            exclude_user_id=current_user_id,
+        )
+        return created
 
     # ── Lecture ─────────────────────────────────────────────────────────────
 
@@ -220,7 +232,7 @@ class SprintService:
             if sprint_with_stories:
                 self._notify_sprint_related_users(
                     sprint=sprint_with_stories,
-                    notification_type=TypeNotification.SPRINT_ENDED,
+                    notification_type=TypeNotification.SPRINT_COMPLETED,
                     titre=f"Sprint cloture: {sprint_with_stories.nom}",
                     message=(
                         f"Le sprint {sprint_with_stories.nom} est termine. "
@@ -246,7 +258,7 @@ class SprintService:
             if sprint_with_stories:
                 self._notify_sprint_related_users(
                     sprint=sprint_with_stories,
-                    notification_type=TypeNotification.SPRINT_ENDED,
+                    notification_type=TypeNotification.SPRINT_COMPLETED,
                     titre=f"Sprint cloture: {sprint_with_stories.nom}",
                     message=(
                         f"Le sprint {sprint_with_stories.nom} est termine. "
@@ -281,7 +293,7 @@ class SprintService:
                     user_ids=list(target_ids),
                     titre="Nouvelle story planifiee",
                     message=f"Une user story vous concernant a ete ajoutee au sprint {updated.nom}.",
-                    notification_type=TypeNotification.RECOMMENDATION_AVAILABLE,
+                    notification_type=TypeNotification.USER_STORY_ADDED_TO_SPRINT,
                     priorite="moyenne",
                     exclude_user_id=current_user_id,
                 )
@@ -314,7 +326,7 @@ class SprintService:
                     user_ids=list(target_ids),
                     titre="Nouvelle story planifiee",
                     message=f"Une user story vous concernant a ete ajoutee au sprint {updated.nom}.",
-                    notification_type=TypeNotification.RECOMMENDATION_AVAILABLE,
+                    notification_type=TypeNotification.USER_STORY_ADDED_TO_SPRINT,
                     priorite="moyenne",
                     exclude_user_id=current_user_id,
                 )
@@ -340,7 +352,7 @@ class SprintService:
                 user_ids=list(target_ids),
                 titre="Story retiree du sprint",
                 message=f"Une user story vous concernant a ete retiree du sprint {updated.nom}.",
-                notification_type=TypeNotification.RECOMMENDATION_AVAILABLE,
+                notification_type=TypeNotification.USER_STORY_REMOVED_FROM_SPRINT,
                 priorite="basse",
                 exclude_user_id=current_user_id,
             )
@@ -374,7 +386,7 @@ class SprintService:
                 user_ids=list(target_ids),
                 titre="Story retiree du sprint",
                 message=f"Une user story vous concernant a ete retiree du sprint {updated.nom}.",
-                notification_type=TypeNotification.RECOMMENDATION_AVAILABLE,
+                notification_type=TypeNotification.USER_STORY_REMOVED_FROM_SPRINT,
                 priorite="basse",
                 exclude_user_id=current_user_id,
             )

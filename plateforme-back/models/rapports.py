@@ -8,6 +8,7 @@ class RapportQA(Base):
     __tablename__ = "rapport_qa"
 
     id = Column(Integer, primary_key=True)
+    version = Column(String(20), default="1.0.0", nullable=False)
     dateGeneration = Column(DateTime, default=datetime.utcnow)
     statut = Column(String)
     tauxReussite = Column(Float)
@@ -16,10 +17,10 @@ class RapportQA(Base):
     nombreTestsEchoues = Column(Integer, default=0)
     recommandations = Column(Text)
 
-    sprintId = Column(Integer, ForeignKey("sprint.id"))
+    cahierId = Column(Integer, ForeignKey("cahier_test_global.id", ondelete="CASCADE"), unique=True)
 
     # Relations
-    sprint = relationship("Sprint", back_populates="rapport_qa")
+    cahier = relationship("CahierTestGlobal", back_populates="rapport_qa")
     indicateurs = relationship("IndicateurQualite", back_populates="rapport", uselist=False, cascade="all, delete-orphan")
     recommandations_qualite = relationship("RecommandationQualite", back_populates="rapport", cascade="all, delete-orphan")
 

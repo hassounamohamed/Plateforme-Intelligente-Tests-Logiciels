@@ -125,5 +125,4 @@ class Sprint(Base):
     projet = relationship("Projet", back_populates="sprints")
     scrum_master = relationship("Utilisateur", back_populates="sprints_scrum_master", foreign_keys=[scrumMasterId])
     userstories = relationship("UserStory", secondary=sprint_userstory, back_populates="sprints")
-    rapport_qa = relationship("RapportQA", back_populates="sprint", uselist=False, cascade="all, delete-orphan")
 

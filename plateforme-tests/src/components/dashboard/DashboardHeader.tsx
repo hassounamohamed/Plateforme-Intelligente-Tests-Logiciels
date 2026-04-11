@@ -6,7 +6,6 @@ import { ThemeModeToggle } from "@/components/theme/ThemeModeToggle";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuthStore } from "@/features/auth/store";
 import {
-  createDemoNotifications,
   getUnreadNotificationsCount,
   listMyNotifications,
   markAllNotificationsAsRead,
@@ -255,24 +254,74 @@ function normalizeSearchValue(value: string) {
 
 function getNotificationIcon(type: NotificationType): string {
   switch (type) {
+    case "PROJECT_CREATED":
+      return "rocket_launch";
+    case "PROJECT_UPDATED":
+      return "edit";
+    case "PROJECT_ARCHIVED":
+      return "archive";
+    case "PROJECT_MEMBER_ADDED":
+      return "group_add";
+    case "ADDED_TO_PROJECT":
+      return "person_add";
+    case "USER_STORY_CREATED":
+      return "note_add";
+    case "USER_STORY_UPDATED":
+      return "edit_note";
+    case "USER_STORY_DELETED":
+      return "delete";
+    case "USER_STORY_VALIDATED":
+      return "task_alt";
+    case "USER_STORY_ASSIGNED_TO_ME":
+      return "assignment_ind";
+    case "SPRINT_CREATED":
+      return "flag";
     case "TEST_FAILED":
-      return "❌";
+      return "cancel";
     case "SPRINT_STARTED":
-      return "🚀";
+      return "play_circle";
+    case "SPRINT_COMPLETED":
+      return "checkered_flag";
+    case "USER_STORY_ADDED_TO_SPRINT":
+      return "playlist_add";
+    case "USER_STORY_REMOVED_FROM_SPRINT":
+      return "playlist_remove";
+    case "BACKLOG_UPDATED":
+      return "inventory_2";
+    case "TEST_CREATED":
+      return "science";
+    case "TEST_ASSIGNED_TO_ME":
+      return "assignment";
+    case "TEST_EXECUTED":
+      return "play_arrow";
+    case "TEST_RESULT_VALIDATED":
+      return "verified";
     case "ANOMALY_CREATED":
-      return "🐞";
+      return "bug_report";
+    case "BUG_DETECTED":
+      return "pest_control";
+    case "REPORT_EXPORTED":
+      return "ios_share";
+    case "AI_FAILED":
+      return "smart_toy";
+    case "DEADLINE_NEAR":
+      return "schedule";
+    case "SPRINT_DELAYED":
+      return "warning";
+    case "NEW_ASSIGNMENT":
+      return "mark_email_unread";
     case "REPORT_GENERATED":
-      return "📊";
+      return "bar_chart";
     case "TEST_PASSED":
-      return "✅";
+      return "check_circle";
     case "SPRINT_ENDED":
-      return "🏁";
+      return "checkered_flag";
     case "VALIDATION_REQUIRED":
-      return "📝";
+      return "fact_check";
     case "RECOMMENDATION_AVAILABLE":
-      return "💡";
+      return "tips_and_updates";
     default:
-      return "🔔";
+      return "notifications";
   }
 }
 
@@ -453,15 +502,6 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
     }
   };
 
-  const handleCreateDemoNotifications = async () => {
-    try {
-      await createDemoNotifications();
-      await refreshNotifications();
-    } catch {
-      // Silent fail in header UI.
-    }
-  };
-
   return (
     <header className="flex items-center justify-between border-b px-6 py-4 z-10 sticky top-0 backdrop-blur-md bg-(--background)/95 border-border">
       <div className="flex items-center gap-4">
@@ -552,12 +592,6 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
                 <p className="text-sm font-semibold text-foreground">Notifications</p>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={handleCreateDemoNotifications}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Demo
-                  </button>
-                  <button
                     onClick={handleMarkAllAsRead}
                     className="text-xs text-primary hover:underline"
                   >
@@ -582,7 +616,12 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">
-                            {getNotificationIcon(notif.type)} {notif.titre}
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-[16px] text-muted">
+                                {getNotificationIcon(notif.type)}
+                              </span>
+                              <span>{notif.titre}</span>
+                            </span>
                           </p>
                           <p className="text-xs text-muted mt-1 line-clamp-2">{notif.message}</p>
                           <p className="text-[11px] text-muted mt-1">{formatNotificationTime(notif.dateEnvoi)}</p>

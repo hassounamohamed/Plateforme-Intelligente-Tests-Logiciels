@@ -58,7 +58,7 @@ class UserStoryService:
                 f"La user story {self._us_ref(us)} ({us.titre}) vous a ete affectee "
                 f"en tant que {role_label}."
             ),
-            notification_type=TypeNotification.VALIDATION_REQUIRED,
+            notification_type=TypeNotification.USER_STORY_ASSIGNED_TO_ME,
             priorite="moyenne",
         )
 
@@ -145,7 +145,7 @@ class UserStoryService:
         numero = self.projet_repo.next_issue_number(projet_id)
         reference = f"{projet.key}-{numero}"
 
-        return self.repo.create({
+        created = self.repo.create({
             "reference": reference,
             "titre": data.titre,
             "description": description,
@@ -160,6 +160,16 @@ class UserStoryService:
             "developerId": None,
             "assigneeId": self._valider_assignee_optionnel(projet_id, data.assignee_id),
         })
+
+        self.notification_service.notify_users(
+            user_ids=list(self._related_user_ids(created)),
+            titre="Nouvelle user story creee",
+            message=f"La user story {self._us_ref(created)} ({created.titre}) a ete creee.",
+            notification_type=TypeNotification.USER_STORY_CREATED,
+            priorite="moyenne",
+            exclude_user_id=current_user_id,
+        )
+        return created
 
     # ── Lecture ─────────────────────────────────────────────────────────────
 
@@ -241,7 +251,7 @@ class UserStoryService:
                 user_ids=list(self._related_user_ids(updated)),
                 titre="User story mise a jour",
                 message=f"La user story {self._us_ref(updated)} ({updated.titre}) a ete modifiee.",
-                notification_type=TypeNotification.RECOMMENDATION_AVAILABLE,
+                notification_type=TypeNotification.USER_STORY_UPDATED,
                 priorite="basse",
                 exclude_user_id=current_user_id,
             )
@@ -291,7 +301,7 @@ class UserStoryService:
                     f"Vous n'etes plus responsable de la user story {self._us_ref(us)} "
                     f"({us.titre})."
                 ),
-                notification_type=TypeNotification.RECOMMENDATION_AVAILABLE,
+                notification_type=TypeNotification.USER_STORY_UPDATED,
                 priorite="basse",
             )
         return updated
@@ -321,7 +331,7 @@ class UserStoryService:
                     f"La user story {self._us_ref(updated)} ({updated.titre}) est passee de "
                     f"{old_status} a {data.statut}."
                 ),
-                notification_type=TypeNotification.RECOMMENDATION_AVAILABLE,
+                notification_type=TypeNotification.USER_STORY_UPDATED,
                 priorite="moyenne",
                 exclude_user_id=current_user_id,
             )
@@ -403,7 +413,7 @@ class UserStoryService:
                     f"La user story {self._us_ref(updated)} ({updated.titre}) a ete validee "
                     "et marquee done."
                 ),
-                notification_type=TypeNotification.VALIDATION_REQUIRED,
+                notification_type=TypeNotification.USER_STORY_VALIDATED,
                 priorite="moyenne",
                 exclude_user_id=current_user_id,
             )
@@ -421,5 +431,14 @@ class UserStoryService:
     ):
         self._verifier_module(module_id, projet_id)
         self._verifier_epic(epic_id, module_id)
-        self._get_us_ou_404(us_id, epic_id)
+        us = self._get_us_ou_404(us_id, epic_id)
+        related_ids = list(self._related_user_ids(us))
         self.repo.delete(us_id)
+        self.notification_service.notify_users(
+            user_ids=related_ids,
+            titre="User story supprimee",
+            message=f"La user story {self._us_ref(us)} ({us.titre}) a ete supprimee.",
+            notification_type=TypeNotification.USER_STORY_DELETED,
+            priorite="moyenne",
+            exclude_user_id=current_user_id,
+        )
