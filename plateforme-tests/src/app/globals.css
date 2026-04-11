@@ -1,13 +1,10 @@
 /* Google Fonts - Must be first */
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
-@import "@mantine/core/styles.css";
 
 @import "tailwindcss";
-
-@import "tw-animate-css";
-
-@import "shadcn/tailwind.css";
+@import "../../node_modules/tw-animate-css/dist/tw-animate.css";
+@import "../../node_modules/shadcn/dist/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 

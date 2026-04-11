@@ -57,6 +57,18 @@ class AssignerMembresRequest(BaseModel):
     membre_ids: List[int] = Field(..., description="IDs des membres à assigner au projet")
 
 
+class ProjectAISuggestionRequest(BaseModel):
+    prompt: str = Field(..., min_length=5, description="Contexte fonctionnel pour suggérer les champs du projet")
+
+
+class ProjectAISuggestionResponse(BaseModel):
+    nom: Optional[str] = Field(None, description="Nom suggéré du projet")
+    description: Optional[str] = Field(None, description="Description suggérée")
+    objectif: Optional[str] = Field(None, description="Objectif principal suggéré")
+    dateDebut: Optional[str] = Field(None, description="Date de début suggérée au format YYYY-MM-DD")
+    dateFin: Optional[str] = Field(None, description="Date de fin suggérée au format YYYY-MM-DD")
+
+
 # ─── Réponses ─────────────────────────────────────────────────────────────────
 
 class MembreSimple(BaseModel):

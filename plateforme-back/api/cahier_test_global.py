@@ -18,22 +18,35 @@ Endpoints :
 """
 import os
 import uuid
+import re
+import unicodedata
 from typing import Annotated, List, Optional, Union
 
 from fastapi import APIRouter, Body, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
+from core.rbac.constants import (
+    ROLE_DEVELOPPEUR,
+    ROLE_PRODUCT_OWNER,
+    ROLE_SCRUM_MASTER,
+    ROLE_TESTEUR_QA,
+)
 from core.rbac.dependencies import get_current_user_with_role
 from db.database import get_db
+from models.scrum import Projet
 from models.user import Utilisateur
 from schemas.ai_generation import AIGenerationDetailResponse, AIGenerationResponse
 from schemas.cahier_test_global import (
+    AssignableMemberResponse,
+    BugSuggestionResponse,
+    CasTestHistoryResponse,
     CahierTestGlobalDetailResponse,
     CahierTestGlobalResponse,
     CasTestResponse,
     CreateCasTestRequest,
     GenererCahierRequest,
+    ImportExcelResponse,
     StatistiquesResponse,
     UpdateCasTestRequest,
     ValiderCahierRequest,
@@ -48,6 +61,151 @@ router = APIRouter(
 
 def get_service(db: Session = Depends(get_db)) -> CahierTestGlobalService:
     return CahierTestGlobalService(db)
+
+
+def _get_role_code(current_user: Utilisateur) -> str:
+    return current_user.role.code if current_user and current_user.role else ""
+
+
+def _normalize_name(value: Optional[str]) -> str:
+    raw = unicodedata.normalize("NFKD", value or "").encode("ascii", "ignore").decode("ascii")
+    return raw.strip().lower()
+
+
+def _extract_assignee_tokens(value: Optional[str]) -> set[str]:
+    text = (value or "").strip()
+    if not text:
+        return set()
+
+    tokens = {_normalize_name(text)}
+    match = re.match(r"^(.*?)\s*\(([^)]+)\)\s*$", text)
+    if match:
+        name_part = _normalize_name(match.group(1))
+        email_part = _normalize_name(match.group(2))
+        if name_part:
+            tokens.add(name_part)
+        if email_part:
+            tokens.add(email_part)
+    return {t for t in tokens if t}
+
+
+def _ensure_cahier_allowed_role(current_user: Utilisateur) -> None:
+    role_code = _get_role_code(current_user)
+    if role_code not in {ROLE_TESTEUR_QA, ROLE_DEVELOPPEUR, ROLE_SCRUM_MASTER, ROLE_PRODUCT_OWNER}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Rôle non autorisé sur le cahier de tests.",
+        )
+
+
+def _ensure_testeur_only(current_user: Utilisateur) -> None:
+    role_code = _get_role_code(current_user)
+    if role_code != ROLE_TESTEUR_QA:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Action autorisée uniquement pour Testeur QA.",
+        )
+
+
+def _ensure_testeur_or_developpeur(current_user: Utilisateur) -> None:
+    role_code = _get_role_code(current_user)
+    if role_code not in {ROLE_TESTEUR_QA, ROLE_DEVELOPPEUR}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Action autorisée uniquement pour Testeur QA ou Développeur.",
+        )
+
+
+def _get_assignable_member_names(db: Session, projet_id: int) -> set[str]:
+    projet = db.query(Projet).filter(Projet.id == projet_id).first()
+    if not projet:
+        return set()
+
+    allowed_names: set[str] = set()
+    for member in projet.membres or []:
+        role_code = member.role.code if member.role else None
+        if member.actif and role_code in {ROLE_TESTEUR_QA, ROLE_DEVELOPPEUR}:
+            normalized = _normalize_name(member.nom)
+            if normalized:
+                allowed_names.add(normalized)
+    return allowed_names
+
+
+def _is_case_assigned_to_user(cas, current_user: Utilisateur) -> bool:
+    assignee_tokens = _extract_assignee_tokens(cas.type_utilisateur)
+    user_tokens = {
+        _normalize_name(current_user.nom),
+        _normalize_name(current_user.email),
+    }
+    return bool(assignee_tokens.intersection({t for t in user_tokens if t}))
+
+
+def _ensure_can_update_cas_test(
+    current_user: Utilisateur,
+    body: UpdateCasTestRequest,
+    cas,
+    db: Session,
+    projet_id: int,
+) -> None:
+    role_code = _get_role_code(current_user)
+    payload = body.model_dump(exclude_none=True)
+
+    if role_code == ROLE_PRODUCT_OWNER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Product Owner en lecture seule sur le cahier de tests.",
+        )
+
+    if role_code == ROLE_SCRUM_MASTER:
+        allowed_keys = {"type_utilisateur"}
+        invalid_keys = [k for k in payload.keys() if k not in allowed_keys]
+        if invalid_keys:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Scrum Master peut uniquement assigner un membre développeur ou testeur.",
+            )
+        if "type_utilisateur" in payload:
+            assigned_name = _normalize_name(payload.get("type_utilisateur"))
+            if assigned_name:
+                allowed_names = _get_assignable_member_names(db, projet_id)
+                if assigned_name not in allowed_names:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="Le cas de test doit être assigné à un Testeur QA ou Développeur membre du projet.",
+                    )
+        return
+
+    if role_code in {ROLE_TESTEUR_QA, ROLE_DEVELOPPEUR}:
+        if "type_utilisateur" in payload:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Seul le Scrum Master peut assigner un membre développeur ou testeur.",
+            )
+        if not _is_case_assigned_to_user(cas, current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Vous pouvez modifier uniquement les cas de test qui vous sont assignés.",
+            )
+        return
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Rôle non autorisé pour modifier le cas de test.",
+    )
+
+
+def _ensure_case_execution_access(current_user: Utilisateur, cas) -> None:
+    role_code = _get_role_code(current_user)
+    if role_code not in {ROLE_TESTEUR_QA, ROLE_DEVELOPPEUR}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Action autorisée uniquement pour Testeur QA ou Développeur.",
+        )
+    if not _is_case_assigned_to_user(cas, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Vous pouvez exécuter uniquement les cas de test qui vous sont assignés.",
+        )
 
 
 # ─── Générer le cahier (async) ────────────────────────────────────────────────
@@ -72,6 +230,8 @@ async def generer_cahier(
     Interroger **GET /generations/{id}** pour suivre la progression et les logs.
     Dès que status=completed, le cahier est disponible via **GET /detail**.
     """
+    _ensure_cahier_allowed_role(current_user)
+    _ensure_testeur_only(current_user)
     result = svc.demarrer_generation(
         projet_id,
         current_user.id,
@@ -97,6 +257,7 @@ async def list_generations(
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: CahierTestGlobalService = Depends(get_service),
 ):
+    _ensure_cahier_allowed_role(current_user)
     return svc.list_generations(projet_id)
 
 
@@ -117,6 +278,7 @@ async def get_generation(
     - **status**   : pending | processing | completed | failed
     - **logs**     : liste des étapes avec message et horodatage
     """
+    _ensure_cahier_allowed_role(current_user)
     return svc.get_generation(gen_id, projet_id)
 
 
@@ -132,6 +294,7 @@ async def get_cahier(
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: CahierTestGlobalService = Depends(get_service),
 ):
+    _ensure_cahier_allowed_role(current_user)
     return svc.get_cahier(projet_id)
 
 
@@ -145,6 +308,7 @@ async def get_cahier_detail(
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: CahierTestGlobalService = Depends(get_service),
 ):
+    _ensure_cahier_allowed_role(current_user)
     return svc.get_cahier_detail(projet_id)
 
 
@@ -158,6 +322,7 @@ async def get_statistiques(
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: CahierTestGlobalService = Depends(get_service),
 ):
+    _ensure_cahier_allowed_role(current_user)
     return svc.get_statistiques(projet_id)
 
 
@@ -174,7 +339,23 @@ async def list_cas_tests(
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: CahierTestGlobalService = Depends(get_service),
 ):
+    _ensure_cahier_allowed_role(current_user)
     return svc.list_cas_tests(cahier_id, projet_id)
+
+
+@router.get(
+    "/{cahier_id}/assignable-members",
+    response_model=List[AssignableMemberResponse],
+    summary="Lister les membres assignables (Testeur QA / Développeur du projet)",
+)
+async def list_assignable_members(
+    projet_id: int,
+    cahier_id: int,
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: CahierTestGlobalService = Depends(get_service),
+):
+    _ensure_cahier_allowed_role(current_user)
+    return svc.get_assignable_members(cahier_id, projet_id)
 
 
 @router.post(
@@ -190,6 +371,8 @@ async def create_cas_test(
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: CahierTestGlobalService = Depends(get_service),
 ):
+    _ensure_cahier_allowed_role(current_user)
+    _ensure_testeur_only(current_user)
     return svc.create_cas_test(cahier_id, projet_id, body)
 
 
@@ -206,7 +389,48 @@ async def update_cas_test(
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: CahierTestGlobalService = Depends(get_service),
 ):
-    return svc.update_cas_test(cahier_id, cas_id, projet_id, body)
+    _ensure_cahier_allowed_role(current_user)
+    cas = svc.repo.get_cas_test(cas_id, cahier_id)
+    if not cas:
+        raise HTTPException(status_code=404, detail="Cas de test introuvable.")
+    _ensure_can_update_cas_test(current_user, body, cas, svc.db, projet_id)
+    return svc.update_cas_test(cahier_id, cas_id, projet_id, body, current_user.id)
+
+
+@router.get(
+    "/{cahier_id}/cas-tests/{cas_id}/history",
+    response_model=List[CasTestHistoryResponse],
+    summary="Historique des modifications d'un cas de test",
+)
+async def get_cas_test_history(
+    projet_id: int,
+    cahier_id: int,
+    cas_id: int,
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: CahierTestGlobalService = Depends(get_service),
+):
+    _ensure_cahier_allowed_role(current_user)
+    return svc.list_cas_test_history(cahier_id, cas_id, projet_id)
+
+
+@router.post(
+    "/{cahier_id}/cas-tests/{cas_id}/bug-suggestion",
+    response_model=BugSuggestionResponse,
+    summary="Générer une suggestion IA (titre de correction + nom de tâche)",
+)
+async def suggest_bug_fields(
+    projet_id: int,
+    cahier_id: int,
+    cas_id: int,
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: CahierTestGlobalService = Depends(get_service),
+):
+    _ensure_cahier_allowed_role(current_user)
+    cas = svc.repo.get_cas_test(cas_id, cahier_id)
+    if not cas:
+        raise HTTPException(status_code=404, detail="Cas de test introuvable.")
+    _ensure_case_execution_access(current_user, cas)
+    return svc.generer_suggestion_bug(cahier_id, cas_id, projet_id, current_user.id)
 
 
 # ─── Capture d'écran ──────────────────────────────────────────────────────────
@@ -230,6 +454,11 @@ async def upload_capture(
     svc: CahierTestGlobalService = Depends(get_service),
     db: Session = Depends(get_db),
 ):
+    _ensure_cahier_allowed_role(current_user)
+    cas = svc.repo.get_cas_test(cas_id, cahier_id)
+    if not cas:
+        raise HTTPException(status_code=404, detail="Cas de test introuvable.")
+    _ensure_case_execution_access(current_user, cas)
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in CAPTURE_ALLOWED_EXTENSIONS:
         raise HTTPException(
@@ -257,7 +486,14 @@ async def upload_capture(
         f.write(content)
 
     from schemas.cahier_test_global import UpdateCasTestRequest
-    return svc.update_cas_test(cahier_id, cas_id, projet_id, UpdateCasTestRequest(capture=filepath))
+    actor_id = current_user.id if current_user else None
+    return svc.update_cas_test(
+        cahier_id,
+        cas_id,
+        projet_id,
+        UpdateCasTestRequest(capture=filepath),
+        actor_id,
+    )
 
 
 @router.get(
@@ -271,6 +507,7 @@ async def get_capture(
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)] = None,
     svc: CahierTestGlobalService = Depends(get_service),
 ):
+    _ensure_cahier_allowed_role(current_user)
     from repositories.cahier_test_global_repository import CahierTestGlobalRepository
     from db.database import get_db as _get_db
     cas = svc.repo.get_cas_test(cas_id, cahier_id)
@@ -302,6 +539,8 @@ async def valider_cahier(
     svc: CahierTestGlobalService = Depends(get_service),
     body: ValiderCahierRequest = Body(default_factory=ValiderCahierRequest),
 ):
+    _ensure_cahier_allowed_role(current_user)
+    _ensure_testeur_only(current_user)
     return svc.valider_cahier(cahier_id, projet_id, body.version)
 
 
@@ -318,6 +557,7 @@ async def export_excel(
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: CahierTestGlobalService = Depends(get_service),
 ):
+    _ensure_cahier_allowed_role(current_user)
     data = svc.exporter_excel(cahier_id, projet_id)
     return Response(
         content=data,
@@ -337,6 +577,7 @@ async def export_word(
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: CahierTestGlobalService = Depends(get_service),
 ):
+    _ensure_cahier_allowed_role(current_user)
     data = svc.exporter_word(cahier_id, projet_id)
     return Response(
         content=data,
@@ -356,9 +597,42 @@ async def export_pdf(
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: CahierTestGlobalService = Depends(get_service),
 ):
+    _ensure_cahier_allowed_role(current_user)
     data = svc.exporter_pdf(cahier_id, projet_id)
     return Response(
         content=data,
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=cahier_tests_projet_{projet_id}.pdf"},
     )
+
+
+@router.post(
+    "/{cahier_id}/import/excel",
+    response_model=ImportExcelResponse,
+    summary="Importer les mises à jour des cas de tests depuis Excel (.xlsx)",
+)
+async def import_excel(
+    projet_id: int,
+    cahier_id: int,
+    file: UploadFile = File(...),
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)] = None,
+    svc: CahierTestGlobalService = Depends(get_service),
+):
+    _ensure_cahier_allowed_role(current_user)
+    _ensure_testeur_or_developpeur(current_user)
+
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in {".xlsx"}:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Format non supporté. Import Excel accepte uniquement .xlsx",
+        )
+
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Fichier trop volumineux. Maximum : 10 MB.",
+        )
+
+    return svc.importer_excel(cahier_id, projet_id, content, current_user)

@@ -103,3 +103,24 @@ export const getAvailableMembers = async (): Promise<any[]> => {
 export const deleteProject = async (projectId: number): Promise<void> => {
   await axiosInstance.delete(`${BASE_URL}/${projectId}`);
 };
+
+export interface ProjectAISuggestionResponse {
+  nom?: string | null;
+  description?: string | null;
+  objectif?: string | null;
+  dateDebut?: string | null;
+  dateFin?: string | null;
+}
+
+/**
+ * Suggest project form fields from a natural language prompt
+ */
+export const suggestProjectFields = async (
+  prompt: string
+): Promise<ProjectAISuggestionResponse> => {
+  const response = await axiosInstance.post<ProjectAISuggestionResponse>(
+    `${BASE_URL}/ai-suggestion`,
+    { prompt }
+  );
+  return response.data;
+};

@@ -615,3 +615,27 @@ class AIGenerationService:
             if item.parent_id is None:
                 roots.append(item)
         return roots
+
+    def rejeter_generation(self, generation_id: int, projet_id: int, user_id: int) -> dict:
+        gen = self.repo.get_detail(generation_id)
+        if not gen:
+            raise HTTPException(status_code=404, detail="Génération introuvable.")
+        if gen.projet_id != projet_id:
+            raise HTTPException(status_code=404, detail="Génération introuvable pour ce projet.")
+        if gen.status not in ("completed", "approved", "rejected"):
+            raise HTTPException(
+                status_code=400,
+                detail="La génération doit être terminée avant d'être rejetée.",
+            )
+
+        self.repo.update_status(generation_id, "rejected", 100)
+        self.repo.add_log(
+            generation_id,
+            "error",
+            f"Génération rejetée par l'utilisateur {user_id}.",
+            100,
+        )
+        return {
+            "generation_id": generation_id,
+            "status": "rejected",
+        }

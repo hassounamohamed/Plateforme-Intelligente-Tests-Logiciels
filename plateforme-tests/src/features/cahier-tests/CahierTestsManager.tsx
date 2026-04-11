@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   CahierTestGlobalDetail,
   StatistiquesCahier,
   AIGeneration,
+  ImportExcelResult,
 } from "@/types";
 import {
   getCahierDetail,
@@ -15,6 +16,7 @@ import {
   exporterExcel,
   exporterWord,
   exporterPDF,
+  importerExcel,
   downloadFile,
 } from "./api";
 import CahierStatistiques from "./CahierStatistiques";
@@ -24,14 +26,18 @@ import { useConfirmDialog } from "@/components/ui/ConfirmDialogProvider";
 
 interface CahierTestsManagerProps {
   projectId: number;
+  projectName?: string;
   readOnly?: boolean;
   canGenerate?: boolean;
+  canAssignMember?: boolean;
 }
 
 export default function CahierTestsManager({
   projectId,
+  projectName,
   readOnly = false,
   canGenerate = true,
+  canAssignMember = false,
 }: CahierTestsManagerProps) {
   const confirmDialog = useConfirmDialog();
   const [cahier, setCahier] = useState<CahierTestGlobalDetail | null>(null);
@@ -44,7 +50,19 @@ export default function CahierTestsManager({
   const [creatingManual, setCreatingManual] = useState(false);
   const [showRegenerateMenu, setShowRegenerateMenu] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
+
+  const getExportFileNameBase = () => {
+    const rawName = (projectName || `projet_${projectId}`).trim();
+    return rawName
+      .replace(/[\\/:*?"<>|]/g, "_")
+      .replace(/\s+/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 80) || `projet_${projectId}`;
+  };
 
   const loadCahier = async () => {
     setLoading(true);
@@ -166,19 +184,20 @@ export default function CahierTestsManager({
     try {
       let blob: Blob;
       let filename: string;
+      const fileNameBase = getExportFileNameBase();
 
       switch (format) {
         case "excel":
           blob = await exporterExcel(projectId, cahier.id);
-          filename = `cahier_tests_projet_${projectId}.xlsx`;
+          filename = `cahier_tests_${fileNameBase}.xlsx`;
           break;
         case "word":
           blob = await exporterWord(projectId, cahier.id);
-          filename = `cahier_tests_projet_${projectId}.docx`;
+          filename = `cahier_tests_${fileNameBase}.docx`;
           break;
         case "pdf":
           blob = await exporterPDF(projectId, cahier.id);
-          filename = `cahier_tests_projet_${projectId}.pdf`;
+          filename = `cahier_tests_${fileNameBase}.pdf`;
           break;
       }
 
@@ -187,6 +206,53 @@ export default function CahierTestsManager({
       alert(err.response?.data?.detail || `Erreur lors de l'export ${format}`);
     } finally {
       setExporting(null);
+    }
+  };
+
+  const handleImportClick = () => {
+    if (!cahier || importing) return;
+    importInputRef.current?.click();
+  };
+
+  const formatImportSummary = (result: ImportExcelResult): string => {
+    const lines = [
+      `Import terminé.`,
+      `- Lignes importées: ${result.imported_count}`,
+      `- Lignes ignorées: ${result.skipped_count}`,
+      `- Lignes en erreur: ${result.error_count}`,
+    ];
+
+    if (result.skipped_refs.length > 0) {
+      lines.push(`Cas ignorés (non assignés/vides): ${result.skipped_refs.slice(0, 10).join(", ")}`);
+    }
+
+    if (result.errors.length > 0) {
+      lines.push("Erreurs:");
+      result.errors.slice(0, 8).forEach((err) => lines.push(`• ${err}`));
+    }
+
+    return lines.join("\n");
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !cahier) return;
+
+    if (!file.name.toLowerCase().endsWith(".xlsx")) {
+      alert("Veuillez sélectionner un fichier Excel .xlsx");
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const result = await importerExcel(projectId, cahier.id, file);
+      await loadCahier();
+      alert(formatImportSummary(result));
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Erreur lors de l'import Excel");
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -277,6 +343,25 @@ export default function CahierTestsManager({
           </div>
 
           <div className="flex items-center gap-3">
+            {!readOnly && (
+              <>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  onChange={handleImportFile}
+                  className="hidden"
+                />
+                <button
+                  onClick={handleImportClick}
+                  disabled={!cahier || importing}
+                  className="px-4 py-2 border border-[#3b4754] rounded-md text-white hover:bg-[#283039] font-medium disabled:opacity-50"
+                >
+                  {importing ? "⏳ Import..." : "📤 Import Excel"}
+                </button>
+              </>
+            )}
+
             {/* Bouton Regénérer - uniquement pour les testeurs */}
             {canGenerate && (
               <div className="relative">
@@ -379,6 +464,7 @@ export default function CahierTestsManager({
           casTests={cahier.cas_tests}
           onRefresh={loadCahier}
           readOnly={readOnly}
+          canAssignMember={canAssignMember}
         />
       )}
     </div>

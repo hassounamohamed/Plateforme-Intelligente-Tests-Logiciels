@@ -35,7 +35,7 @@ def get_us_service(db: Session = Depends(get_db)) -> UserStoryService:
 # ─── Création ─────────────────────────────────────────────────────────────────
 
 @router.post("", response_model=UserStoryResponse, status_code=status.HTTP_201_CREATED)
-@require_role(ROLE_SCRUM_MASTER)
+@require_role(ROLE_SCRUM_MASTER, ROLE_PRODUCT_OWNER)
 async def creer_user_story(
     projet_id: int,
     module_id: int,
@@ -53,7 +53,7 @@ async def creer_user_story(
     - `points` : story points Fibonacci (1, 2, 3, 5, 8, 13, 21)
     - `priorite` : MoSCoW — `must_have` | `should_have` | `could_have` | `wont_have`
 
-    Scrum Master uniquement.
+    Scrum Master ou Product Owner.
     """
     return svc.creer_user_story(projet_id, module_id, epic_id, data, current_user.id)
 

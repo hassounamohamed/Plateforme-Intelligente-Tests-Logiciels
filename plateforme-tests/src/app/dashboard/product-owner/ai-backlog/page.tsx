@@ -47,8 +47,20 @@ function AIBacklogContent() {
 
   useEffect(() => {
     const projectIdParam = searchParams.get("projectId");
-    loadProjects(projectIdParam ? Number(projectIdParam) : null);
-  }, []);
+    const generationIdParam = searchParams.get("generationId");
+    const defaultProjectId = projectIdParam ? Number(projectIdParam) : null;
+
+    loadProjects(defaultProjectId);
+
+    if (projectIdParam && generationIdParam) {
+      const projectId = Number(projectIdParam);
+      const generationId = Number(generationIdParam);
+
+      if (!Number.isNaN(projectId) && !Number.isNaN(generationId)) {
+        void loadGeneration(projectId, generationId);
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     return () => {
@@ -73,6 +85,25 @@ function AIBacklogContent() {
     }
   };
 
+  const loadGeneration = async (projectId: number, generationId: number) => {
+    try {
+      const detail = await getGenerationDetail(projectId, generationId);
+      setGeneration(detail);
+
+      const isFinished =
+        detail.status === "completed" ||
+        detail.status === "failed" ||
+        detail.status === "approved" ||
+        detail.status === "rejected";
+
+      if (!isFinished) {
+        startPoll(projectId, generationId);
+      }
+    } catch {
+      setError("Impossible de charger la génération en cours.");
+    }
+  };
+
   const startPoll = useCallback((projectId: number, generationId: number) => {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
@@ -82,7 +113,8 @@ function AIBacklogContent() {
         if (
           detail.status === "completed" ||
           detail.status === "failed" ||
-          detail.status === "approved"
+          detail.status === "approved" ||
+          detail.status === "rejected"
         ) {
           if (pollRef.current) clearInterval(pollRef.current);
         }
@@ -119,6 +151,7 @@ function AIBacklogContent() {
       case "completed": return "Génération terminée !";
       case "failed": return "Échec de la génération";
       case "approved": return "Appliqué au backlog";
+      case "rejected": return "Tentative refusée";
       default: return status;
     }
   };
@@ -130,6 +163,7 @@ function AIBacklogContent() {
       case "completed": return "text-green-400";
       case "failed": return "text-red-400";
       case "approved": return "text-purple-400";
+      case "rejected": return "text-red-300";
       default: return "text-gray-400";
     }
   };

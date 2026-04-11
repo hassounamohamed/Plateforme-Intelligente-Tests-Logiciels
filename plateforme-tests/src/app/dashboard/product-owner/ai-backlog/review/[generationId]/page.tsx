@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useCallback, useRef } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sidebar } from "@/components/dashboard/Sidebar";
@@ -9,9 +10,12 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { ROUTES } from "@/lib/constants";
 import {
   getGenerationItems,
+  getGenerationDetail,
   updateItemStatus,
   updateItem,
   applyGeneration,
+  rejectGeneration,
+  startGeneration,
 } from "@/features/ai-generation/api";
 import {
   AIGeneratedItem,
@@ -32,6 +36,8 @@ const sidebarLinks = [
   { href: `${ROUTES.PRODUCT_OWNER}/roadmap`, icon: "map", label: "Roadmap" },
   { href: `${ROUTES.PRODUCT_OWNER}/profile`, icon: "account_circle", label: "Mon Profil" },
 ];
+
+const POLL_INTERVAL = 2500;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -74,6 +80,7 @@ export default function AIBacklogReviewPage() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const generationId = Number(params.generationId);
   const projectId = Number(searchParams.get("projectId"));
@@ -82,6 +89,8 @@ export default function AIBacklogReviewPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [applyResult, setApplyResult] = useState<ApplyGenerationResult | null>(
     null
   );
@@ -91,6 +100,40 @@ export default function AIBacklogReviewPage() {
   useEffect(() => {
     if (generationId && projectId) loadItems();
   }, [generationId, projectId]);
+
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  const startPoll = useCallback((projectIdValue: number, generationIdValue: number) => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      try {
+        const detail = await getGenerationDetail(projectIdValue, generationIdValue);
+        if (
+          detail.status === "completed" ||
+          detail.status === "approved" ||
+          detail.status === "failed" ||
+          detail.status === "rejected"
+        ) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          if (detail.status === "completed" || detail.status === "approved") {
+            await loadItems();
+          }
+        }
+      } catch (err) {
+        console.error("Erreur polling génération:", err);
+      }
+    }, POLL_INTERVAL);
+  }, []);
+
+  useEffect(() => {
+    if (!projectId || !generationId) return;
+    startPoll(projectId, generationId);
+  }, [projectId, generationId, startPoll]);
+
 
   const loadItems = async () => {
     setIsLoading(true);
@@ -187,6 +230,39 @@ export default function AIBacklogReviewPage() {
       );
     } finally {
       setIsApplying(false);
+    }
+  };
+
+  const handleRejectGeneration = async () => {
+    setIsRejecting(true);
+    setError(null);
+    try {
+      await rejectGeneration(projectId, generationId);
+      alert("La tentative IA a été refusée.");
+      router.push(
+        `${ROUTES.PRODUCT_OWNER}/backlog?tab=ai${projectId ? `&projectId=${projectId}` : ""}`
+      );
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } };
+      setError(e.response?.data?.detail || "Erreur lors du rejet de la génération.");
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
+  const handleRegenerate = async () => {
+    setIsRegenerating(true);
+    setError(null);
+    try {
+      const nextGeneration = await startGeneration(projectId);
+      router.push(
+        `${ROUTES.PRODUCT_OWNER}/ai-backlog?projectId=${projectId}&generationId=${nextGeneration.id}`
+      );
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } };
+      setError(e.response?.data?.detail || "Erreur lors de la régénération.");
+    } finally {
+      setIsRegenerating(false);
     }
   };
 
@@ -524,6 +600,7 @@ export default function AIBacklogReviewPage() {
 
               <div className="flex items-center gap-2 flex-wrap">
                 <button
+                  type="button"
                   onClick={handleApproveAll}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-400 text-sm font-medium transition-colors"
                 >
@@ -533,6 +610,7 @@ export default function AIBacklogReviewPage() {
                   Tout approuver
                 </button>
                 <button
+                  type="button"
                   onClick={handleApply}
                   disabled={isApplying || approvedCount === 0}
                   className="flex items-center gap-2 bg-primary hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg font-medium text-sm transition-colors"
@@ -551,6 +629,46 @@ export default function AIBacklogReviewPage() {
                     </>
                   )}
                 </button>
+                  <button
+                    type="button"
+                    onClick={handleRejectGeneration}
+                    disabled={isRejecting || isRegenerating || isApplying}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    {isRejecting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-400" />
+                        Rejet...
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-[16px]">
+                          block
+                        </span>
+                        Refuser la tentative
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRegenerate}
+                    disabled={isRegenerating || isRejecting || isApplying}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 dark:bg-[#283039] hover:bg-[#3b4754] text-white text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    {isRegenerating ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                        Régénération...
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-[16px]">
+                          refresh
+                        </span>
+                        Régénérer
+                      </>
+                    )}
+                  </button>
               </div>
             </div>
 

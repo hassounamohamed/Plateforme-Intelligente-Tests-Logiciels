@@ -42,14 +42,14 @@ export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalPr
 
       {/* Modal Content */}
       <div
-        className={`relative bg-(--surface) border border-(--border) rounded-xl shadow-2xl ${sizeClasses[size]} w-full max-h-[90vh] overflow-hidden flex flex-col`}
+        className={`relative bg-(--surface) border border-bordernded-xl shadow-2xl ${sizeClasses[size]} w-full max-h-[90vh] overflow-hidden flex flex-col`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-(--border)">
+        <div className="flex items-center justify-between p-6 border-b border-border">
           <h2 className="text-xl font-bold text-foreground">{title}</h2>
           <button
             onClick={onClose}
-            className="text-(--muted) hover:text-foreground transition-colors"
+            className="text-muted hover:text-foreground transition-colors"
           >
             <span className="material-symbols-outlined text-[24px]">close</span>
           </button>

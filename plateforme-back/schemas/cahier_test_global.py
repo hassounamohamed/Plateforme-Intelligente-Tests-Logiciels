@@ -38,6 +38,7 @@ class CreateCasTestRequest(BaseModel):
     type_utilisateur: Optional[str] = None
     scenario_test:    Optional[str] = None
     resultat_attendu: Optional[str] = None
+    execution_time_seconds: Optional[int] = None
     type_test:        TypeTest = Field("Manuel", description="Type du cas de test")
     commentaire:      Optional[str] = None
 
@@ -53,16 +54,59 @@ class UpdateCasTestRequest(BaseModel):
     scenario_test:    Optional[str]       = None
     resultat_attendu: Optional[str]       = None
     resultat_obtenu:  Optional[str]       = None
+    execution_time_seconds: Optional[int] = None
     fail_logs:        Optional[str]       = None
     capture:          Optional[str]       = None
     type_test:        Optional[TypeTest]  = None
     statut_test:      Optional[StatutTest]= None
     commentaire:      Optional[str]       = None
+    bug_titre_correction: Optional[str]   = None
+    bug_nom_tache: Optional[str]          = None
 
 
 class ValiderCahierRequest(BaseModel):
     """Valider le cahier de tests (passage en statut 'valide')."""
     version: Optional[str] = Field(None, description="Nouvelle version lors de la validation")
+
+
+class BugSuggestionResponse(BaseModel):
+    bug_titre_correction: str
+    bug_nom_tache: str
+
+
+class AssignableMemberResponse(BaseModel):
+    id: int
+    nom: str
+    email: str
+    role_code: str
+
+
+class ImportExcelResponse(BaseModel):
+    imported_count: int
+    skipped_count: int
+    error_count: int
+    skipped_refs: List[str] = []
+    errors: List[str] = []
+
+
+class CasTestHistoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    cas_test_id: int
+    cahier_id: int
+    changed_by_id: Optional[int]
+    old_statut_test: Optional[str]
+    new_statut_test: Optional[str]
+    old_type_test: Optional[str]
+    new_type_test: Optional[str]
+    old_commentaire: Optional[str]
+    new_commentaire: Optional[str]
+    old_bug_titre_correction: Optional[str]
+    new_bug_titre_correction: Optional[str]
+    old_bug_nom_tache: Optional[str]
+    new_bug_nom_tache: Optional[str]
+    changed_at: datetime
 
 
 # ─── Réponses ─────────────────────────────────────────────────────────────────
@@ -82,12 +126,15 @@ class CasTestResponse(BaseModel):
     scenario_test:    Optional[str]
     resultat_attendu: Optional[str]
     resultat_obtenu:  Optional[str]
+    execution_time_seconds: Optional[int]
     fail_logs:        Optional[str]
     capture:          Optional[str]
     date_creation:    datetime
     type_test:        str
     statut_test:      str
     commentaire:      Optional[str]
+    bug_titre_correction: Optional[str]
+    bug_nom_tache: Optional[str]
     ordre:            int
 
 

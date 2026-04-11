@@ -9,12 +9,14 @@ from sqlalchemy.orm import Session
 from db.database import get_db
 from models.user import Utilisateur
 from core.rbac.dependencies import get_current_user_with_role
-from core.rbac.constants import ROLE_SCRUM_MASTER
+from core.rbac.constants import ROLE_SCRUM_MASTER, ROLE_PRODUCT_OWNER
 from core.rbac.decorators import require_role
 from schemas.backlog import (
     ReordonnerBacklogRequest,
     BacklogItemResponse,
     BacklogIndicateursResponse,
+    BacklogAISuggestionRequest,
+    BacklogAISuggestionResponse,
 )
 from services.backlog_service import BacklogService
 
@@ -32,6 +34,7 @@ async def get_backlog(
     projet_id: int,
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: BacklogService = Depends(get_backlog_service),
+    module_id: Optional[int] = Query(None, description="Filtrer par module"),
     epic_id: Optional[int] = Query(None, description="Filtrer par epic"),
     statut: Optional[str] = Query(None, description="to_do | in_progress | done"),
     priorite: Optional[str] = Query(None, description="must_have | should_have | could_have | wont_have"),
@@ -42,6 +45,7 @@ async def get_backlog(
     Vue backlog du projet — toutes les user stories de tous les epics/modules.
 
     **Filtres disponibles :**
+    - `module_id` — limiter à un module
     - `epic_id` — limiter à un epic
     - `statut` — `to_do` / `in_progress` / `done`
     - `priorite` — MoSCoW : `must_have` / `should_have` / `could_have` / `wont_have`
@@ -51,6 +55,7 @@ async def get_backlog(
     """
     return svc.get_backlog(
         projet_id=projet_id,
+        module_id=module_id,
         epic_id=epic_id,
         statut=statut,
         priorite=priorite,
@@ -75,6 +80,18 @@ async def get_indicateurs(
     - répartition par epic (nb + points + points done)
     """
     return svc.get_indicateurs(projet_id)
+
+
+@router.post("/ai-suggestion", response_model=BacklogAISuggestionResponse)
+@require_role(ROLE_PRODUCT_OWNER)
+async def suggest_backlog_item(
+    projet_id: int,
+    data: BacklogAISuggestionRequest,
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: BacklogService = Depends(get_backlog_service),
+):
+    """Suggérer une user story backlog via IA — Product Owner uniquement."""
+    return svc.suggest_backlog_item(projet_id, data.prompt, current_user.id)
 
 
 # ─── Drag & drop — réordonnancement ───────────────────────────────────────────

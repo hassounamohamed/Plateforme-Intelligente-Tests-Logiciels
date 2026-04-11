@@ -3,6 +3,7 @@ import {
   CahierTestGlobal,
   CahierTestGlobalDetail,
   CasTest,
+  CasTestHistoryEntry,
   StatistiquesCahier,
   AIGeneration,
   AIGenerationDetail,
@@ -136,6 +137,48 @@ export const updateCasTest = async (
 };
 
 /**
+ * Générer une suggestion IA pour les champs bug d'un cas de test
+ */
+export const suggestBugFields = async (
+  projectId: number,
+  cahierId: number,
+  casId: number
+): Promise<{ bug_titre_correction: string; bug_nom_tache: string }> => {
+  const response = await axiosInstance.post<{
+    bug_titre_correction: string;
+    bug_nom_tache: string;
+  }>(`${getCahierBase(projectId)}/${cahierId}/cas-tests/${casId}/bug-suggestion`);
+  return response.data;
+};
+
+/**
+ * Récupérer l'historique des modifications d'un cas de test
+ */
+export const getCasTestHistory = async (
+  projectId: number,
+  cahierId: number,
+  casId: number
+): Promise<CasTestHistoryEntry[]> => {
+  const response = await axiosInstance.get<CasTestHistoryEntry[]>(
+    `${getCahierBase(projectId)}/${cahierId}/cas-tests/${casId}/history`
+  );
+  return response.data;
+};
+
+/**
+ * Lister les membres assignables au cas de test (Testeur QA / Développeur du projet)
+ */
+export const getAssignableMembers = async (
+  projectId: number,
+  cahierId: number
+): Promise<Array<{ id: number; nom: string; email: string; role_code: string }>> => {
+  const response = await axiosInstance.get<
+    Array<{ id: number; nom: string; email: string; role_code: string }>
+  >(`${getCahierBase(projectId)}/${cahierId}/assignable-members`);
+  return response.data;
+};
+
+/**
  * Créer un cas de test manuel
  */
 export const createCasTest = async (
@@ -247,6 +290,32 @@ export const exporterPDF = async (
       responseType: "blob",
     }
   );
+  return response.data;
+};
+
+/**
+ * Importer des mises à jour de cas de test depuis un fichier Excel (.xlsx)
+ */
+export const importerExcel = async (
+  projectId: number,
+  cahierId: number,
+  file: File
+): Promise<{
+  imported_count: number;
+  skipped_count: number;
+  error_count: number;
+  skipped_refs: string[];
+  errors: string[];
+}> => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await axiosInstance.post(
+    `${getCahierBase(projectId)}/${cahierId}/import/excel`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+
   return response.data;
 };
 

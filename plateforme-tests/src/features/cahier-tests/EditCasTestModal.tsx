@@ -1,10 +1,22 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { CasTest, StatutTest, TypeTest, UpdateCasTestPayload } from "@/types";
-import { updateCasTest, uploadCasTestCapture, getCasTestCaptureUrl } from "./api";
+import {
+  CasTest,
+  CasTestHistoryEntry,
+  StatutTest,
+  TypeTest,
+  UpdateCasTestPayload,
+} from "@/types";
+import {
+  getAssignableMembers,
+  getCasTestHistory,
+  updateCasTest,
+  uploadCasTestCapture,
+  getCasTestCaptureUrl,
+  suggestBugFields,
+} from "./api";
 import axiosInstance from "@/lib/axios";
-import { getProjectById } from "@/features/projects/api";
 
 interface EditCasTestModalProps {
   projectId: number;
@@ -14,6 +26,8 @@ interface EditCasTestModalProps {
   onClose: () => void;
   onSuccess: () => void;
   readOnly?: boolean;
+  assignOnly?: boolean;
+  canAssignMember?: boolean;
 }
 
 export default function EditCasTestModal({
@@ -24,23 +38,41 @@ export default function EditCasTestModal({
   onClose,
   onSuccess,
   readOnly = false,
+  assignOnly = false,
+  canAssignMember = false,
 }: EditCasTestModalProps) {
   const [formData, setFormData] = useState<UpdateCasTestPayload>({
     test_case: casTest.test_case,
     scenario_test: casTest.scenario_test || "",
     resultat_attendu: casTest.resultat_attendu || "",
     resultat_obtenu: casTest.resultat_obtenu || "",
+    execution_time_seconds: casTest.execution_time_seconds ?? undefined,
     fail_logs: casTest.fail_logs || "",
     type_test: casTest.type_test,
     statut_test: casTest.statut_test,
     commentaire: casTest.commentaire || "",
+    bug_titre_correction: casTest.bug_titre_correction || "",
+    bug_nom_tache: casTest.bug_nom_tache || "",
   });
   const [loading, setLoading] = useState(false);
+  const [loadingBugSuggestion, setLoadingBugSuggestion] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [historyEntries, setHistoryEntries] = useState<CasTestHistoryEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [captureFile, setCaptureFile] = useState<File | null>(null);
   const [capturePreview, setCapturePreview] = useState<string | null>(null);
   const [loadingMembers, setLoadingMembers] = useState(false);
-  const [projectMembers, setProjectMembers] = useState<{ id: number; nom: string; email: string }[]>([]);
+  const [projectMembers, setProjectMembers] = useState<
+    { id: number; nom: string; email: string; role_code: string }[]
+  >([]);
+  const assignableMembers = projectMembers.filter((member) => {
+    const code = (member.role_code || "").toUpperCase();
+    const normalizedName = (member.nom || "").toUpperCase();
+    if (normalizedName.includes("SCRUM")) return false;
+    return code === "TESTEUR_QA" || code === "DEVELOPPEUR" || code === "DEVELOPER";
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load existing capture as authenticated blob URL
@@ -72,10 +104,13 @@ export default function EditCasTestModal({
       scenario_test: casTest.scenario_test || "",
       resultat_attendu: casTest.resultat_attendu || "",
       resultat_obtenu: casTest.resultat_obtenu || "",
+      execution_time_seconds: casTest.execution_time_seconds ?? undefined,
       fail_logs: casTest.fail_logs || "",
       type_test: casTest.type_test,
       statut_test: casTest.statut_test,
       commentaire: casTest.commentaire || "",
+      bug_titre_correction: casTest.bug_titre_correction || "",
+      bug_nom_tache: casTest.bug_nom_tache || "",
     });
   }, [isOpen, casTest]);
 
@@ -85,8 +120,8 @@ export default function EditCasTestModal({
     const loadProjectMembers = async () => {
       setLoadingMembers(true);
       try {
-        const project = await getProjectById(projectId);
-        setProjectMembers(project.membres ?? []);
+        const members = await getAssignableMembers(projectId, cahierId);
+        setProjectMembers(members);
       } catch (err) {
         console.error("Erreur lors du chargement des membres du projet:", err);
         setProjectMembers([]);
@@ -96,7 +131,26 @@ export default function EditCasTestModal({
     };
 
     loadProjectMembers();
-  }, [isOpen, projectId]);
+  }, [isOpen, projectId, cahierId]);
+
+  useEffect(() => {
+    if (!isOpen || !showHistory) return;
+
+    const loadHistory = async () => {
+      setLoadingHistory(true);
+      setHistoryError(null);
+      try {
+        const data = await getCasTestHistory(projectId, cahierId, casTest.id);
+        setHistoryEntries(data);
+      } catch (err: any) {
+        setHistoryError(err?.response?.data?.detail || "Impossible de charger l'historique.");
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+
+    loadHistory();
+  }, [isOpen, showHistory, projectId, cahierId, casTest.id]);
 
   const handleCaptureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -106,15 +160,65 @@ export default function EditCasTestModal({
     setCapturePreview(URL.createObjectURL(file));
   };
 
+  const handleStatusChange = async (newStatus: StatutTest) => {
+    setFormData((prev) => ({ ...prev, statut_test: newStatus }));
+
+    const isBugStatus = newStatus === "Échoué" || newStatus === "Bloqué";
+    if (!isBugStatus) return;
+
+    const hasTitre = !!formData.bug_titre_correction?.trim();
+    const hasTache = !!formData.bug_nom_tache?.trim();
+    if (hasTitre && hasTache) return;
+
+    setLoadingBugSuggestion(true);
+    try {
+      const suggestion = await suggestBugFields(projectId, cahierId, casTest.id);
+      setFormData((prev) => ({
+        ...prev,
+        bug_titre_correction: prev.bug_titre_correction?.trim()
+          ? prev.bug_titre_correction
+          : suggestion.bug_titre_correction,
+        bug_nom_tache: prev.bug_nom_tache?.trim()
+          ? prev.bug_nom_tache
+          : suggestion.bug_nom_tache,
+      }));
+    } catch {
+      // Le backend gère déjà un fallback; on laisse l'utilisateur saisir manuellement si nécessaire.
+    } finally {
+      setLoadingBugSuggestion(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
+    const isBugStatus =
+      formData.statut_test === "Échoué" || formData.statut_test === "Bloqué";
+    if (isBugStatus) {
+      if (!formData.bug_titre_correction?.trim()) {
+        setError("Le titre de correction est obligatoire pour un test échoué ou bloqué.");
+        setLoading(false);
+        return;
+      }
+      if (!formData.bug_nom_tache?.trim()) {
+        setError("Le nom de tâche est obligatoire pour un test échoué ou bloqué.");
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
-      await updateCasTest(projectId, cahierId, casTest.id, formData);
+      const payload = assignOnly
+        ? { type_utilisateur: formData.type_utilisateur || "" }
+        : formData;
+      await updateCasTest(projectId, cahierId, casTest.id, payload);
       if (captureFile) {
         await uploadCasTestCapture(projectId, cahierId, casTest.id, captureFile);
+      }
+      if (assignOnly && formData.type_utilisateur?.trim()) {
+        window.alert(`L'utilisateur ${formData.type_utilisateur} a été assigné correctement.`);
       }
       onSuccess();
       onClose();
@@ -126,6 +230,106 @@ export default function EditCasTestModal({
   };
 
   if (!isOpen) return null;
+
+  const isBugStatus =
+    formData.statut_test === "Échoué" || formData.statut_test === "Bloqué";
+
+  const renderHistorySection = () => (
+    <div className="border border-[#3b4754] rounded-lg p-4 bg-[#283039]/40">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-white">Historique du cas de test</h3>
+        <button
+          type="button"
+          onClick={() => setShowHistory((prev) => !prev)}
+          className="px-3 py-1.5 rounded-md border border-[#3b4754] text-[#9dabb9] hover:text-white hover:bg-[#283039] text-xs font-medium"
+        >
+          {showHistory ? "Masquer" : "Voir historique"}
+        </button>
+      </div>
+
+      {showHistory && (
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {loadingHistory && <p className="text-sm text-[#9dabb9]">Chargement...</p>}
+          {historyError && <p className="text-sm text-red-400">{historyError}</p>}
+          {!loadingHistory && !historyError && historyEntries.length === 0 && (
+            <p className="text-sm text-[#9dabb9]">Aucune modification historisée pour ce cas.</p>
+          )}
+          {!loadingHistory && !historyError && historyEntries.map((entry) => (
+            <div key={entry.id} className="rounded-md border border-[#3b4754] bg-surface-dark p-3">
+              <p className="text-xs text-[#9dabb9]">
+                {new Date(entry.changed_at).toLocaleString("fr-FR")}
+              </p>
+              <p className="text-sm text-white mt-1">
+                Statut: <span className="text-[#9dabb9]">{entry.old_statut_test || "—"}</span> → <span className="font-semibold">{entry.new_statut_test || "—"}</span>
+              </p>
+              {(entry.old_bug_titre_correction !== entry.new_bug_titre_correction || entry.old_bug_nom_tache !== entry.new_bug_nom_tache) && (
+                <p className="text-xs text-[#9dabb9] mt-1">
+                  Bug: {entry.old_bug_titre_correction || "—"} / {entry.old_bug_nom_tache || "—"} → {entry.new_bug_titre_correction || "—"} / {entry.new_bug_nom_tache || "—"}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  if (assignOnly) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+        <div className="relative bg-surface-dark rounded-xl shadow-2xl max-w-xl w-full border border-[#3b4754]">
+          <div className="sticky top-0 bg-surface-dark border-b border-[#3b4754] px-6 py-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-white">Assigner membre développeur / testeur - {casTest.test_ref}</h2>
+            <button onClick={onClose} className="text-[#9dabb9] hover:text-white transition-colors">
+              <span className="material-symbols-outlined text-[24px]">close</span>
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            {error && (
+              <div className="p-3 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm">{error}</div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-white mb-1">Membre assigné</label>
+              <select
+                className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
+                value={formData.type_utilisateur || ""}
+                onChange={(e) => setFormData({ ...formData, type_utilisateur: e.target.value })}
+                disabled={loadingMembers}
+              >
+                <option value="">{loadingMembers ? "Chargement des membres..." : "Non assigné"}</option>
+                {assignableMembers.map((member) => (
+                  <option key={member.id} value={member.nom}>
+                    {member.nom} ({member.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4 border-t border-[#3b4754]">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-[#3b4754] rounded-md text-white hover:bg-[#283039]"
+                disabled={loading}
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                disabled={loading}
+              >
+                {loading ? "Enregistrement..." : "Assigner"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   // ─── View-only mode ───────────────────────────────────────────────────────
   if (readOnly) {
@@ -220,6 +424,15 @@ export default function EditCasTestModal({
               )}
             </div>
 
+            <div>
+              <p className="text-xs text-[#9dabb9] uppercase mb-1">Duration / Execution Time</p>
+              <p className="text-white">
+                {casTest.execution_time_seconds !== null && casTest.execution_time_seconds !== undefined
+                  ? `${casTest.execution_time_seconds} s`
+                  : "—"}
+              </p>
+            </div>
+
             {/* Logs d'erreur */}
             {casTest.fail_logs && (
               <div>
@@ -242,6 +455,23 @@ export default function EditCasTestModal({
                 </div>
               </div>
             )}
+
+            {(casTest.bug_titre_correction || casTest.bug_nom_tache) && (
+              <div>
+                <p className="text-xs text-[#9dabb9] uppercase mb-1 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-orange-400 text-sm">bug_report</span>
+                  Ligne Bug
+                </p>
+                <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-sm">
+                  <p className="text-[#9dabb9]">Titre de correction</p>
+                  <p className="text-white font-medium">{casTest.bug_titre_correction || "—"}</p>
+                  <p className="text-[#9dabb9] mt-2">Nom de tâche</p>
+                  <p className="text-white font-medium">{casTest.bug_nom_tache || "—"}</p>
+                </div>
+              </div>
+            )}
+
+            {renderHistorySection()}
 
             {/* Capture d'écran */}
             {capturePreview && (
@@ -343,26 +573,28 @@ export default function EditCasTestModal({
           </div>
 
           {/* Membre assigné */}
-          <div>
-            <label className="block text-sm font-medium text-white mb-1">
-              Membre assigné
-            </label>
-            <select
-              className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
-              value={formData.type_utilisateur || ""}
-              onChange={(e) =>
-                setFormData({ ...formData, type_utilisateur: e.target.value })
-              }
-              disabled={loadingMembers}
-            >
-              <option value="">{loadingMembers ? "Chargement des membres..." : "Non assigné"}</option>
-              {projectMembers.map((member) => (
-                <option key={member.id} value={member.nom}>
-                  {member.nom} ({member.email})
-                </option>
-              ))}
-            </select>
-          </div>
+          {canAssignMember && (
+            <div>
+              <label className="block text-sm font-medium text-white mb-1">
+                Membre assigné
+              </label>
+              <select
+                className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
+                value={formData.type_utilisateur || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, type_utilisateur: e.target.value })
+                }
+                disabled={loadingMembers}
+              >
+                <option value="">{loadingMembers ? "Chargement des membres..." : "Non assigné"}</option>
+                {assignableMembers.map((member) => (
+                  <option key={member.id} value={member.nom}>
+                    {member.nom} ({member.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Résultat Attendu */}
           <div>
@@ -392,6 +624,26 @@ export default function EditCasTestModal({
                 setFormData({ ...formData, resultat_obtenu: e.target.value })
               }
               placeholder="Décrivez le résultat après l'exécution du test"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-white mb-1">
+              Duration / Execution Time (sec)
+            </label>
+            <input
+              type="number"
+              min={0}
+              className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
+              value={formData.execution_time_seconds ?? ""}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  execution_time_seconds:
+                    e.target.value === "" ? undefined : Math.max(0, Number(e.target.value)),
+                })
+              }
+              placeholder="Ex: 45"
             />
           </div>
 
@@ -439,12 +691,7 @@ export default function EditCasTestModal({
               <select
                 className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
                 value={formData.statut_test}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    statut_test: e.target.value as StatutTest,
-                  })
-                }
+                onChange={(e) => handleStatusChange(e.target.value as StatutTest)}
               >
                 <option value="Non exécuté">Non exécuté</option>
                 <option value="Réussi">Réussi</option>
@@ -453,6 +700,42 @@ export default function EditCasTestModal({
               </select>
             </div>
           </div>
+
+          {isBugStatus && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border border-orange-500/40 bg-orange-500/10 rounded-lg p-4">
+              <div>
+                <label className="block text-sm font-medium text-white mb-1">
+                  Titre de correction
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  value={formData.bug_titre_correction || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, bug_titre_correction: e.target.value })
+                  }
+                  placeholder="Ex: Corriger la validation du formulaire"
+                />
+                {loadingBugSuggestion && (
+                  <p className="text-xs text-[#9dabb9] mt-1">Génération IA en cours...</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-white mb-1">
+                  Nom de tâche
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  value={formData.bug_nom_tache || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, bug_nom_tache: e.target.value })
+                  }
+                  placeholder="Ex: TASK-142 / Fix login error"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Commentaire */}
           <div>
@@ -505,6 +788,9 @@ export default function EditCasTestModal({
             />
             <p className="text-xs text-[#9dabb9] mt-1">PNG, JPG, GIF, WebP — max 10 MB</p>
           </div>
+
+          {/* Actions */}
+          {renderHistorySection()}
 
           {/* Actions */}
           <div className="flex justify-end space-x-3 pt-4 border-t border-[#3b4754]">

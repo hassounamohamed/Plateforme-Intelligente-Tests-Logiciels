@@ -9,7 +9,7 @@ from models.anomalie import Anomalie
 from models.rapports import RapportQA, IndicateurQualite, RecommandationQualite
 from models.notification import Notification, TypeNotification
 from models.log_systems import LogSystems, AuditLog
-from models.cahier_test_global import CahierTestGlobal, CasTest
+from models.cahier_test_global import CahierTestGlobal, CasTest, CasTestHistory
 from models.password_reset_token import PasswordResetToken
 
 __all__ = [
@@ -56,6 +56,7 @@ __all__ = [
     # Cahier de Tests Global
     "CahierTestGlobal",
     "CasTest",
+    "CasTestHistory",
     # Password reset
     "PasswordResetToken",
 ]

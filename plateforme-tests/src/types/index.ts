@@ -443,6 +443,7 @@ export interface BacklogItem {
   points?: number;
   statut: string;
   ordre?: number;
+  developerId?: number;
 }
 
 export interface BacklogIndicateurs {
@@ -642,13 +643,34 @@ export interface CasTest {
   scenario_test: string | null;
   resultat_attendu: string | null;
   resultat_obtenu: string | null;
+  execution_time_seconds: number | null;
   fail_logs: string | null;
   capture: string | null; // URL ou chemin du screenshot
   date_creation: string;
   type_test: TypeTest;
   statut_test: StatutTest;
   commentaire: string | null;
+  bug_titre_correction: string | null;
+  bug_nom_tache: string | null;
   ordre: number;
+}
+
+export interface CasTestHistoryEntry {
+  id: number;
+  cas_test_id: number;
+  cahier_id: number;
+  changed_by_id: number | null;
+  old_statut_test: string | null;
+  new_statut_test: string | null;
+  old_type_test: string | null;
+  new_type_test: string | null;
+  old_commentaire: string | null;
+  new_commentaire: string | null;
+  old_bug_titre_correction: string | null;
+  new_bug_titre_correction: string | null;
+  old_bug_nom_tache: string | null;
+  new_bug_nom_tache: string | null;
+  changed_at: string;
 }
 
 export interface CahierTestGlobal {
@@ -681,6 +703,50 @@ export interface StatistiquesCahier {
   pct_non_execute: number;
 }
 
+export interface ImportExcelResult {
+  imported_count: number;
+  skipped_count: number;
+  error_count: number;
+  skipped_refs: string[];
+  errors: string[];
+}
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+export type NotificationType =
+  | "TEST_FAILED"
+  | "TEST_PASSED"
+  | "SPRINT_STARTED"
+  | "SPRINT_ENDED"
+  | "REPORT_GENERATED"
+  | "ANOMALY_CREATED"
+  | "VALIDATION_REQUIRED"
+  | "RECOMMENDATION_AVAILABLE";
+
+export interface NotificationItem {
+  id: number;
+  titre: string;
+  message: string;
+  type: NotificationType;
+  dateEnvoi: string;
+  lue: boolean;
+  priorite: string;
+  destinataireId: number;
+}
+
+export interface NotificationUnreadCount {
+  unread_count: number;
+}
+
+export interface NotificationMarkAllReadResult {
+  updated_count: number;
+}
+
+export interface NotificationDemoResult {
+  created_count: number;
+  notifications: NotificationItem[];
+}
+
 export interface GenererCahierPayload {
   version?: string; // Default: "1.0.0"
   mode_generation?: "ai" | "manuelle";
@@ -695,6 +761,7 @@ export interface CreateCasTestPayload {
   type_utilisateur?: string;
   scenario_test?: string;
   resultat_attendu?: string;
+  execution_time_seconds?: number;
   type_test?: TypeTest;
   commentaire?: string;
 }
@@ -709,11 +776,14 @@ export interface UpdateCasTestPayload {
   scenario_test?: string;
   resultat_attendu?: string;
   resultat_obtenu?: string;
+  execution_time_seconds?: number;
   fail_logs?: string;
   capture?: string;
   type_test?: TypeTest;
   statut_test?: StatutTest;
   commentaire?: string;
+  bug_titre_correction?: string;
+  bug_nom_tache?: string;
 }
 
 export interface ValiderCahierPayload {

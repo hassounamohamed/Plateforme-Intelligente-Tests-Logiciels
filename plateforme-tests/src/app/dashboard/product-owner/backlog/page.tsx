@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useSearchParams } from "next/navigation";
 import { ROUTES } from "@/lib/constants";
 import { getMyProjects } from "@/features/projects/api";
@@ -38,6 +39,7 @@ export default function BacklogPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [filters, setFilters] = useState({
+    module_id: "",
     epic_id: "",
     statut: "",
     priorite: "",
@@ -51,8 +53,9 @@ export default function BacklogPage() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    loadProjects();
-  }, []);
+    const projectIdParam = searchParams.get("projectId");
+    loadProjects(projectIdParam ? Number(projectIdParam) : null);
+  }, [searchParams]);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -191,12 +194,14 @@ export default function BacklogPage() {
     );
   });
 
-  const loadProjects = async () => {
+  const loadProjects = async (defaultProjectId: number | null = null) => {
     setIsLoading(true);
     try {
       const projectsData = await getMyProjects();
       setProjects(projectsData);
-      if (projectsData.length > 0) {
+      if (defaultProjectId && projectsData.find((project) => project.id === defaultProjectId)) {
+        setSelectedProject(defaultProjectId);
+      } else if (projectsData.length > 0) {
         setSelectedProject(projectsData[0].id);
       }
     } catch (error: any) {
@@ -242,6 +247,7 @@ export default function BacklogPage() {
     setError(null);
     try {
       const params: any = {};
+      if (filters.module_id) params.module_id = Number(filters.module_id);
       if (filters.epic_id) params.epic_id = Number(filters.epic_id);
       if (filters.statut) params.statut = filters.statut;
       if (filters.priorite) params.priorite = filters.priorite;
@@ -353,6 +359,10 @@ export default function BacklogPage() {
       </button>
     </div>
   );
+
+  const filteredEpics = filters.module_id
+    ? epics.filter((epic) => String(epic.module_id) === filters.module_id)
+    : epics;
 
   return (
     <DashboardLayout
@@ -645,7 +655,29 @@ export default function BacklogPage() {
         {/* Filters */}
         <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-4">
           <h3 className="text-white text-sm font-bold mb-3">Filtres</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
+            <div>
+              <label className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold mb-1 block">Module</label>
+              <select
+                value={filters.module_id}
+                onChange={(e) =>
+                  setFilters({
+                    ...filters,
+                    module_id: e.target.value,
+                    epic_id: "",
+                  })
+                }
+                className="w-full bg-slate-100 dark:bg-[#283039] border border-slate-200 dark:border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
+              >
+                <option value="">Tous les modules</option>
+                {modules.map((module) => (
+                  <option key={module.id} value={module.id}>
+                    {module.nom}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div>
               <label className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold mb-1 block">Epic</label>
               <select
@@ -654,7 +686,7 @@ export default function BacklogPage() {
                 className="w-full bg-slate-100 dark:bg-[#283039] border border-slate-200 dark:border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
               >
                 <option value="">Toutes les epics</option>
-                {epics.map((epic) => (
+                {filteredEpics.map((epic) => (
                   <option key={epic.id} value={epic.id}>
                     {epic.reference ? `[${epic.reference}] ` : ''}${epic.titre}
                   </option>
@@ -669,7 +701,7 @@ export default function BacklogPage() {
                 onChange={(e) => setFilters({ ...filters, statut: e.target.value })}
                 className="w-full bg-slate-100 dark:bg-[#283039] border border-slate-200 dark:border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
               >
-                <option value="">Tous</option>
+                <option value="">Tous les statuts</option>
                 <option value="to_do">À faire</option>
                 <option value="in_progress">En cours</option>
                 <option value="done">Terminées</option>
@@ -707,11 +739,11 @@ export default function BacklogPage() {
 
             <div className="flex items-end">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={filters.non_planifiees}
-                  onChange={(e) => setFilters({ ...filters, non_planifiees: e.target.checked })}
-                  className="w-4 h-4 accent-primary"
+                  onCheckedChange={(checked) =>
+                    setFilters({ ...filters, non_planifiees: checked === true })
+                  }
                 />
                 <span className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold">Non planifiées seulement</span>
               </label>
