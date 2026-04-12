@@ -90,7 +90,7 @@ export default function ProductOwnerDashboard() {
     { href: `${ROUTES.PRODUCT_OWNER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.PRODUCT_OWNER}/epics`, icon: "content_cut", label: "Epics" },
     { href: `${ROUTES.PRODUCT_OWNER}/sprints`, icon: "event", label: "Sprints" },
-        { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
+        { href: `${ROUTES.PRODUCT_OWNER}/cahier-tests`, icon: "check_circle", label: "Cahier de Tests" },
     { href: `${ROUTES.PRODUCT_OWNER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.PRODUCT_OWNER}/roadmap`, icon: "map", label: "Roadmap" },
     { href: `${ROUTES.PRODUCT_OWNER}/profile`, icon: "account_circle", label: "Mon Profil" },
@@ -282,7 +282,7 @@ export default function ProductOwnerDashboard() {
             </div>
           </Link>
 
-          <Link href={`${ROUTES.PRODUCT_OWNER}/validation-tests`}>
+          <Link href={`${ROUTES.PRODUCT_OWNER}/cahier-tests`}>
             <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer group">
               <div className="flex items-center gap-4 mb-3">
                 <div className="bg-cyan-500/20 rounded-full h-12 w-12 flex items-center justify-center group-hover:bg-cyan-500/30 transition-colors">
@@ -291,7 +291,7 @@ export default function ProductOwnerDashboard() {
                   </span>
                 </div>
                 <div>
-                  <h3 className="text-white text-lg font-bold">Validation Tests</h3>
+                  <h3 className="text-white text-lg font-bold">Cahier de Tests</h3>
                   <p className="text-slate-500 dark:text-[#9dabb9] text-xs">Livrables et tests</p>
                 </div>
               </div>

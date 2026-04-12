@@ -7,13 +7,17 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { ROUTES } from "@/lib/constants";
 import { getMyProjectsAsMember } from "@/features/projects/api";
+import { getSprints } from "@/features/sprints/api";
 import { Project } from "@/types";
 import CahierTestsManager from "@/features/cahier-tests/CahierTestsManager";
+import type { Sprint } from "@/types";
 
 export default function CahierTestsDeveloperPage() {
   const searchParams = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [sprints, setSprints] = useState<Sprint[]>([]);
+  const [sprintsLoading, setSprintsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const sidebarLinks = [
@@ -47,6 +51,40 @@ export default function CahierTestsDeveloperPage() {
       : null;
     setSelectedProject(project);
   }, [projects, searchParams]);
+
+  useEffect(() => {
+    if (!selectedProject) {
+      setSprints([]);
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadSprints = async () => {
+      setSprintsLoading(true);
+      try {
+        const data = await getSprints(selectedProject.id);
+        if (isMounted) {
+          setSprints(data);
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement des sprints:", error);
+        if (isMounted) {
+          setSprints([]);
+        }
+      } finally {
+        if (isMounted) {
+          setSprintsLoading(false);
+        }
+      }
+    };
+
+    loadSprints();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedProject]);
 
   const openProjectInNewTab = (projectName: string) => {
     window.open(
@@ -111,13 +149,96 @@ export default function CahierTestsDeveloperPage() {
     <DashboardLayout sidebarContent={sidebarContent} headerContent={headerContent}>
       <div className="max-w-350 mx-auto">
         {selectedProject ? (
-          <CahierTestsManager
-            projectId={selectedProject.id}
-            projectName={selectedProject.nom}
-            canGenerate={false}
-            rapportReadOnly
-            showRapportPanel={false}
-          />
+          <div className="space-y-6">
+            <CahierTestsManager
+              projectId={selectedProject.id}
+              projectName={selectedProject.nom}
+              canGenerate={false}
+              rapportReadOnly
+              showRapportPanel={false}
+            />
+
+            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-white text-lg font-bold">User Stories</h3>
+                  <p className="text-[#9dabb9] text-sm">
+                    Vue lecture seule des user stories associées aux sprints du projet.
+                  </p>
+                </div>
+                <span className="text-xs uppercase tracking-wide text-[#9dabb9]">
+                  {sprintsLoading ? "Chargement..." : `${sprints.length} sprint(s)`}
+                </span>
+              </div>
+
+              {sprintsLoading ? (
+                <div className="flex items-center justify-center py-10 text-[#9dabb9]">
+                  Chargement des user stories...
+                </div>
+              ) : sprints.some((sprint) => sprint.userstories && sprint.userstories.length > 0) ? (
+                <div className="space-y-4">
+                  {sprints.map((sprint) => {
+                    const stories = sprint.userstories ?? [];
+
+                    if (stories.length === 0) {
+                      return null;
+                    }
+
+                    return (
+                      <div
+                        key={sprint.id}
+                        className="rounded-lg border border-[#3b4754] bg-[#1e293b] p-4"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <h4 className="text-white font-semibold">{sprint.nom}</h4>
+                            <p className="text-[#9dabb9] text-sm">{stories.length} user story(s)</p>
+                          </div>
+                          <span className="text-xs text-[#9dabb9] uppercase tracking-wide">
+                            {sprint.statut}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2">
+                          {stories.map((story) => (
+                            <div
+                              key={story.id}
+                              className="flex items-center justify-between gap-4 rounded-md border border-[#3b4754] bg-surface-dark px-4 py-3"
+                            >
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  {story.reference && (
+                                    <span className="text-xs font-mono text-[#9dabb9] bg-[#283039] px-2 py-0.5 rounded">
+                                      {story.reference}
+                                    </span>
+                                  )}
+                                  <p className="text-white font-medium truncate">{story.titre}</p>
+                                </div>
+                                <p className="text-[#9dabb9] text-sm mt-1">
+                                  Statut: {story.statut || "n/a"}
+                                  {story.developerNom ? ` · Dév: ${story.developerNom}` : ""}
+                                </p>
+                              </div>
+
+                              {story.points != null && (
+                                <span className="shrink-0 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-300">
+                                  {story.points} pts
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-[#3b4754] p-6 text-center text-[#9dabb9]">
+                  Aucune user story trouvée pour ce projet.
+                </div>
+              )}
+            </div>
+          </div>
         ) : (
           <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-12">
             <div className="max-w-md mx-auto text-center">

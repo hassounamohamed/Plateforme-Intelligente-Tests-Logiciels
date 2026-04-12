@@ -10,7 +10,7 @@ import { ProjectSelectorCard } from "@/components/dashboard/ProjectSelectorCard"
 import { ROUTES } from "@/lib/constants";
 import CahierTestsManager from "@/features/cahier-tests/CahierTestsManager";
 
-export default function ValidationTestsPage() {
+export default function CahierTestsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
@@ -21,7 +21,7 @@ export default function ValidationTestsPage() {
     { href: `${ROUTES.PRODUCT_OWNER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.PRODUCT_OWNER}/epics`, icon: "content_cut", label: "Epics" },
     { href: `${ROUTES.PRODUCT_OWNER}/sprints`, icon: "event", label: "Sprints" },
-    { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "menu_book", label: "Cahier de Tests" },
+    { href: `${ROUTES.PRODUCT_OWNER}/cahier-tests`, icon: "menu_book", label: "Cahier de Tests" },
     { href: `${ROUTES.PRODUCT_OWNER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.PRODUCT_OWNER}/roadmap`, icon: "map", label: "Roadmap" },
     { href: `${ROUTES.PRODUCT_OWNER}/profile`, icon: "account_circle", label: "Mon Profil" },
@@ -92,7 +92,7 @@ export default function ValidationTestsPage() {
           projects={projects}
           selectedProjectId={selectedProject?.id ?? null}
           selectedProjectName={selectedProject?.nom ?? null}
-          onSelectProject={(projectId) => {
+          onSelectProject={(projectId: number) => {
             const selected = projects.find((p) => p.id === projectId) ?? null;
             setSelectedProject(selected);
           }}

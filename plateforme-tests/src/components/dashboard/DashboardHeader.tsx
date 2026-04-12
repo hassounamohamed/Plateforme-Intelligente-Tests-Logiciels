@@ -111,7 +111,7 @@ const DASHBOARD_SEARCH_ITEMS: DashboardSearchItem[] = [
   },
   {
     title: "Validation des tests",
-    href: `${ROUTES.PRODUCT_OWNER}/validation-tests`,
+    href: `${ROUTES.PRODUCT_OWNER}/cahier-tests`,
     description: "Validation fonctionnelle des tests",
     keywords: ["tests", "validation", "qa"],
     roles: [ROLES.PRODUCT_OWNER],
