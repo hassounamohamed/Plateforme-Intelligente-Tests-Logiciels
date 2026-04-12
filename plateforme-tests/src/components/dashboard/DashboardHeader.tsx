@@ -347,7 +347,7 @@ interface DashboardHeaderProps {
 export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -381,7 +381,7 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
     : [];
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !isAuthenticated) return;
 
     let isMounted = true;
     const loadNotifications = async () => {
@@ -411,7 +411,7 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
       isMounted = false;
       window.clearInterval(interval);
     };
-  }, [user]);
+  }, [user, isAuthenticated]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

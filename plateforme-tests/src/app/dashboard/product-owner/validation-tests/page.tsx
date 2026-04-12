@@ -6,6 +6,7 @@ import { getMyProjects } from "@/features/projects/api";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { ProjectSelectorCard } from "@/components/dashboard/ProjectSelectorCard";
 import { ROUTES } from "@/lib/constants";
 import CahierTestsManager from "@/features/cahier-tests/CahierTestsManager";
 
@@ -20,7 +21,7 @@ export default function ValidationTestsPage() {
     { href: `${ROUTES.PRODUCT_OWNER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.PRODUCT_OWNER}/epics`, icon: "content_cut", label: "Epics" },
     { href: `${ROUTES.PRODUCT_OWNER}/sprints`, icon: "event", label: "Sprints" },
-        { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "menu_book", label: "Cahier de Tests" },
+    { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "menu_book", label: "Cahier de Tests" },
     { href: `${ROUTES.PRODUCT_OWNER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.PRODUCT_OWNER}/roadmap`, icon: "map", label: "Roadmap" },
     { href: `${ROUTES.PRODUCT_OWNER}/profile`, icon: "account_circle", label: "Mon Profil" },
@@ -34,6 +35,9 @@ export default function ValidationTestsPage() {
     try {
       const data = await getMyProjects();
       setProjects(data);
+      if (data.length > 0) {
+        setSelectedProject(data[0]);
+      }
     } catch (error) {
       console.error("Erreur lors du chargement des projets:", error);
     } finally {
@@ -84,8 +88,20 @@ export default function ValidationTestsPage() {
   return (
     <DashboardLayout sidebarContent={sidebarContent} headerContent={headerContent}>
       <div className="max-w-350 mx-auto">
+        <ProjectSelectorCard
+          projects={projects}
+          selectedProjectId={selectedProject?.id ?? null}
+          selectedProjectName={selectedProject?.nom ?? null}
+          onSelectProject={(projectId) => {
+            const selected = projects.find((p) => p.id === projectId) ?? null;
+            setSelectedProject(selected);
+          }}
+          badgeText="Validation des tests"
+          description="Selectionnez un projet pour consulter son cahier de tests et ses validations." 
+        />
+
         {selectedProject ? (
-          <CahierTestsManager projectId={selectedProject.id} readOnly />
+          <CahierTestsManager projectId={selectedProject.id} readOnly showRapportPanel={false} />
         ) : (
           <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-12">
             <div className="max-w-md mx-auto text-center">

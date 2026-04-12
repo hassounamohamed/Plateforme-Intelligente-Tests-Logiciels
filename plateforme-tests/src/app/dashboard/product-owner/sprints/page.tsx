@@ -7,6 +7,7 @@ import { getSprints } from "@/features/sprints/api";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { ProjectSelectorCard } from "@/components/dashboard/ProjectSelectorCard";
 import { ROUTES } from "@/lib/constants";
 
 export default function SprintsPage() {
@@ -23,7 +24,7 @@ export default function SprintsPage() {
     { href: `${ROUTES.PRODUCT_OWNER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.PRODUCT_OWNER}/epics`, icon: "content_cut", label: "Epics" },
     { href: `${ROUTES.PRODUCT_OWNER}/sprints`, icon: "event", label: "Sprints" },
-        { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "check_circle", label: "Validation Tests" },
+    { href: `${ROUTES.PRODUCT_OWNER}/validation-tests`, icon: "menu_book", label: "Cahier de Tests" },
     { href: `${ROUTES.PRODUCT_OWNER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.PRODUCT_OWNER}/roadmap`, icon: "map", label: "Roadmap" },
     { href: `${ROUTES.PRODUCT_OWNER}/profile`, icon: "account_circle", label: "Mon Profil" },
@@ -146,24 +147,15 @@ export default function SprintsPage() {
       }
     >
       <div className="max-w-7xl mx-auto flex flex-col gap-6">
-        {/* Project Selector */}
-        <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
-          <label className="flex text-sm font-bold text-slate-700 dark:text-white mb-3 items-center gap-2">
-            <span className="material-symbols-outlined text-primary">folder_open</span>
-            Sélectionner un projet
-          </label>
-          <select
-            value={selectedProject || ""}
-            onChange={(e) => setSelectedProject(Number(e.target.value))}
-            className="w-full bg-white dark:bg-[#1e293b] border border-slate-300 dark:border-[#3b4754] rounded-lg px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.nom}
-              </option>
-            ))}
-          </select>
-        </div>
+        <ProjectSelectorCard
+          projects={projects}
+          selectedProjectId={selectedProject}
+          selectedProjectName={projects.find((p) => p.id === selectedProject)?.nom || null}
+          onSelectProject={setSelectedProject}
+          badgeText="Suivi des sprints"
+          description="Selectionnez un projet pour piloter l'avancement des sprints et valider les livrables." 
+          disabled={isLoadingProjects}
+        />
 
         {/* Sprint Statistics Cards */}
         {!isLoadingSprints && sprints.length > 0 && (

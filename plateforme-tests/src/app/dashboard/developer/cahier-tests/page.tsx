@@ -20,6 +20,7 @@ export default function CahierTestsDeveloperPage() {
     { href: ROUTES.DEVELOPER, icon: "dashboard", label: "Dashboard" },
     { href: `${ROUTES.DEVELOPER}/sprints`, icon: "calendar_month", label: "Sprints" },
     { href: `${ROUTES.DEVELOPER}/cahier-tests`, icon: "menu_book", label: "Cahier de Tests" },
+    { href: `${ROUTES.DEVELOPER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.DEVELOPER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
@@ -110,7 +111,13 @@ export default function CahierTestsDeveloperPage() {
     <DashboardLayout sidebarContent={sidebarContent} headerContent={headerContent}>
       <div className="max-w-350 mx-auto">
         {selectedProject ? (
-          <CahierTestsManager projectId={selectedProject.id} projectName={selectedProject.nom} canGenerate={false} />
+          <CahierTestsManager
+            projectId={selectedProject.id}
+            projectName={selectedProject.nom}
+            canGenerate={false}
+            rapportReadOnly
+            showRapportPanel={false}
+          />
         ) : (
           <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-12">
             <div className="max-w-md mx-auto text-center">

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { ProjectSelectorCard } from "@/components/dashboard/ProjectSelectorCard";
 import { ROUTES } from "@/lib/constants";
 import { getMyProjectsAsMember } from "@/features/projects/api";
 import { getSprints } from "@/features/sprints/api";
@@ -53,6 +54,7 @@ export default function SprintsPage() {
     { href: ROUTES.DEVELOPER, icon: "dashboard", label: "Dashboard" },
     { href: `${ROUTES.DEVELOPER}/sprints`, icon: "calendar_month", label: "Sprints" },
     { href: `${ROUTES.DEVELOPER}/cahier-tests`, icon: "menu_book", label: "Cahier de Tests" },
+    { href: `${ROUTES.DEVELOPER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.DEVELOPER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
@@ -132,28 +134,17 @@ export default function SprintsPage() {
       }
     >
       <div className="max-w-350 mx-auto">
-        {/* Sélecteur de projet */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-[#9dabb9] mb-2">
-            Sélectionner un projet
-          </label>
-          <select
-            value={selectedProject?.id || ""}
-            onChange={(e) => {
-              const project = projects.find(
-                (p) => p.id === parseInt(e.target.value)
-              );
-              setSelectedProject(project || null);
-            }}
-            className="w-full px-4 py-3 bg-surface-dark border border-[#3b4754] text-white text-sm rounded-lg focus:ring-2 focus:ring-primary"
-          >
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.nom}
-              </option>
-            ))}
-          </select>
-        </div>
+        <ProjectSelectorCard
+          projects={projects}
+          selectedProjectId={selectedProject?.id ?? null}
+          selectedProjectName={selectedProject?.nom ?? null}
+          onSelectProject={(projectId) => {
+            const selected = projects.find((p) => p.id === projectId) ?? null;
+            setSelectedProject(selected);
+          }}
+          badgeText="Suivi des sprints"
+          description="Selectionnez un projet pour consulter les sprints et leur avancement." 
+        />
         <div className="bg-surface-dark border border-[#3b4754] rounded-xl overflow-hidden">
           <div className="p-6 border-b border-[#3b4754]">
             <h3 className="text-white text-lg font-bold">Liste des Sprints</h3>

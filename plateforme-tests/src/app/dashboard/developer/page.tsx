@@ -10,6 +10,7 @@ import { getMyProjectsAsMember } from "@/features/projects/api";
 import { getBacklog } from "@/features/backlog/api";
 import { getSprints } from "@/features/sprints/api";
 import { getMeApi } from "@/features/auth/api";
+import { useAuthStore } from "@/features/auth/store";
 import {
   listMyNotifications,
   markAllNotificationsAsRead,
@@ -139,6 +140,7 @@ const getNotificationIcon = (type: NotificationType): string => {
 };
 
 export default function DeveloperDashboard() {
+  const { isAuthenticated } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<DeveloperTask[]>([]);
@@ -151,10 +153,18 @@ export default function DeveloperDashboard() {
     { href: ROUTES.DEVELOPER, icon: "dashboard", label: "Dashboard" },
     { href: `${ROUTES.DEVELOPER}/sprints`, icon: "calendar_month", label: "Sprints" },
     { href: `${ROUTES.DEVELOPER}/cahier-tests`, icon: "menu_book", label: "Cahier de Tests" },
+    { href: `${ROUTES.DEVELOPER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.DEVELOPER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      setNotifications([]);
+      setNotificationsLoading(false);
+      return;
+    }
+
     const loadDashboard = async () => {
       setLoading(true);
       setError(null);
@@ -314,9 +324,15 @@ export default function DeveloperDashboard() {
     };
 
     loadDashboard();
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setNotifications([]);
+      setNotificationsLoading(false);
+      return;
+    }
+
     let isMounted = true;
 
     const loadNotifications = async () => {
@@ -339,7 +355,7 @@ export default function DeveloperDashboard() {
       isMounted = false;
       window.clearInterval(interval);
     };
-  }, []);
+  }, [isAuthenticated]);
 
   const handleMarkNotificationAsRead = async (notificationId: number) => {
     try {
