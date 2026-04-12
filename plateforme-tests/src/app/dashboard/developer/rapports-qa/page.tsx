@@ -59,6 +59,7 @@ export default function DeveloperRapportsQAPage() {
   const sidebarLinks = [
     { href: ROUTES.DEVELOPER, icon: "dashboard", label: "Dashboard" },
     { href: `${ROUTES.DEVELOPER}/sprints`, icon: "calendar_month", label: "Sprints" },
+    { href: `${ROUTES.DEVELOPER}/user-stories`, icon: "article", label: "User Stories" },
     { href: `${ROUTES.DEVELOPER}/cahier-tests`, icon: "menu_book", label: "Cahier de Tests" },
     { href: `${ROUTES.DEVELOPER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.DEVELOPER}/profile`, icon: "account_circle", label: "Mon Profil" },

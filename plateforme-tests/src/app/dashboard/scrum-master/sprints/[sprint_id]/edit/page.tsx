@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { ProjectSelectorCard } from "@/components/dashboard/ProjectSelectorCard";
 import { ROUTES } from "@/lib/constants";
 import { getMyProjectsAsMember } from "@/features/projects/api";
 import { 
@@ -46,6 +47,7 @@ export default function EditSprintPage() {
   const [error, setError] = useState<string | null>(null);
 
   const dureesSprint = [7, 10, 14, 21, 30];
+  const selectedProjectData = projects.find((project) => project.id === selectedProject) ?? null;
 
   useEffect(() => {
     loadProjects();
@@ -357,29 +359,21 @@ export default function EditSprintPage() {
           </div>
 
           {/* Project Selection */}
-          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
-            <h3 className="text-slate-900 dark:text-white text-lg font-bold mb-4">Projet</h3>
-            {projects.length > 0 ? (
-              <select
-                id="project-select"
-                name="project"
-                value={selectedProject || ""}
-                onChange={(e) => setSelectedProject(Number(e.target.value))}
-                className="w-full bg-white dark:bg-[#283039] border border-slate-300 dark:border-[#3b4754] rounded-lg px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-primary"
-                required
-                disabled={statut !== "planifie"}
-              >
-                <option value="">Sélectionner un projet</option>
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.nom}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <p className="text-red-400 text-sm">Aucun projet disponible</p>
-            )}
-          </div>
+          {projects.length > 0 ? (
+            <ProjectSelectorCard
+              projects={projects.map((project) => ({ id: project.id, nom: project.nom }))}
+              selectedProjectId={selectedProject}
+              selectedProjectName={selectedProjectData?.nom ?? null}
+              onSelectProject={(projectId) => setSelectedProject(projectId)}
+              badgeText="Modification de sprint"
+              title="Projet"
+              description="Sélectionnez le projet lié à ce sprint."
+              placeholder="Sélectionner un projet"
+              disabled={statut !== "planifie"}
+            />
+          ) : (
+            <p className="text-red-400 text-sm">Aucun projet disponible</p>
+          )}
 
           {/* Sprint Details */}
           <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6 space-y-4">

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { ProjectSelectorCard } from "@/components/dashboard/ProjectSelectorCard";
 import { Modal } from "@/components/Modal";
 import { ROUTES } from "@/lib/constants";
 import { getMyProjectsAsMember } from "@/features/projects/api";
@@ -68,6 +69,7 @@ export default function UserStoriesPage() {
     statut: "",
     priorite: "",
   });
+  const selectedProjectData = projects.find((project) => project.id === selectedProject) ?? null;
 
   useEffect(() => {
     loadProjects();
@@ -457,26 +459,21 @@ export default function UserStoriesPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Project Selector */}
           {projects.length > 0 ? (
-            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-4">
-              <label className="text-[#9dabb9] text-sm font-bold mb-2 block">Projet</label>
-              <select
-                value={selectedProject || ""}
-                onChange={(e) => {
-                  const projectId = Number(e.target.value);
-                  setSelectedModule(null);
-                  setSelectedEpic(null);
-                  setUserStories([]);
-                  setSelectedProject(projectId);
-                }}
-                className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
-              >
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.nom}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <ProjectSelectorCard
+              projects={projects.map((project) => ({ id: project.id, nom: project.nom }))}
+              selectedProjectId={selectedProject}
+              selectedProjectName={selectedProjectData?.nom ?? null}
+              onSelectProject={(projectId) => {
+                setSelectedModule(null);
+                setSelectedEpic(null);
+                setUserStories([]);
+                setSelectedProject(projectId);
+              }}
+              badgeText="Gestion des user stories"
+              title="Projet"
+              description="Sélectionnez un projet pour gérer ses modules, epics et user stories."
+              placeholder="-- Sélectionnez un projet --"
+            />
           ) : !isLoading && (
             <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-4">
               <label className="text-[#9dabb9] text-sm font-bold mb-2 block">Projet</label>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { ProjectSelectorCard } from "@/components/dashboard/ProjectSelectorCard";
 import { ROUTES } from "@/lib/constants";
 import { getMyProjectsAsMember } from "@/features/projects/api";
 import { getSprints, getActiveSprint } from "@/features/sprints/api";
@@ -134,20 +135,16 @@ export default function TeamManagementPage() {
       <div className="max-w-350 mx-auto flex flex-col gap-6">
         {/* Project Selector */}
         {projects.length > 0 && (
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-4">
-            <label className="text-[#9dabb9] text-sm font-bold mb-2 block">Projet</label>
-            <select
-              value={selectedProject || ""}
-              onChange={(e) => setSelectedProject(Number(e.target.value))}
-              className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
-            >
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.nom}
-                </option>
-              ))}
-            </select>
-          </div>
+          <ProjectSelectorCard
+            projects={projects.map((project) => ({ id: project.id, nom: project.nom }))}
+            selectedProjectId={selectedProject}
+            selectedProjectName={projects.find((project) => project.id === selectedProject)?.nom ?? null}
+            onSelectProject={(projectId) => setSelectedProject(projectId)}
+            badgeText="Gestion d'équipe"
+            title="Projet"
+            description="Sélectionnez le projet pour afficher son sprint actif et ses membres."
+            placeholder="-- Sélectionnez un projet --"
+          />
         )}
 
         {/* Error Message */}

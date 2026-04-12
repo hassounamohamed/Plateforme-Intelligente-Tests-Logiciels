@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { ProjectSelectorCard } from "@/components/dashboard/ProjectSelectorCard";
 import { ROUTES } from "@/lib/constants";
 import { getMyProjectsAsMember } from "@/features/projects/api";
 import { getSprints } from "@/features/sprints/api";
@@ -23,6 +24,7 @@ export default function CahierTestsDeveloperPage() {
   const sidebarLinks = [
     { href: ROUTES.DEVELOPER, icon: "dashboard", label: "Dashboard" },
     { href: `${ROUTES.DEVELOPER}/sprints`, icon: "calendar_month", label: "Sprints" },
+    { href: `${ROUTES.DEVELOPER}/user-stories`, icon: "article", label: "User Stories" },
     { href: `${ROUTES.DEVELOPER}/cahier-tests`, icon: "menu_book", label: "Cahier de Tests" },
     { href: `${ROUTES.DEVELOPER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.DEVELOPER}/profile`, icon: "account_circle", label: "Mon Profil" },
@@ -86,14 +88,6 @@ export default function CahierTestsDeveloperPage() {
     };
   }, [selectedProject]);
 
-  const openProjectInNewTab = (projectName: string) => {
-    window.open(
-      `${ROUTES.DEVELOPER}/cahier-tests?project=${encodeURIComponent(projectName)}`,
-      "_blank",
-      "noopener,noreferrer"
-    );
-  };
-
   const loadProjects = async () => {
     try {
       const data = await getMyProjectsAsMember();
@@ -148,6 +142,20 @@ export default function CahierTestsDeveloperPage() {
   return (
     <DashboardLayout sidebarContent={sidebarContent} headerContent={headerContent}>
       <div className="max-w-350 mx-auto">
+        <ProjectSelectorCard
+          projects={projects.map((p) => ({ id: p.id, nom: p.nom }))}
+          selectedProjectId={selectedProject?.id ?? null}
+          selectedProjectName={selectedProject?.nom}
+          onSelectProject={(projectId) => {
+            const project = projects.find((p) => p.id === projectId) ?? null;
+            setSelectedProject(project);
+          }}
+          badgeText="Consultation du cahier de tests"
+          title="Projets"
+          description="Sélectionnez un projet pour consulter son cahier de tests."
+          placeholder="-- Sélectionnez un projet --"
+        />
+
         {selectedProject ? (
           <div className="space-y-6">
             <CahierTestsManager
@@ -157,87 +165,6 @@ export default function CahierTestsDeveloperPage() {
               rapportReadOnly
               showRapportPanel={false}
             />
-
-            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-white text-lg font-bold">User Stories</h3>
-                  <p className="text-[#9dabb9] text-sm">
-                    Vue lecture seule des user stories associées aux sprints du projet.
-                  </p>
-                </div>
-                <span className="text-xs uppercase tracking-wide text-[#9dabb9]">
-                  {sprintsLoading ? "Chargement..." : `${sprints.length} sprint(s)`}
-                </span>
-              </div>
-
-              {sprintsLoading ? (
-                <div className="flex items-center justify-center py-10 text-[#9dabb9]">
-                  Chargement des user stories...
-                </div>
-              ) : sprints.some((sprint) => sprint.userstories && sprint.userstories.length > 0) ? (
-                <div className="space-y-4">
-                  {sprints.map((sprint) => {
-                    const stories = sprint.userstories ?? [];
-
-                    if (stories.length === 0) {
-                      return null;
-                    }
-
-                    return (
-                      <div
-                        key={sprint.id}
-                        className="rounded-lg border border-[#3b4754] bg-[#1e293b] p-4"
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <div>
-                            <h4 className="text-white font-semibold">{sprint.nom}</h4>
-                            <p className="text-[#9dabb9] text-sm">{stories.length} user story(s)</p>
-                          </div>
-                          <span className="text-xs text-[#9dabb9] uppercase tracking-wide">
-                            {sprint.statut}
-                          </span>
-                        </div>
-
-                        <div className="space-y-2">
-                          {stories.map((story) => (
-                            <div
-                              key={story.id}
-                              className="flex items-center justify-between gap-4 rounded-md border border-[#3b4754] bg-surface-dark px-4 py-3"
-                            >
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                  {story.reference && (
-                                    <span className="text-xs font-mono text-[#9dabb9] bg-[#283039] px-2 py-0.5 rounded">
-                                      {story.reference}
-                                    </span>
-                                  )}
-                                  <p className="text-white font-medium truncate">{story.titre}</p>
-                                </div>
-                                <p className="text-[#9dabb9] text-sm mt-1">
-                                  Statut: {story.statut || "n/a"}
-                                  {story.developerNom ? ` · Dév: ${story.developerNom}` : ""}
-                                </p>
-                              </div>
-
-                              {story.points != null && (
-                                <span className="shrink-0 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-300">
-                                  {story.points} pts
-                                </span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="rounded-lg border border-dashed border-[#3b4754] p-6 text-center text-[#9dabb9]">
-                  Aucune user story trouvée pour ce projet.
-                </div>
-              )}
-            </div>
           </div>
         ) : (
           <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-12">
@@ -251,33 +178,9 @@ export default function CahierTestsDeveloperPage() {
               <p className="text-[#9dabb9] text-base mb-8">
                 Choisissez le projet pour lequel vous souhaitez consulter le cahier de tests.
               </p>
-              <div className="space-y-4">
-                <label className="block text-left text-sm font-medium text-white mb-2">
-                  Projet
-                </label>
-                <select
-                  value=""
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value !== "") {
-                      const projectId = parseInt(value, 10);
-                      const selected = projects.find((p) => p.id === projectId);
-                      if (selected) openProjectInNewTab(selected.nom);
-                    }
-                  }}
-                  className="w-full h-12 px-4 bg-[#283039] border border-[#3b4754] text-white text-base rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                >
-                  <option value="">-- Sélectionnez un projet --</option>
-                  {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.nom}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[#9dabb9] text-sm text-left mt-2">
-                  {projects.length} projet{projects.length > 1 ? "s" : ""} disponible{projects.length > 1 ? "s" : ""}
-                </p>
-              </div>
+              <p className="text-[#9dabb9] text-sm">
+                Utilisez le sélecteur de projet ci-dessus pour afficher le contenu.
+              </p>
             </div>
           </div>
         )}

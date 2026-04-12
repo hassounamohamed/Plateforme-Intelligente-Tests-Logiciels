@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { ProjectSelectorCard } from "@/components/dashboard/ProjectSelectorCard";
 import { ROUTES } from "@/lib/constants";
 import { getMyProjectsAsMember } from "@/features/projects/api";
 import { Project } from "@/types";
@@ -50,14 +51,6 @@ export default function CahierTestsScrumMasterPage() {
       : null;
     setSelectedProject(project);
   }, [projects, searchParams]);
-
-  const openProjectInNewTab = (projectName: string) => {
-    window.open(
-      `${ROUTES.SCRUM_MASTER}/cahier-tests?project=${encodeURIComponent(projectName)}`,
-      "_blank",
-      "noopener,noreferrer"
-    );
-  };
 
   const loadProjects = async () => {
     try {
@@ -113,6 +106,22 @@ export default function CahierTestsScrumMasterPage() {
   return (
     <DashboardLayout sidebarContent={sidebarContent} headerContent={headerContent}>
       <div className="max-w-350 mx-auto">
+        {projects.length > 0 && (
+          <ProjectSelectorCard
+            projects={projects.map((project) => ({ id: project.id, nom: project.nom }))}
+            selectedProjectId={selectedProject?.id ?? null}
+            selectedProjectName={selectedProject?.nom ?? null}
+            onSelectProject={(projectId) => {
+              const project = projects.find((project) => project.id === projectId) ?? null;
+              setSelectedProject(project);
+            }}
+            badgeText="Consultation du cahier de tests"
+            title="Projet"
+            description="Sélectionnez un projet pour consulter son cahier de tests."
+            placeholder="-- Sélectionnez un projet --"
+          />
+        )}
+
         {selectedProject ? (
           <CahierTestsManager
             projectId={selectedProject.id}
@@ -134,33 +143,9 @@ export default function CahierTestsScrumMasterPage() {
               <p className="text-[#9dabb9] text-base mb-8">
                 Choisissez le projet pour lequel vous souhaitez consulter le cahier de tests.
               </p>
-              <div className="space-y-4">
-                <label className="block text-left text-sm font-medium text-white mb-2">
-                  Projet
-                </label>
-                <select
-                  value=""
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value !== "") {
-                      const projectId = parseInt(value, 10);
-                      const selected = projects.find((p) => p.id === projectId);
-                      if (selected) openProjectInNewTab(selected.nom);
-                    }
-                  }}
-                  className="w-full h-12 px-4 bg-[#283039] border border-[#3b4754] text-white text-base rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                >
-                  <option value="">-- Sélectionnez un projet --</option>
-                  {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.nom}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[#9dabb9] text-sm text-left mt-2">
-                  {projects.length} projet{projects.length > 1 ? "s" : ""} disponible{projects.length > 1 ? "s" : ""}
-                </p>
-              </div>
+              <p className="text-[#9dabb9] text-sm">
+                Utilisez le sélecteur de projet ci-dessus pour afficher le contenu.
+              </p>
             </div>
           </div>
         )}
