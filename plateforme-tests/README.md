@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Plateforme Intelligente de Tests Logiciels - Frontend
 
-## Getting Started
+Application Next.js du projet PILT. Elle fournit les parcours d'authentification, les dashboards par rôle et les écrans de suivi QA pour les projets, les user stories, les cahiers de tests, les exécutions et les rapports.
 
-First, run the development server:
+## Prérequis
+
+- Node.js 18.18 ou plus
+- npm
+- Le backend PILT accessible via `NEXT_PUBLIC_API_URL`
+
+## Installation
+
+```bash
+npm install
+```
+
+## Variables d'environnement
+
+Créer un fichier `.env.local` à la racine du dossier `plateforme-tests/`.
+
+```env
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+```
+
+## Scripts
+
+- `npm run dev` : lance le frontend en local
+- `npm run build` : construit l'application pour la production
+- `npm run start` : démarre l'application compilée
+- `npm run lint` : vérifie la qualité du code
+
+## Démarrage
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+L'application est disponible sur http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Parcours principaux
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Authentification et sélection de rôle
+- Dashboard super administrateur
+- Dashboard product owner
+- Dashboard scrum master
+- Dashboard testeur QA
+- Dashboard développeur
+- Cahier de tests global
+- Tests unitaires par user story
+- Rapport QA et export documentaire
 
-## Learn More
+## Structure utile
 
-To learn more about Next.js, take a look at the following resources:
+- `src/app/` : routes et pages
+- `src/components/` : composants partagés
+- `src/features/` : fonctionnalités métier
+- `src/lib/` : client API, constantes et helpers
+- `src/types/` : types partagés
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tests et validation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Ce frontend n'expose pas encore de script de test dédié. La validation courante passe par `npm run lint` et `npm run build`.
