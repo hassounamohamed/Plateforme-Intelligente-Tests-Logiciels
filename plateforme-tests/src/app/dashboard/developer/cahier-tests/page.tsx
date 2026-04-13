@@ -5,21 +5,28 @@ import { useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { ProjectSelectorCard } from "@/components/dashboard/ProjectSelectorCard";
 import { ROUTES } from "@/lib/constants";
 import { getMyProjectsAsMember } from "@/features/projects/api";
+import { getSprints } from "@/features/sprints/api";
 import { Project } from "@/types";
 import CahierTestsManager from "@/features/cahier-tests/CahierTestsManager";
+import type { Sprint } from "@/types";
 
 export default function CahierTestsDeveloperPage() {
   const searchParams = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [sprints, setSprints] = useState<Sprint[]>([]);
+  const [sprintsLoading, setSprintsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const sidebarLinks = [
     { href: ROUTES.DEVELOPER, icon: "dashboard", label: "Dashboard" },
     { href: `${ROUTES.DEVELOPER}/sprints`, icon: "calendar_month", label: "Sprints" },
+    { href: `${ROUTES.DEVELOPER}/user-stories`, icon: "article", label: "User Stories" },
     { href: `${ROUTES.DEVELOPER}/cahier-tests`, icon: "menu_book", label: "Cahier de Tests" },
+    { href: `${ROUTES.DEVELOPER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.DEVELOPER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
@@ -47,13 +54,39 @@ export default function CahierTestsDeveloperPage() {
     setSelectedProject(project);
   }, [projects, searchParams]);
 
-  const openProjectInNewTab = (projectName: string) => {
-    window.open(
-      `${ROUTES.DEVELOPER}/cahier-tests?project=${encodeURIComponent(projectName)}`,
-      "_blank",
-      "noopener,noreferrer"
-    );
-  };
+  useEffect(() => {
+    if (!selectedProject) {
+      setSprints([]);
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadSprints = async () => {
+      setSprintsLoading(true);
+      try {
+        const data = await getSprints(selectedProject.id);
+        if (isMounted) {
+          setSprints(data);
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement des sprints:", error);
+        if (isMounted) {
+          setSprints([]);
+        }
+      } finally {
+        if (isMounted) {
+          setSprintsLoading(false);
+        }
+      }
+    };
+
+    loadSprints();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedProject]);
 
   const loadProjects = async () => {
     try {
@@ -109,8 +142,30 @@ export default function CahierTestsDeveloperPage() {
   return (
     <DashboardLayout sidebarContent={sidebarContent} headerContent={headerContent}>
       <div className="max-w-350 mx-auto">
+        <ProjectSelectorCard
+          projects={projects.map((p) => ({ id: p.id, nom: p.nom }))}
+          selectedProjectId={selectedProject?.id ?? null}
+          selectedProjectName={selectedProject?.nom}
+          onSelectProject={(projectId) => {
+            const project = projects.find((p) => p.id === projectId) ?? null;
+            setSelectedProject(project);
+          }}
+          badgeText="Consultation du cahier de tests"
+          title="Projets"
+          description="Sélectionnez un projet pour consulter son cahier de tests."
+          placeholder="-- Sélectionnez un projet --"
+        />
+
         {selectedProject ? (
-          <CahierTestsManager projectId={selectedProject.id} projectName={selectedProject.nom} canGenerate={false} />
+          <div className="space-y-6">
+            <CahierTestsManager
+              projectId={selectedProject.id}
+              projectName={selectedProject.nom}
+              canGenerate={false}
+              rapportReadOnly
+              showRapportPanel={false}
+            />
+          </div>
         ) : (
           <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-12">
             <div className="max-w-md mx-auto text-center">
@@ -123,33 +178,9 @@ export default function CahierTestsDeveloperPage() {
               <p className="text-[#9dabb9] text-base mb-8">
                 Choisissez le projet pour lequel vous souhaitez consulter le cahier de tests.
               </p>
-              <div className="space-y-4">
-                <label className="block text-left text-sm font-medium text-white mb-2">
-                  Projet
-                </label>
-                <select
-                  value=""
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value !== "") {
-                      const projectId = parseInt(value, 10);
-                      const selected = projects.find((p) => p.id === projectId);
-                      if (selected) openProjectInNewTab(selected.nom);
-                    }
-                  }}
-                  className="w-full h-12 px-4 bg-[#283039] border border-[#3b4754] text-white text-base rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                >
-                  <option value="">-- Sélectionnez un projet --</option>
-                  {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.nom}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[#9dabb9] text-sm text-left mt-2">
-                  {projects.length} projet{projects.length > 1 ? "s" : ""} disponible{projects.length > 1 ? "s" : ""}
-                </p>
-              </div>
+              <p className="text-[#9dabb9] text-sm">
+                Utilisez le sélecteur de projet ci-dessus pour afficher le contenu.
+              </p>
             </div>
           </div>
         )}

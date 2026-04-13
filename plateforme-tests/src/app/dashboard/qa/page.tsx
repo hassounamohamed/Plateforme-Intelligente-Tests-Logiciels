@@ -104,6 +104,7 @@ export default function QADashboard() {
   const sidebarLinks = [
     { href: ROUTES.QA, icon: "dashboard", label: "Dashboard" },
     { href: `${ROUTES.QA}/cahier-tests`, icon: "science", label: "Cahier de Tests" },
+    { href: `${ROUTES.QA}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.QA}/sprints`, icon: "calendar_month", label: "Sprints" },
     { href: `${ROUTES.QA}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];

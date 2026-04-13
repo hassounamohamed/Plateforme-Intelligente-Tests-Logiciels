@@ -10,9 +10,16 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from core.config import AI_API_KEY, AI_API_URL, AI_MODEL
+from core.rbac.constants import (
+    ROLE_DEVELOPPEUR,
+    ROLE_PRODUCT_OWNER,
+    ROLE_SCRUM_MASTER,
+    ROLE_TESTEUR_QA,
+)
 from models.cahier_test_global import CahierTestGlobal, CasTest, CasTestHistory
 from models.notification import TypeNotification
 from models.rapports import IndicateurQualite, RapportQA, RecommandationQualite
+from models.scrum import Projet
 from services.api_key_service import APIKeyService
 from services.notification_service import NotificationService
 
@@ -232,6 +239,56 @@ class RapportService:
             raise HTTPException(status_code=500, detail="Aucune cle API configuree pour la generation IA.")
         return AI_API_KEY
 
+    def _get_rapport_notification_recipients(self, projet_id: int) -> list[int]:
+        projet = self.db.query(Projet).filter(Projet.id == projet_id).first()
+        if not projet:
+            return []
+
+        allowed_roles = {
+            ROLE_TESTEUR_QA,
+            ROLE_DEVELOPPEUR,
+            ROLE_SCRUM_MASTER,
+            ROLE_PRODUCT_OWNER,
+        }
+
+        recipients: set[int] = set()
+        for member in projet.membres or []:
+            role_code = member.role.code if member and member.role else None
+            if member and member.actif and role_code in allowed_roles:
+                recipients.add(member.id)
+
+        if projet.product_owner and projet.product_owner.actif:
+            recipients.add(projet.product_owner.id)
+
+        return list(recipients)
+
+    def _notify_rapport_stakeholders(
+        self,
+        projet_id: int,
+        actor_user_id: int,
+        titre: str,
+        message: str,
+    ) -> None:
+        recipients = self._get_rapport_notification_recipients(projet_id)
+        if not recipients:
+            # Fallback minimal si aucun membre de projet n'est resolu.
+            self.notification_service.notify_user(
+                user_id=actor_user_id,
+                titre=titre,
+                message=message,
+                notification_type=TypeNotification.REPORT_GENERATED,
+                priorite="moyenne",
+            )
+            return
+
+        self.notification_service.notify_users(
+            user_ids=recipients,
+            titre=titre,
+            message=message,
+            notification_type=TypeNotification.REPORT_GENERATED,
+            priorite="moyenne",
+        )
+
     def _generer_rapport_qa_ia(self, cahier: CahierTestGlobal, stats: dict, user_id: Optional[int]) -> dict:
         prompt = (
             "Genere un rapport QA base sur les donnees d'execution du cahier de tests global.\n"
@@ -381,12 +438,11 @@ class RapportService:
         self.db.commit()
         self.db.refresh(rapport)
 
-        self.notification_service.notify_user(
-            user_id=user_id,
+        self._notify_rapport_stakeholders(
+            projet_id=projet_id,
+            actor_user_id=user_id,
             titre="Rapport QA genere",
             message=f"Le rapport QA v{rapport.version} a ete genere pour le cahier {cahier_id}.",
-            notification_type=TypeNotification.REPORT_GENERATED,
-            priorite="moyenne",
         )
 
         return rapport
@@ -412,12 +468,11 @@ class RapportService:
         self.db.commit()
         self.db.refresh(rapport)
 
-        self.notification_service.notify_user(
-            user_id=user_id,
+        self._notify_rapport_stakeholders(
+            projet_id=projet_id,
+            actor_user_id=user_id,
             titre="Rapport QA modifie",
             message=f"Le rapport QA v{rapport.version} a ete mis a jour.",
-            notification_type=TypeNotification.REPORT_GENERATED,
-            priorite="moyenne",
         )
 
         return rapport
@@ -425,8 +480,10 @@ class RapportService:
     def exporter_rapport_qa_pdf(self, cahier_id: int, projet_id: int) -> bytes:
         try:
             from reportlab.lib.pagesizes import A4
+            from reportlab.lib import colors
             from reportlab.lib.styles import getSampleStyleSheet
-            from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+            from reportlab.lib.units import cm
+            from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, HRFlowable
         except ImportError:
             raise HTTPException(
                 status_code=501,
@@ -434,27 +491,121 @@ class RapportService:
             )
 
         rapport = self.get_rapport_qa(cahier_id, projet_id)
+
+        def fmt_pct(value: Optional[float]) -> str:
+            if value is None:
+                return "0.0%"
+            return f"{float(value):.1f}%"
+
+        def fmt_num(value: Optional[float]) -> str:
+            if value is None:
+                return "0"
+            return str(int(value))
+
+        def fmt_date(value: Optional[datetime]) -> str:
+            if not value:
+                return "-"
+            return value.strftime("%d/%m/%Y %H:%M")
+
+        indic = rapport.indicateurs
+        couverture = fmt_pct(indic.tauxCouverture if indic else 0.0)
+        tendance = (indic.tendance if indic and indic.tendance else "stable").capitalize()
+        indice_qualite = f"{float(indic.indiceQualite or 0.0):.1f}/10" if indic else "0.0/10"
+        anomalies_critiques = fmt_num(indic.nombreAnomaliesCritiques if indic else 0)
+
         buf = io.BytesIO()
-        doc = SimpleDocTemplate(buf, pagesize=A4)
+        doc = SimpleDocTemplate(
+            buf,
+            pagesize=A4,
+            leftMargin=1.8 * cm,
+            rightMargin=1.8 * cm,
+            topMargin=1.8 * cm,
+            bottomMargin=1.8 * cm,
+        )
         styles = getSampleStyleSheet()
         story = []
 
-        story.append(Paragraph(f"Rapport QA v{rapport.version}", styles["Title"]))
-        story.append(Spacer(1, 8))
-        story.append(Paragraph(f"Projet ID: {projet_id} | Cahier ID: {cahier_id}", styles["Normal"]))
-        story.append(Paragraph(f"Date: {rapport.dateGeneration}", styles["Normal"]))
-        story.append(Paragraph(f"Statut: {rapport.statut}", styles["Normal"]))
-        story.append(Paragraph(f"Taux de reussite: {rapport.tauxReussite}%", styles["Normal"]))
-        story.append(Paragraph(f"Tests executes: {rapport.nombreTestsExecutes}", styles["Normal"]))
-        story.append(Paragraph(f"Tests reussis: {rapport.nombreTestsReussis}", styles["Normal"]))
-        story.append(Paragraph(f"Tests echoues: {rapport.nombreTestsEchoues}", styles["Normal"]))
+        header = Table(
+            [[f"Rapport QA v{rapport.version}", (rapport.statut or "brouillon").upper()]],
+            colWidths=[doc.width * 0.75, doc.width * 0.25],
+        )
+        header.setStyle(
+            TableStyle([
+                ("BACKGROUND", (0, 0), (0, 0), colors.HexColor("#1F4E79")),
+                ("BACKGROUND", (1, 0), (1, 0), colors.HexColor("#E2EFDA") if rapport.statut == "valide" else colors.HexColor("#FCE4D6")),
+                ("TEXTCOLOR", (0, 0), (0, 0), colors.white),
+                ("TEXTCOLOR", (1, 0), (1, 0), colors.HexColor("#375623") if rapport.statut == "valide" else colors.HexColor("#7F3F00")),
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 12),
+                ("ALIGN", (1, 0), (1, 0), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+                ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+            ])
+        )
+        story.append(header)
+        story.append(Spacer(1, 10))
 
-        if rapport.indicateurs:
-            story.append(Spacer(1, 8))
-            story.append(Paragraph("Indicateurs", styles["Heading2"]))
-            story.append(Paragraph(f"Couverture: {rapport.indicateurs.tauxCouverture}%", styles["Normal"]))
-            story.append(Paragraph(f"Tendance: {rapport.indicateurs.tendance}", styles["Normal"]))
-            story.append(Paragraph(f"Indice qualite: {rapport.indicateurs.indiceQualite}", styles["Normal"]))
+        story.append(Paragraph(f"Projet ID: {projet_id} | Cahier ID: {cahier_id}", styles["Normal"]))
+        story.append(Paragraph(f"Date de generation: {fmt_date(rapport.dateGeneration)}", styles["Normal"]))
+        story.append(Spacer(1, 8))
+
+        kpi = Table(
+            [[
+                f"Taux de reussite\n{fmt_pct(rapport.tauxReussite)}",
+                f"Tests executes\n{fmt_num(rapport.nombreTestsExecutes)}",
+                f"Tests reussis\n{fmt_num(rapport.nombreTestsReussis)}",
+                f"Tests echoues\n{fmt_num(rapport.nombreTestsEchoues)}",
+            ]],
+            colWidths=[doc.width / 4] * 4,
+        )
+        kpi.setStyle(
+            TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#D6E4F0")),
+                ("TEXTCOLOR", (0, 0), (-1, -1), colors.HexColor("#1F4E79")),
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.white),
+                ("BOX", (0, 0), (-1, -1), 0, colors.white),
+            ])
+        )
+        story.append(kpi)
+        story.append(Spacer(1, 10))
+
+        story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#2E75B6"), spaceAfter=6))
+        story.append(Paragraph("Indicateurs qualite", styles["Heading2"]))
+        indic_table = Table(
+            [
+                ["Couverture", couverture],
+                ["Tendance", tendance],
+                ["Indice qualite", indice_qualite],
+                ["Anomalies critiques", anomalies_critiques],
+            ],
+            colWidths=[doc.width * 0.35, doc.width * 0.65],
+        )
+        indic_table.setStyle(
+            TableStyle([
+                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#D6E4F0")),
+                ("BACKGROUND", (1, 0), (1, -1), colors.HexColor("#F2F2F2")),
+                ("TEXTCOLOR", (0, 0), (0, -1), colors.HexColor("#1F4E79")),
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.white),
+                ("BOX", (0, 0), (-1, -1), 0, colors.white),
+            ])
+        )
+        story.append(indic_table)
 
         story.append(Spacer(1, 12))
         story.append(Paragraph("Recommandations", styles["Heading2"]))
@@ -464,7 +615,10 @@ class RapportService:
             story.append(Spacer(1, 8))
             story.append(Paragraph("Actions recommandees", styles["Heading2"]))
             for rec in rapport.recommandations_qualite:
-                story.append(Paragraph(f"- {rec.titre} ({rec.priorite})", styles["Normal"]))
+                line = f"- {rec.titre or 'Action qualite'} ({rec.priorite or 'moyenne'})"
+                if rec.description:
+                    line += f" : {rec.description}"
+                story.append(Paragraph(line, styles["Normal"]))
 
         doc.build(story)
         buf.seek(0)
@@ -473,6 +627,8 @@ class RapportService:
     def exporter_rapport_qa_word(self, cahier_id: int, projet_id: int) -> bytes:
         try:
             from docx import Document
+            from docx.shared import Pt, RGBColor
+            from docx.enum.text import WD_ALIGN_PARAGRAPH
         except ImportError:
             raise HTTPException(
                 status_code=501,
@@ -480,31 +636,90 @@ class RapportService:
             )
 
         rapport = self.get_rapport_qa(cahier_id, projet_id)
+        indic = rapport.indicateurs
+
+        def set_run_style(run, bold=False, size=11, color="000000"):
+            run.bold = bold
+            run.font.size = Pt(size)
+            run.font.color.rgb = RGBColor(int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16))
+            run.font.name = "Arial"
+
+        def fmt_pct(value: Optional[float]) -> str:
+            if value is None:
+                return "0.0%"
+            return f"{float(value):.1f}%"
 
         doc = Document()
-        doc.add_heading(f"Rapport QA v{rapport.version}", 0)
-        doc.add_paragraph(f"Projet ID: {projet_id}")
-        doc.add_paragraph(f"Cahier ID: {cahier_id}")
-        doc.add_paragraph(f"Date: {rapport.dateGeneration}")
-        doc.add_paragraph(f"Statut: {rapport.statut}")
-        doc.add_paragraph(f"Taux de reussite: {rapport.tauxReussite}%")
-        doc.add_paragraph(f"Tests executes: {rapport.nombreTestsExecutes}")
-        doc.add_paragraph(f"Tests reussis: {rapport.nombreTestsReussis}")
-        doc.add_paragraph(f"Tests echoues: {rapport.nombreTestsEchoues}")
+        title = doc.add_paragraph()
+        title.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        run = title.add_run(f"Rapport QA v{rapport.version}")
+        set_run_style(run, bold=True, size=18, color="1F4E79")
 
-        if rapport.indicateurs:
-            doc.add_heading("Indicateurs", level=1)
-            doc.add_paragraph(f"Couverture: {rapport.indicateurs.tauxCouverture}%")
-            doc.add_paragraph(f"Tendance: {rapport.indicateurs.tendance}")
-            doc.add_paragraph(f"Indice qualite: {rapport.indicateurs.indiceQualite}")
+        meta = doc.add_paragraph(f"Projet ID: {projet_id} | Cahier ID: {cahier_id}")
+        meta2 = doc.add_paragraph(f"Date de generation: {rapport.dateGeneration}")
+        for p in (meta, meta2):
+            for r in p.runs:
+                set_run_style(r, size=10, color="595959")
 
-        doc.add_heading("Recommandations", level=1)
-        doc.add_paragraph(rapport.recommandations or "Aucune recommandation.")
+        kpi_table = doc.add_table(rows=2, cols=4)
+        kpi_table.style = "Table Grid"
+        headers = ["Taux de reussite", "Tests executes", "Tests reussis", "Tests echoues"]
+        values = [
+            fmt_pct(rapport.tauxReussite),
+            str(rapport.nombreTestsExecutes or 0),
+            str(rapport.nombreTestsReussis or 0),
+            str(rapport.nombreTestsEchoues or 0),
+        ]
+
+        for idx in range(4):
+            hcell = kpi_table.rows[0].cells[idx]
+            vcell = kpi_table.rows[1].cells[idx]
+            hcell.text = headers[idx]
+            vcell.text = values[idx]
+            for rr in hcell.paragraphs[0].runs:
+                set_run_style(rr, bold=True, size=10, color="1F4E79")
+            for rr in vcell.paragraphs[0].runs:
+                set_run_style(rr, bold=True, size=12, color="000000")
+
+        doc.add_paragraph()
+        h_indic = doc.add_heading("Indicateurs qualite", level=1)
+        for rr in h_indic.runs:
+            set_run_style(rr, bold=True, size=14, color="1F4E79")
+
+        indic_table = doc.add_table(rows=4, cols=2)
+        indic_table.style = "Table Grid"
+        indic_rows = [
+            ("Couverture", fmt_pct(indic.tauxCouverture if indic else 0.0)),
+            ("Tendance", (indic.tendance if indic and indic.tendance else "stable").capitalize()),
+            ("Indice qualite", f"{float(indic.indiceQualite or 0.0):.1f}/10" if indic else "0.0/10"),
+            ("Anomalies critiques", str(int(indic.nombreAnomaliesCritiques or 0)) if indic else "0"),
+        ]
+        for i, (label, value) in enumerate(indic_rows):
+            indic_table.rows[i].cells[0].text = label
+            indic_table.rows[i].cells[1].text = value
+            for rr in indic_table.rows[i].cells[0].paragraphs[0].runs:
+                set_run_style(rr, bold=True, size=10, color="1F4E79")
+            for rr in indic_table.rows[i].cells[1].paragraphs[0].runs:
+                set_run_style(rr, size=10, color="333333")
+
+        h_recos = doc.add_heading("Recommandations", level=1)
+        for rr in h_recos.runs:
+            set_run_style(rr, bold=True, size=14, color="1F4E79")
+        reco_para = doc.add_paragraph(rapport.recommandations or "Aucune recommandation.")
+        for rr in reco_para.runs:
+            set_run_style(rr, size=10, color="595959")
 
         if rapport.recommandations_qualite:
-            doc.add_heading("Actions recommandees", level=1)
+            h_actions = doc.add_heading("Actions recommandees", level=1)
+            for rr in h_actions.runs:
+                set_run_style(rr, bold=True, size=14, color="1F4E79")
             for rec in rapport.recommandations_qualite:
-                doc.add_paragraph(f"- {rec.titre} ({rec.priorite})")
+                line = f"- {rec.titre or 'Action qualite'} ({rec.priorite or 'moyenne'})"
+                if rec.description:
+                    line += f" : {rec.description}"
+                p = doc.add_paragraph(line)
+                for rr in p.runs:
+                    set_run_style(rr, size=10, color="333333")
 
         buf = io.BytesIO()
         doc.save(buf)

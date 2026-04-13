@@ -212,7 +212,13 @@ export default function EditCasTestModal({
     try {
       const payload = assignOnly
         ? { type_utilisateur: formData.type_utilisateur || "" }
-        : formData;
+        : (() => {
+            if (canAssignMember) {
+              return formData;
+            }
+            const { type_utilisateur: _ignoredTypeUtilisateur, ...rest } = formData;
+            return rest;
+          })();
       await updateCasTest(projectId, cahierId, casTest.id, payload);
       if (captureFile) {
         await uploadCasTestCapture(projectId, cahierId, casTest.id, captureFile);

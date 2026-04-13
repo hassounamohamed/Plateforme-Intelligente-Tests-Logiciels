@@ -346,6 +346,8 @@ export type PrioriteUS = "must_have" | "should_have" | "could_have" | "wont_have
 export type StatutUS = "to_do" | "in_progress" | "done";
 
 export interface UserStory {
+  end_date: string | number | Date;
+  end_date: import("react/jsx-runtime").JSX.Element;
   id: number;
   reference?: string;
   titre: string;

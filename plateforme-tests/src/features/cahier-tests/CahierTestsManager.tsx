@@ -40,6 +40,9 @@ interface CahierTestsManagerProps {
   readOnly?: boolean;
   canGenerate?: boolean;
   canAssignMember?: boolean;
+  showRapportPanel?: boolean;
+  rapportOnly?: boolean;
+  rapportReadOnly?: boolean;
 }
 
 export default function CahierTestsManager({
@@ -48,6 +51,9 @@ export default function CahierTestsManager({
   readOnly = false,
   canGenerate = true,
   canAssignMember = false,
+  showRapportPanel = true,
+  rapportOnly = false,
+  rapportReadOnly,
 }: CahierTestsManagerProps) {
   const confirmDialog = useConfirmDialog();
   const [cahier, setCahier] = useState<CahierTestGlobalDetail | null>(null);
@@ -420,6 +426,7 @@ export default function CahierTestsManager({
   return (
     <div className="space-y-6">
       {/* Header avec actions */}
+      {!rapportOnly && (
       <div className="bg-surface-dark rounded-lg border border-[#3b4754] p-6">
         <div className="flex items-center justify-between">
           <div>
@@ -550,9 +557,10 @@ export default function CahierTestsManager({
           </div>
         </div>
       </div>
+      )}
 
       {/* Rapport QA */}
-      {cahier && (
+      {showRapportPanel && cahier && (
         <RapportQAPanel
           projectId={projectId}
           projectName={projectName}
@@ -561,7 +569,7 @@ export default function CahierTestsManager({
           rapport={rapport}
           loading={rapportLoading}
           canGenerate={canGenerate}
-          readOnly={readOnly}
+          readOnly={rapportReadOnly ?? readOnly}
           generatingMode={generatingRapportMode}
           exporting={exportingRapport}
           updating={updatingRapport}
@@ -572,10 +580,10 @@ export default function CahierTestsManager({
       )}
 
       {/* Statistiques */}
-      {stats && <CahierStatistiques stats={stats} />}
+      {!rapportOnly && stats && <CahierStatistiques stats={stats} />}
 
       {/* Tableau des cas de tests */}
-      {cahier && (
+      {!rapportOnly && cahier && (
         <CasTestsTable
           projectId={projectId}
           cahierId={cahier.id}

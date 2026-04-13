@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { ProjectSelectorCard } from "@/components/dashboard/ProjectSelectorCard";
 import { Modal } from "@/components/Modal";
 import { ROUTES } from "@/lib/constants";
 import { getMyProjectsAsMember } from "@/features/projects/api";
@@ -355,6 +356,7 @@ export default function SprintsPage() {
     { href: `${ROUTES.SCRUM_MASTER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.SCRUM_MASTER}/user-stories`, icon: "description", label: "User Stories" },
     { href: `${ROUTES.SCRUM_MASTER}/team`, icon: "groups", label: "Équipe" },
+    { href: `${ROUTES.SCRUM_MASTER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.SCRUM_MASTER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
@@ -452,33 +454,19 @@ export default function SprintsPage() {
       <div className="max-w-350 mx-auto flex flex-col gap-6">
         {/* Project Selector */}
         {projects.length > 0 && !isProjectTabView && (
-          <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-4">
-            <label className="text-slate-600 dark:text-[#9dabb9] text-sm font-bold mb-2 block">Projet</label>
-            <select
-              value={selectedProject || ""}
-              onChange={(e) => {
-                const value = e.target.value;
-
-                if (!value) {
-                  setSelectedProject(null);
-                  setSprints([]);
-                  setError(null);
-                  return;
-                }
-
-                const targetUrl = `${ROUTES.SCRUM_MASTER}/sprints?project=${value}`;
-                window.open(targetUrl, "_blank", "noopener,noreferrer");
-              }}
-              className="w-full bg-white dark:bg-[#283039] border border-slate-300 dark:border-[#3b4754] rounded-lg px-4 py-2 text-slate-900 dark:text-white focus:outline-none focus:border-primary"
-            >
-              <option value="">Choisir un projet</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.nom}
-                </option>
-              ))}
-            </select>
-          </div>
+          <ProjectSelectorCard
+            projects={projects.map((project) => ({ id: project.id, nom: project.nom }))}
+            selectedProjectId={selectedProject}
+            selectedProjectName={selectedProjectData?.nom ?? null}
+            onSelectProject={(projectId) => {
+              const targetUrl = `${ROUTES.SCRUM_MASTER}/sprints?project=${projectId}`;
+              window.open(targetUrl, "_blank", "noopener,noreferrer");
+            }}
+            badgeText="Consultation des sprints"
+            title="Projet"
+            description="Choisissez un projet pour l'ouvrir dans un nouvel onglet avec ses sprints."
+            placeholder="-- Choisir un projet --"
+          />
         )}
 
         {!isLoading && projects.length === 0 && !error && (

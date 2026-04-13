@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { ProjectSelectorCard } from "@/components/dashboard/ProjectSelectorCard";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ROUTES } from "@/lib/constants";
 import { getMyProjectsAsMember } from "@/features/projects/api";
@@ -26,6 +27,7 @@ export default function BacklogPage() {
   });
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
+  const selectedProjectData = projects.find((project) => project.id === selectedProject) ?? null;
 
   useEffect(() => {
     loadProjects();
@@ -91,6 +93,7 @@ export default function BacklogPage() {
     { href: `${ROUTES.SCRUM_MASTER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.SCRUM_MASTER}/user-stories`, icon: "description", label: "User Stories" },
     { href: `${ROUTES.SCRUM_MASTER}/team`, icon: "groups", label: "Équququipe" },
+    { href: `${ROUTES.SCRUM_MASTER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.SCRUM_MASTER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
@@ -216,20 +219,16 @@ export default function BacklogPage() {
       <div className="max-w-350 mx-auto flex flex-col gap-6">
         {/* Project Selector */}
         {projects.length > 0 && (
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-4">
-            <label className="text-[#9dabb9] text-sm font-bold mb-2 block">Projet</label>
-            <select
-              value={selectedProject || ""}
-              onChange={(e) => setSelectedProject(Number(e.target.value))}
-              className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
-            >
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.nom}
-                </option>
-              ))}
-            </select>
-          </div>
+          <ProjectSelectorCard
+            projects={projects.map((project) => ({ id: project.id, nom: project.nom }))}
+            selectedProjectId={selectedProject}
+            selectedProjectName={selectedProjectData?.nom ?? null}
+            onSelectProject={(projectId) => setSelectedProject(projectId)}
+            badgeText="Consultation du backlog"
+            title="Projet"
+            description="Sélectionnez le projet dont vous voulez gérer le backlog."
+            placeholder="-- Sélectionnez un projet --"
+          />
         )}
 
         {/* Indicateurs */}
