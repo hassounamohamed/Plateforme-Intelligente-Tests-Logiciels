@@ -94,29 +94,90 @@ PILT est une plateforme QA conçue pour les équipes Agile. Elle couvre la gesti
 **Déploiement**
 - `docker-compose.yml` orchestre le backend, le frontend, PostgreSQL et Nginx
 
-**Architecture**
+### C4 - Contexte
+
+```mermaid
+flowchart LR
+  PO[Product Owner]
+  SM[Scrum Master]
+  QA[Testeur QA]
+  DEV[Développeur]
+  ADMIN[Super Administrateur]
+  PILT((PILT))
+  AI[OpenRouter / IA]
+
+  PO --> PILT
+  SM --> PILT
+  QA --> PILT
+  DEV --> PILT
+  ADMIN --> PILT
+  PILT --> AI
 ```
-┌─────────────────┐
-│   Frontend      │
-│   (Next.js)     │
-│   Port 3000     │
-└────────┬────────┘
-         │ HTTP/REST
-         │ JWT Auth
-         │
-┌────────▼────────┐
-│   Backend       │
-│   (FastAPI)     │
-│   Port 8000     │
-└────────┬────────┘
-         │ SQL
-         │
-┌────────▼────────┐
-│   Database      │
-│   (PostgreSQL)   │
-│   Port 5432     │
-└─────────────────┘
+
+La plateforme sert les cinq rôles métiers et consomme un service IA externe pour la génération de tests et de contenus QA.
+
+### C4 - Conteneurs
+
+```mermaid
+flowchart LR
+  User[Utilisateur métier]
+  FE[Frontend Next.js 16.1]
+  BE[Backend FastAPI]
+  DB[(PostgreSQL)]
+  AI[OpenRouter / IA]
+  NGINX[Nginx]
+
+  User --> NGINX
+  NGINX --> FE
+  FE -->|HTTP/REST + JWT| BE
+  BE -->|SQLAlchemy / SQL| DB
+  BE -->|Appels IA| AI
 ```
+
+Le frontend porte les parcours métier et l'affichage des dashboards. Le backend expose les API, la logique métier, l'authentification et la persistance. PostgreSQL stocke les données applicatives. Nginx sert de point d'entrée HTTP.
+
+### C4 - Composants principaux
+
+```mermaid
+flowchart TB
+  subgraph Frontend[Frontend Next.js]
+    AuthPages[Pages auth / sélection de rôle]
+    Dashboards[Dashboards par rôle]
+    TestViews[Vues cahier / exécutions / rapports]
+    ApiClient[Client API Axios]
+  end
+
+  subgraph Backend[Backend FastAPI]
+    AuthAPI[API auth / rôles]
+    ProjectAPI[API projets / modules / user stories]
+    TestAPI[API cahier de tests / tests unitaires]
+    ReportAPI[API rapports QA]
+    AIService[Service génération IA]
+    DomainServices[Services métier]
+    Repositories[Repositories]
+  end
+
+  DB[(PostgreSQL)]
+  AI[OpenRouter / IA]
+
+  AuthPages --> ApiClient
+  Dashboards --> ApiClient
+  TestViews --> ApiClient
+  ApiClient --> AuthAPI
+  ApiClient --> ProjectAPI
+  ApiClient --> TestAPI
+  ApiClient --> ReportAPI
+
+  AuthAPI --> DomainServices
+  ProjectAPI --> DomainServices
+  TestAPI --> DomainServices
+  ReportAPI --> DomainServices
+  AIService --> AI
+  DomainServices --> Repositories
+  Repositories --> DB
+```
+
+Le frontend consomme un client API unique. Côté backend, les composants se regroupent en API de domaine, services métier, repositories et service IA, ce qui isole la logique de suivi des tests du transport HTTP.
 
 ## 📦 Prérequis
 
