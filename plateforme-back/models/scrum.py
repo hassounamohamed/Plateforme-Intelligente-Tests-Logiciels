@@ -95,6 +95,7 @@ class UserStory(Base):
     assignee = relationship("Utilisateur", back_populates="userstories_assignee", foreign_keys=[assigneeId])
     sprints = relationship("Sprint", secondary=sprint_userstory, back_populates="userstories")
     cahier_tests = relationship("CahierDeTests", back_populates="userstory", uselist=False, cascade="all, delete-orphan")
+    cas_tests = relationship("CasTest", back_populates="user_story")
     attachments = relationship("Attachment", back_populates="userstory", cascade="all, delete-orphan",
                                foreign_keys="Attachment.userstory_id")
 

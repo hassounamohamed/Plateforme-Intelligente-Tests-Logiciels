@@ -53,6 +53,7 @@ class CasTest(Base):
 
     id        = Column(Integer, primary_key=True, index=True)
     cahier_id = Column(Integer, ForeignKey("cahier_test_global.id", ondelete="CASCADE"), nullable=False)
+    user_story_id = Column(Integer, ForeignKey("userstory.id"), nullable=False)
 
     sprint           = Column(String(100), nullable=True)
     module           = Column(String(200), nullable=True)
@@ -81,6 +82,7 @@ class CasTest(Base):
 
     # ── Relations ──────────────────────────────────────────────────────────
     cahier = relationship("CahierTestGlobal", back_populates="cas_tests")
+    user_story = relationship("UserStory", back_populates="cas_tests")
     history_entries = relationship(
         "CasTestHistory",
         back_populates="cas_test",

@@ -26,7 +26,7 @@ class CahierTestGlobalRepository(BaseRepository[CahierTestGlobal]):
     def get_detail(self, cahier_id: int) -> Optional[CahierTestGlobal]:
         return (
             self.db.query(CahierTestGlobal)
-            .options(joinedload(CahierTestGlobal.cas_tests))
+            .options(joinedload(CahierTestGlobal.cas_tests).joinedload(CasTest.user_story))
             .filter(CahierTestGlobal.id == cahier_id)
             .first()
         )
@@ -34,7 +34,7 @@ class CahierTestGlobalRepository(BaseRepository[CahierTestGlobal]):
     def get_detail_by_projet(self, projet_id: int) -> Optional[CahierTestGlobal]:
         return (
             self.db.query(CahierTestGlobal)
-            .options(joinedload(CahierTestGlobal.cas_tests))
+            .options(joinedload(CahierTestGlobal.cas_tests).joinedload(CasTest.user_story))
             .filter(CahierTestGlobal.projet_id == projet_id)
             .first()
         )
@@ -91,6 +91,7 @@ class CahierTestGlobalRepository(BaseRepository[CahierTestGlobal]):
     def add_cas_test(
         self,
         cahier_id: int,
+        user_story_id: int,
         sprint: str,
         module: str,
         sous_module: str,
@@ -106,6 +107,7 @@ class CahierTestGlobalRepository(BaseRepository[CahierTestGlobal]):
     ) -> CasTest:
         cas = CasTest(
             cahier_id=cahier_id,
+            user_story_id=user_story_id,
             sprint=sprint,
             module=module,
             sous_module=sous_module,
@@ -128,6 +130,7 @@ class CahierTestGlobalRepository(BaseRepository[CahierTestGlobal]):
     def get_cas_test(self, cas_id: int, cahier_id: int) -> Optional[CasTest]:
         return (
             self.db.query(CasTest)
+            .options(joinedload(CasTest.user_story))
             .filter(CasTest.id == cas_id, CasTest.cahier_id == cahier_id)
             .first()
         )
@@ -146,6 +149,7 @@ class CahierTestGlobalRepository(BaseRepository[CahierTestGlobal]):
     def list_cas_tests(self, cahier_id: int) -> List[CasTest]:
         return (
             self.db.query(CasTest)
+            .options(joinedload(CasTest.user_story))
             .filter(CasTest.cahier_id == cahier_id)
             .order_by(CasTest.ordre.asc())
             .all()

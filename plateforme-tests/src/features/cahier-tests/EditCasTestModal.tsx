@@ -17,6 +17,7 @@ import {
   suggestBugFields,
 } from "./api";
 import axiosInstance from "@/lib/axios";
+import { AxiosError } from "axios";
 
 interface EditCasTestModalProps {
   projectId: number;
@@ -89,7 +90,7 @@ export default function EditCasTestModal({
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [casTest.id, casTest.capture]);
+  }, [projectId, cahierId, casTest.id, casTest.capture]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -142,8 +143,9 @@ export default function EditCasTestModal({
       try {
         const data = await getCasTestHistory(projectId, cahierId, casTest.id);
         setHistoryEntries(data);
-      } catch (err: any) {
-        setHistoryError(err?.response?.data?.detail || "Impossible de charger l'historique.");
+      } catch (err: unknown) {
+        const apiError = err as AxiosError<{ detail?: string }>;
+        setHistoryError(apiError.response?.data?.detail || "Impossible de charger l'historique.");
       } finally {
         setLoadingHistory(false);
       }
@@ -216,7 +218,8 @@ export default function EditCasTestModal({
             if (canAssignMember) {
               return formData;
             }
-            const { type_utilisateur: _ignoredTypeUtilisateur, ...rest } = formData;
+            const rest = { ...formData };
+            delete rest.type_utilisateur;
             return rest;
           })();
       await updateCasTest(projectId, cahierId, casTest.id, payload);
@@ -228,8 +231,9 @@ export default function EditCasTestModal({
       }
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "Erreur lors de la mise à jour");
+    } catch (err: unknown) {
+      const apiError = err as AxiosError<{ detail?: string }>;
+      setError(apiError.response?.data?.detail || "Erreur lors de la mise à jour");
     } finally {
       setLoading(false);
     }
@@ -373,18 +377,19 @@ export default function EditCasTestModal({
 
           <div className="p-6 space-y-5">
             {/* Informations générales */}
-            <div className="grid grid-cols-3 gap-4 p-4 bg-[#283039] rounded-lg">
+            <div className="grid grid-cols-2 gap-4 p-4 bg-[#283039] rounded-lg">
               <div>
                 <p className="text-xs text-[#9dabb9] uppercase mb-1">Sprint</p>
                 <p className="text-white font-medium">{casTest.sprint || "—"}</p>
               </div>
               <div>
-                <p className="text-xs text-[#9dabb9] uppercase mb-1">Module</p>
-                <p className="text-white font-medium">{casTest.module || "—"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-[#9dabb9] uppercase mb-1">Sous-module</p>
-                <p className="text-white font-medium">{casTest.sous_module || "—"}</p>
+                <p className="text-xs text-[#9dabb9] uppercase mb-1">User Story</p>
+                <p className="text-white font-medium">
+                  {casTest.user_story_reference || `US-${casTest.user_story_id}`}
+                </p>
+                {casTest.user_story_titre && (
+                  <p className="text-xs text-[#9dabb9] mt-1">{casTest.user_story_titre}</p>
+                )}
               </div>
             </div>
 
@@ -533,18 +538,15 @@ export default function EditCasTestModal({
           )}
 
           {/* Informations générales (non modifiables) */}
-          <div className="grid grid-cols-3 gap-4 p-4 bg-[#283039] rounded">
+          <div className="grid grid-cols-2 gap-4 p-4 bg-[#283039] rounded">
             <div>
               <p className="text-xs text-[#9dabb9]">Sprint</p>
               <p className="font-medium text-white">{casTest.sprint || "N/A"}</p>
             </div>
             <div>
-              <p className="text-xs text-[#9dabb9]">Module</p>
-              <p className="font-medium text-white">{casTest.module || "N/A"}</p>
-            </div>
-            <div>
-              <p className="text-xs text-[#9dabb9]">Sous-module</p>
-              <p className="font-medium text-white">{casTest.sous_module || "N/A"}</p>
+              <p className="text-xs text-[#9dabb9]">User Story</p>
+              <p className="font-medium text-white">{casTest.user_story_reference || `US-${casTest.user_story_id}`}</p>
+              
             </div>
           </div>
 
@@ -656,7 +658,7 @@ export default function EditCasTestModal({
           {/* Logs d'Erreur */}
           <div>
             <label className="block text-sm font-medium text-white mb-1">
-              Logs d'Erreur
+              Logs d&apos;Erreur
             </label>
             <textarea
               rows={3}
@@ -665,7 +667,7 @@ export default function EditCasTestModal({
               onChange={(e) =>
                 setFormData({ ...formData, fail_logs: e.target.value })
               }
-              placeholder="Collez les logs d'erreur si le test a échoué"
+              placeholder="Collez les logs d&apos;erreur si le test a échoué"
             />
           </div>
 

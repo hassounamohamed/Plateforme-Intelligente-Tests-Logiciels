@@ -8,6 +8,7 @@ import {
   AIGeneration,
   AIGenerationDetail,
   GenererCahierPayload,
+  CahierUserStoryOption,
   CreateCasTestPayload,
   UpdateCasTestPayload,
   ValiderCahierPayload,
@@ -116,6 +117,15 @@ export const listCasTests = async (
 ): Promise<CasTest[]> => {
   const response = await axiosInstance.get<CasTest[]>(
     `${getCahierBase(projectId)}/${cahierId}/cas-tests`
+  );
+  return response.data;
+};
+
+export const getCahierUserStories = async (
+  projectId: number
+): Promise<CahierUserStoryOption[]> => {
+  const response = await axiosInstance.get<CahierUserStoryOption[]>(
+    `${getCahierBase(projectId)}/user-stories`
   );
   return response.data;
 };

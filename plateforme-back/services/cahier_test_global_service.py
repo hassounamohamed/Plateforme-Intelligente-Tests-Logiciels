@@ -50,9 +50,10 @@ Règles strictes :
 1. Pour chaque user story, génère entre 2 et 5 cas de tests couvrant \
    les scénarios nominaux, alternatifs et d'erreur.
 2. Chaque cas de test doit contenir :
+    - user_story_id   : identifiant numérique exact de la user story source (obligatoire)
    - sprint          : nom du sprint (ex: "Sprint 1")
-   - module          : nom du module lié à la user story
-   - sous_module     : sous-composant ou fonctionnalité précise
+    - module          : nom du module lié à la user story (optionnel)
+    - sous_module     : sous-composant ou fonctionnalité précise (optionnel)
    - test_ref        : référence unique au format TC-XXX (ex: TC-001)
    - test_case       : titre court et descriptif du cas de test
    - test_purpose    : objectif du test en une phrase
@@ -62,12 +63,14 @@ Règles strictes :
     - execution_time_seconds: durée estimée d'exécution en secondes (entier >= 0)
    - type_test       : "Manuel" ou "Automatisé"
 3. Les test_ref doivent être séquentiels et uniques (TC-001, TC-002, …).
-4. Retourne UNIQUEMENT un objet JSON valide, aucun texte avant ou après.
+4. Le user_story_id doit obligatoirement correspondre à une user story fournie dans le contexte.
+5. Retourne UNIQUEMENT un objet JSON valide, aucun texte avant ou après.
 
 Structure JSON attendue :
 {
   "cas_tests": [
     {
+            "user_story_id": 14,
       "sprint": "Sprint 1",
       "module": "Authentification",
       "sous_module": "Connexion",
@@ -173,7 +176,65 @@ class CahierTestGlobalService:
             return None
         return max(0, parsed)
 
-    # ─── Points d'entrée publics ──────────────────────────────────────────
+    def _resolve_user_story_id(
+        self,
+        projet_id: int,
+        user_story_id: Optional[int],
+        module: Optional[str] = None,
+        sous_module: Optional[str] = None,
+        test_case: Optional[str] = None,
+    ) -> int:
+        us_query = (
+            self.db.query(UserStory)
+            .join(Epic, UserStory.epic_id == Epic.id)
+            .join(Module, Epic.module_id == Module.id)
+            .filter(Module.projet_id == projet_id)
+        )
+
+        if user_story_id is not None:
+            us = us_query.filter(UserStory.id == user_story_id).first()
+            if not us:
+                raise HTTPException(
+                    status_code=422,
+                    detail="user_story_id invalide: la user story n'appartient pas au projet.",
+                )
+            return us.id
+
+        user_stories = us_query.all()
+        if not user_stories:
+            raise HTTPException(
+                status_code=422,
+                detail="Aucune user story disponible dans ce projet pour lier le cas de test.",
+            )
+
+        module_l = (module or "").strip().lower()
+        sous_module_l = (sous_module or "").strip().lower()
+        test_case_l = (test_case or "").strip().lower()
+        for us in user_stories:
+            title_l = (us.titre or "").lower()
+            desc_l = (us.description or "").lower()
+            module_name_l = ((us.epic.module.nom if us.epic and us.epic.module else "") or "").lower()
+
+            if module_l and module_l in module_name_l:
+                return us.id
+            if sous_module_l and sous_module_l in title_l:
+                return us.id
+            if test_case_l and (test_case_l in title_l or (title_l and title_l in test_case_l) or test_case_l in desc_l):
+                return us.id
+
+        return user_stories[0].id
+
+    @staticmethod
+    def _attach_user_story_display(cas: CasTest) -> CasTest:
+        user_story = getattr(cas, "user_story", None)
+        cas.user_story_reference = user_story.reference if user_story else None
+        cas.user_story_titre = user_story.titre if user_story else None
+        return cas
+
+    def _attach_user_story_display_many(self, cases: List[CasTest]) -> List[CasTest]:
+        return [self._attach_user_story_display(cas) for cas in cases]
+
+    # ── Points d'entrée publics ──────────────────────────────────────────
 
     def demarrer_generation(
         self,
@@ -263,9 +324,17 @@ class CahierTestGlobalService:
             .first()
         )
         next_order = (last_cas.ordre + 1) if last_cas else 1
+        resolved_user_story_id = self._resolve_user_story_id(
+            projet_id=projet_id,
+            user_story_id=data.user_story_id,
+            module=data.module,
+            sous_module=data.sous_module,
+            test_case=data.test_case,
+        )
 
         cas = self.repo.add_cas_test(
             cahier_id=cahier_id,
+            user_story_id=resolved_user_story_id,
             sprint=data.sprint or "",
             module=data.module or "",
             sous_module=data.sous_module or "",
@@ -296,7 +365,7 @@ class CahierTestGlobalService:
             cahier.version = self._increment_cahier_minor_version(cahier.version)
 
         self.repo.recalculer_stats(cahier_id)
-        return cas
+        return self._attach_user_story_display(cas)
 
     def _increment_cahier_minor_version(self, current_version: Optional[str]) -> str:
         """
@@ -435,7 +504,7 @@ class CahierTestGlobalService:
 
         if data.statut_test is not None:
             self.repo.recalculer_stats(cahier_id)
-        return updated
+        return self._attach_user_story_display(updated)
 
     def list_cas_test_history(self, cahier_id: int, cas_id: int, projet_id: int) -> list:
         self._verifier_appartenance(cahier_id, projet_id)
@@ -472,6 +541,7 @@ class CahierTestGlobalService:
         cahier = self.repo.get_detail_by_projet(projet_id)
         if not cahier:
             raise HTTPException(status_code=404, detail="Aucun cahier de tests généré pour ce projet.")
+        self._attach_user_story_display_many(cahier.cas_tests or [])
         return cahier
 
     def get_statistiques(self, projet_id: int) -> dict:
@@ -750,7 +820,30 @@ class CahierTestGlobalService:
 
     def list_cas_tests(self, cahier_id: int, projet_id: int) -> list:
         self._verifier_appartenance(cahier_id, projet_id)
-        return self.repo.list_cas_tests(cahier_id)
+        cases = self.repo.list_cas_tests(cahier_id)
+        return self._attach_user_story_display_many(cases)
+
+    def list_user_stories_for_cahier(self, projet_id: int) -> list[dict]:
+        user_stories = (
+            self.db.query(UserStory)
+            .join(Epic, UserStory.epic_id == Epic.id)
+            .join(Module, Epic.module_id == Module.id)
+            .options(joinedload(UserStory.sprint), joinedload(UserStory.epic).joinedload(Epic.module))
+            .filter(Module.projet_id == projet_id)
+            .order_by(UserStory.id.asc())
+            .all()
+        )
+
+        return [
+            {
+                "id": us.id,
+                "reference": us.reference,
+                "titre": us.titre,
+                "sprint_nom": us.sprint.nom if us.sprint else None,
+                "module_nom": us.epic.module.nom if (us.epic and us.epic.module) else None,
+            }
+            for us in user_stories
+        ]
 
     def get_assignable_members(self, cahier_id: int, projet_id: int) -> list[dict]:
         self._verifier_appartenance(cahier_id, projet_id)
@@ -1097,8 +1190,16 @@ class CahierTestGlobalService:
             resultat_attendu = cas.resultat_attendu or ""
             execution_time_seconds = self._parse_execution_time_seconds(cas.execution_time_seconds)
             type_test = cas.type_test if cas.type_test in ("Manuel", "Automatisé") else "Manuel"
+            resolved_user_story_id = self._resolve_user_story_id(
+                projet_id=gen.projet_id,
+                user_story_id=cas.user_story_id,
+                module=module,
+                sous_module=sous_module,
+                test_case=test_case,
+            )
             self.repo.add_cas_test(
                 cahier_id=cahier.id,
+                user_story_id=resolved_user_story_id,
                 sprint=sprint,
                 module=module,
                 sous_module=sous_module,
@@ -1506,7 +1607,8 @@ class CahierTestGlobalService:
             for us in sprint.userstories:
                 module_nom     = us.epic.module.nom if (us.epic and us.epic.module) else "N/A"
                 epic_nom       = us.epic.titre if us.epic else "N/A"
-                lines.append(f"  [US-{us.id}] Module: {module_nom} | Epic: {epic_nom}")
+                us_ref = us.reference or f"US-{us.id}"
+                lines.append(f"  [US-{us.id}] Reference: {us_ref} | Module: {module_nom} | Epic: {epic_nom}")
                 lines.append(f"    Titre       : {us.titre}")
                 if us.description:
                     lines.append(f"    Description : {us.description}")

@@ -31,6 +31,7 @@ class GenererCahierRequest(BaseModel):
 
 class CreateCasTestRequest(BaseModel):
     """Créer un nouveau cas de test manuel dans le cahier."""
+    user_story_id:    Optional[int] = None
     sprint:           Optional[str] = None
     module:           Optional[str] = None
     sous_module:      Optional[str] = None
@@ -173,6 +174,9 @@ class CasTestResponse(BaseModel):
 
     id:               int
     cahier_id:        int
+    user_story_id:    int
+    user_story_reference: Optional[str] = None
+    user_story_titre: Optional[str] = None
     sprint:           Optional[str]
     module:           Optional[str]
     sous_module:      Optional[str]
@@ -215,6 +219,14 @@ class CahierTestGlobalDetailResponse(CahierTestGlobalResponse):
     cas_tests: List[CasTestResponse] = []
 
 
+class UserStoryCahierResponse(BaseModel):
+    id: int
+    reference: Optional[str] = None
+    titre: str
+    sprint_nom: Optional[str] = None
+    module_nom: Optional[str] = None
+
+
 class StatistiquesResponse(BaseModel):
     version:            str
     nombre_total:       int
@@ -232,6 +244,7 @@ class StatistiquesResponse(BaseModel):
 
 class AICasTest(BaseModel):
     """Un cas de test tel que retourné par le modèle IA."""
+    user_story_id:    Optional[int] = None
     sprint:           str  = ""
     module:           str  = ""
     sous_module:      str  = ""

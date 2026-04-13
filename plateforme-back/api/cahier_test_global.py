@@ -48,6 +48,7 @@ from schemas.cahier_test_global import (
     GenererCahierRequest,
     ImportExcelResponse,
     StatistiquesResponse,
+    UserStoryCahierResponse,
     UpdateCasTestRequest,
     ValiderCahierRequest,
 )
@@ -327,6 +328,20 @@ async def get_statistiques(
 
 
 # ─── Cas de tests ─────────────────────────────────────────────────────────────
+
+@router.get(
+    "/user-stories",
+    response_model=List[UserStoryCahierResponse],
+    summary="Lister les user stories du projet pour rattacher les cas de tests",
+)
+async def list_user_stories_for_cahier(
+    projet_id: int,
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: CahierTestGlobalService = Depends(get_service),
+):
+    _ensure_cahier_allowed_role(current_user)
+    return svc.list_user_stories_for_cahier(projet_id)
+
 
 @router.get(
     "/{cahier_id}/cas-tests",

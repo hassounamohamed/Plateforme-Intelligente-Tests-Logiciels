@@ -24,27 +24,55 @@ from services.api_key_service import APIKeyService
 from services.notification_service import NotificationService
 
 RAPPORT_QA_SYSTEM_PROMPT = """\
-Tu es un lead QA.
-Tu recois les metriques d'execution du cahier de tests.
-Tu dois generer une evaluation qualite concise et actionnable.
+Tu es un lead QA expert.
 
-Retourne UNIQUEMENT un JSON valide:
+Tu recois les metriques d'execution d'un cahier de tests.
+Ta mission est de generer une analyse qualite claire, professionnelle et actionnable.
+
+Regles importantes:
+- Sois factuel et base-toi uniquement sur les donnees fournies
+- Evite toute duplication dans les recommandations
+- Regroupe les idees similaires en une seule recommandation
+- Priorise les actions (haute > moyenne > basse)
+- Donne des recommandations concretes, precises et orientees execution
+- Redige de maniere professionnelle (niveau entreprise SaaS)
+- Mets en avant les risques (stabilite, regression, couverture)
+- Priorise les problemes critiques (auth, paiement, securite, permissions, token)
+
+Retourne UNIQUEMENT un JSON valide (sans texte autour):
 {
-  \"statut\": \"brouillon|valide\",
-  \"recommandations\": \"texte\",
-  \"tendance\": \"amelioration|stable|degradation\",
-  \"indice_qualite\": 0.0,
-  \"nombre_anomalies_critiques\": 0,
-  \"recommandations_qualite\": [
-    {
-      \"titre\": \"texte\",
-      \"description\": \"texte\",
-      \"categorie\": \"stabilite|fiabilite|couverture|performance|process\",
-      \"priorite\": \"basse|moyenne|haute\",
-      \"impact\": 0.0
-    }
-  ]
+    \"statut\": \"brouillon|valide\",
+    \"recommandations\": \"resume global de la qualite + actions principales\",
+    \"indicateur_qualite\": {
+        \"taux_couverture\": 0.0,
+        \"taux_reussite\": 0.0,
+        \"nombre_anomalies\": 0,
+        \"nombre_anomalies_critiques\": 0,
+        \"indice_qualite\": 0.0,
+        \"tendance\": \"amelioration|stable|degradation\"
+    },
+    \"recommandations_qualite\": [
+        {
+            \"titre\": \"texte court\",
+            \"description\": \"action detaillee et concrete\",
+            \"categorie\": \"stabilite|fiabilite|couverture|performance|process\",
+            \"priorite\": \"haute|moyenne|basse\",
+            \"impact\": 0.0
+        }
+    ]
 }
+
+Contraintes:
+- indicateur_qualite.indice_qualite est un float entre 0.0 et 10.0
+- recommandations_qualite[].impact est un float entre 0.0 et 1.0
+- nombre_anomalies et nombre_anomalies_critiques sont des entiers >= 0
+- Fournis entre 3 et 6 recommandations_qualite, sans duplication
+- Trie recommandations_qualite par priorite (haute -> moyenne -> basse), puis impact desc
+- Si nombre_anomalies_critiques > 0, la tendance ne peut pas etre amelioration
+- Si taux_reussite est faible ou si tests critiques echoues/bloques, les premieres recommandations doivent etre de priorite haute
+
+Compatibilite:
+- Si tu utilises un champ \"analyse\", son contenu doit etre identique a \"recommandations\".
 """
 
 
@@ -224,6 +252,9 @@ class RapportService:
         return {
             "statut": "brouillon",
             "recommandations": "\n".join(recommandations),
+            "taux_couverture": stats["taux_couverture"],
+            "taux_reussite": stats["taux_reussite"],
+            "nombre_anomalies": stats["anomalies_total"],
             "tendance": tendance,
             "indice_qualite": indice_qualite,
             "nombre_anomalies_critiques": stats["critical_failed"],
@@ -333,7 +364,10 @@ class RapportService:
                 end = content.rfind("}") + 1
                 parsed = json.loads(content[start:end])
 
-            items = parsed.get("recommandations_qualite") or []
+            items = parsed.get("recommandations_qualite")
+            if not isinstance(items, list):
+                alt_items = parsed.get("recommandations")
+                items = alt_items if isinstance(alt_items, list) else []
             normalized_items = []
             for item in items[:6]:
                 normalized_items.append(
@@ -346,12 +380,41 @@ class RapportService:
                     }
                 )
 
+            indicateur_payload = parsed.get("indicateur_qualite") or {}
+            tendances_alias = {
+                "improving": "amelioration",
+                "improvement": "amelioration",
+                "degrading": "degradation",
+                "declining": "degradation",
+            }
+            tendance_value = str(
+                indicateur_payload.get("tendance")
+                or parsed.get("tendance")
+                or "stable"
+            ).strip().lower()
+            tendance_value = tendances_alias.get(tendance_value, tendance_value)
+
+            summary_text = parsed.get("recommandations")
+            if not isinstance(summary_text, str):
+                summary_text = parsed.get("analyse") if isinstance(parsed.get("analyse"), str) else ""
+
             return {
                 "statut": str(parsed.get("statut") or "brouillon"),
-                "recommandations": str(parsed.get("recommandations") or "").strip(),
-                "tendance": str(parsed.get("tendance") or "stable"),
-                "indice_qualite": float(parsed.get("indice_qualite") or 0.0),
-                "nombre_anomalies_critiques": int(parsed.get("nombre_anomalies_critiques") or 0),
+                "recommandations": str(summary_text or "").strip(),
+                "taux_couverture": float(indicateur_payload.get("taux_couverture") or stats["taux_couverture"]),
+                "taux_reussite": float(indicateur_payload.get("taux_reussite") or stats["taux_reussite"]),
+                "nombre_anomalies": int(indicateur_payload.get("nombre_anomalies") or stats["anomalies_total"]),
+                "tendance": tendance_value,
+                "indice_qualite": float(
+                    indicateur_payload.get("indice_qualite")
+                    or parsed.get("indice_qualite")
+                    or 0.0
+                ),
+                "nombre_anomalies_critiques": int(
+                    indicateur_payload.get("nombre_anomalies_critiques")
+                    or parsed.get("nombre_anomalies_critiques")
+                    or 0
+                ),
                 "recommandations_qualite": normalized_items,
             }
         except Exception:
@@ -384,9 +447,9 @@ class RapportService:
         cahier = self._verifier_appartenance(cahier_id, projet_id)
         stats = self._compute_rapport_stats(cahier)
 
-        generated_payload = self._build_manual_recommendations(stats)
-        if mode_generation == "ai":
-            generated_payload = self._generer_rapport_qa_ia(cahier, stats, user_id)
+        # Toujours tenter l'IA pour produire indicateur qualite + recommandations qualite.
+        # En cas d'echec IA, _generer_rapport_qa_ia applique un fallback manuel.
+        generated_payload = self._generer_rapport_qa_ia(cahier, stats, user_id)
 
         if recommandations and mode_generation == "manuelle":
             generated_payload["recommandations"] = recommandations
@@ -423,9 +486,9 @@ class RapportService:
             indicateur = IndicateurQualite(rapportId=rapport.id)
             self.db.add(indicateur)
 
-        indicateur.tauxCouverture = stats["taux_couverture"]
-        indicateur.tauxReussite = stats["taux_reussite"]
-        indicateur.nombreAnomalies = stats["anomalies_total"]
+        indicateur.tauxCouverture = float(generated_payload.get("taux_couverture") or stats["taux_couverture"])
+        indicateur.tauxReussite = float(generated_payload.get("taux_reussite") or stats["taux_reussite"])
+        indicateur.nombreAnomalies = int(generated_payload.get("nombre_anomalies") or stats["anomalies_total"])
         indicateur.nombreAnomaliesCritiques = max(0, int(generated_payload.get("nombre_anomalies_critiques") or 0))
         indicateur.indiceQualite = max(0.0, float(generated_payload.get("indice_qualite") or 0.0))
         indicateur.tendance = generated_payload.get("tendance") or "stable"

@@ -65,53 +65,6 @@ function formatDate(value?: string): string {
   }).format(date);
 }
 
-function normalizeTrendLabel(value: string | null | undefined, executed: number): string {
-  if (executed === 0) return "Non evaluable";
-  if (!value) return "Stable";
-  const lower = value.toLowerCase();
-  if (lower.includes("amelior")) return "Amelioration";
-  if (lower.includes("degrad")) return "Degradation";
-  return "Stable";
-}
-
-function computeDecision(passRate: number, executed: number, failed: number, critical: number): "GO" | "NO GO" {
-  if (executed === 0) return "NO GO";
-  if (critical > 0) return "NO GO";
-  if (failed > 0) return "NO GO";
-  if (passRate < 75) return "NO GO";
-  return "GO";
-}
-
-function buildTrendData(executed: number, failed: number): Array<{ label: string; exec: number; fail: number }> {
-  const labels = ["J-5", "J-4", "J-3", "J-2", "J-1", "J"];
-  if (executed <= 0) {
-    return labels.map((label) => ({ label, exec: 0, fail: 0 }));
-  }
-
-  const execPoints = [
-    Math.max(0, Math.round(executed * 0.15)),
-    Math.max(0, Math.round(executed * 0.3)),
-    Math.max(0, Math.round(executed * 0.42)),
-    Math.max(0, Math.round(executed * 0.58)),
-    Math.max(0, Math.round(executed * 0.76)),
-    executed,
-  ];
-  const failPoints = [
-    Math.max(0, Math.round(failed * 0.12)),
-    Math.max(0, Math.round(failed * 0.2)),
-    Math.max(0, Math.round(failed * 0.36)),
-    Math.max(0, Math.round(failed * 0.52)),
-    Math.max(0, Math.round(failed * 0.75)),
-    failed,
-  ];
-
-  return labels.map((label, i) => ({
-    label,
-    exec: execPoints[i],
-    fail: failPoints[i],
-  }));
-}
-
 export default function RapportQAPanel({
   projectId,
   projectName,
@@ -147,23 +100,16 @@ export default function RapportQAPanel({
     const executed = rapport?.nombreTestsExecutes ?? 0;
     const passed = rapport?.nombreTestsReussis ?? 0;
     const failed = rapport?.nombreTestsEchoues ?? 0;
-    const blocked = Math.max(0, executed - passed - failed);
-    const passRate = rapport?.tauxReussite ?? (executed > 0 ? (passed / executed) * 100 : 0);
-    const coverage = rapport?.indicateurs?.tauxCouverture ?? 0;
-    const estimatedTotal = coverage > 0 ? Math.round((executed * 100) / coverage) : executed;
-    const total = Math.max(executed, estimatedTotal);
-    const pending = Math.max(0, total - executed);
+    const blocked = rapport?.nombreTestsBloques ?? 0;
+    const total = rapport?.nombreTestsTotal ?? executed;
+    const pending = rapport?.nombreTestsNonExecutes ?? 0;
+    const passRate = rapport?.passRate ?? 0;
+    const coverage = rapport?.coverageRate ?? 0;
     const critical = rapport?.indicateurs?.nombreAnomaliesCritiques ?? 0;
-    const decision = computeDecision(passRate, executed, failed, critical);
-    const trend = normalizeTrendLabel(rapport?.indicateurs?.tendance, executed);
-    const qualityIndex = rapport?.indicateurs?.indiceQualite ?? 0;
-
-    const observation =
-      executed === 0
-        ? "Aucun test n'a ete execute. Le rapport ne peut pas etre evalue."
-        : failed > 0 || critical > 0
-          ? "Des echecs et/ou anomalies critiques sont detectes. Stabilisation requise avant release."
-          : "Les indicateurs sont stables avec une execution exploitable pour validation de release.";
+    const decision = (rapport?.decisionRelease as "GO" | "NO GO" | undefined) ?? "NO GO";
+    const trend = rapport?.trendDisplay ?? "Stable";
+    const qualityIndex = rapport?.qualityIndex ?? 0;
+    const observation = rapport?.observationMessage || "";
 
     const pieData = [
       { name: "Reussis", value: passed, color: CHART_COLORS.passed },
@@ -182,12 +128,8 @@ export default function RapportQAPanel({
       },
     ];
 
-    const trendData = buildTrendData(executed, failed);
-
-    const recommendations = (rapport?.recommandations || "")
-      .split(/\r?\n/)
-      .map((line) => line.replace(/^[-*]\s*/, "").trim())
-      .filter(Boolean);
+    const trendData = rapport?.trendData || [];
+    const recommendations = rapport?.recommendationLines || [];
 
     return {
       executed,

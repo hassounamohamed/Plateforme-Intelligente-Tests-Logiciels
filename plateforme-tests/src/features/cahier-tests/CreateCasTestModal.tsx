@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { CreateCasTestPayload, TypeTest } from "@/types";
-import { createCasTest } from "./api";
+import { CahierUserStoryOption, CreateCasTestPayload, TypeTest } from "@/types";
+import { createCasTest, getCahierUserStories } from "./api";
 import { getProjectById } from "@/features/projects/api";
+import { AxiosError } from "axios";
 
 interface CreateCasTestModalProps {
   projectId: number;
@@ -14,10 +15,9 @@ interface CreateCasTestModalProps {
 }
 
 const initialState: CreateCasTestPayload = {
+  user_story_id: undefined,
   test_case: "",
   sprint: "",
-  module: "",
-  sous_module: "",
   test_purpose: "",
   type_utilisateur: "",
   scenario_test: "",
@@ -37,7 +37,9 @@ export default function CreateCasTestModal({
   const [formData, setFormData] = useState<CreateCasTestPayload>(initialState);
   const [loading, setLoading] = useState(false);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [loadingUserStories, setLoadingUserStories] = useState(false);
   const [projectMembers, setProjectMembers] = useState<{ id: number; nom: string; email: string }[]>([]);
+  const [userStories, setUserStories] = useState<CahierUserStoryOption[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,7 +58,21 @@ export default function CreateCasTestModal({
       }
     };
 
+    const loadUserStories = async () => {
+      setLoadingUserStories(true);
+      try {
+        const stories = await getCahierUserStories(projectId);
+        setUserStories(stories);
+      } catch (err) {
+        console.error("Erreur lors du chargement des user stories:", err);
+        setUserStories([]);
+      } finally {
+        setLoadingUserStories(false);
+      }
+    };
+
     loadProjectMembers();
+    loadUserStories();
   }, [isOpen, projectId]);
 
   const updateField = (field: keyof CreateCasTestPayload, value: string) => {
@@ -77,17 +93,24 @@ export default function CreateCasTestModal({
       setError("Le champ 'Cas de Test' est obligatoire.");
       return;
     }
+    if (!formData.user_story_id) {
+      setError("La sélection d'une User Story est obligatoire.");
+      return;
+    }
 
     setLoading(true);
     try {
+      const selectedStory = userStories.find((story) => story.id === formData.user_story_id);
       await createCasTest(projectId, cahierId, {
         ...formData,
+        sprint: selectedStory?.sprint_nom || formData.sprint,
         test_case: formData.test_case.trim(),
       });
       onSuccess();
       handleClose();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "Erreur lors de la création du cas de test");
+    } catch (err: unknown) {
+      const apiError = err as AxiosError<{ detail?: string }>;
+      setError(apiError.response?.data?.detail || "Erreur lors de la création du cas de test");
     } finally {
       setLoading(false);
     }
@@ -119,35 +142,38 @@ export default function CreateCasTestModal({
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-white mb-1">Sprint</label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md"
-                value={formData.sprint || ""}
-                onChange={(e) => updateField("sprint", e.target.value)}
-                placeholder="Ex: Sprint 1"
-              />
+              <label className="block text-sm font-medium text-white mb-1">User Story *</label>
+              <select
+                className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md disabled:opacity-60"
+                value={formData.user_story_id ?? ""}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    user_story_id: e.target.value ? Number(e.target.value) : undefined,
+                  }))
+                }
+                disabled={loadingUserStories}
+              >
+                <option value="">{loadingUserStories ? "Chargement des user stories..." : "Sélectionner une user story"}</option>
+                {userStories.map((story) => (
+                  <option key={story.id} value={story.id}>
+                    {(story.reference || `US-${story.id}`)} 
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-white mb-1">Module</label>
+              <label className="block text-sm font-medium text-white mb-1">Sprint (auto)</label>
               <input
                 type="text"
-                className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md"
-                value={formData.module || ""}
-                onChange={(e) => updateField("module", e.target.value)}
-                placeholder="Ex: Authentification"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-white mb-1">Sous-module</label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md"
-                value={formData.sous_module || ""}
-                onChange={(e) => updateField("sous_module", e.target.value)}
-                placeholder="Ex: Connexion"
+                className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md opacity-80"
+                value={
+                  userStories.find((story) => story.id === formData.user_story_id)?.sprint_nom ||
+                  "Non assignée"
+                }
+                readOnly
               />
             </div>
           </div>
