@@ -88,12 +88,15 @@ export default function RapportQAPanel({
   const [editVersion, setEditVersion] = React.useState("");
   const [editStatut, setEditStatut] = React.useState("brouillon");
   const [editRecommandations, setEditRecommandations] = React.useState("");
+  const [showRecommendationsEditor, setShowRecommendationsEditor] = React.useState(false);
+  const [recommendationsDraft, setRecommendationsDraft] = React.useState("");
 
   React.useEffect(() => {
     if (!rapport) return;
     setEditVersion(rapport.version || "");
     setEditStatut(rapport.statut || "brouillon");
     setEditRecommandations(rapport.recommandations || "");
+    setRecommendationsDraft(rapport.recommandations || "");
   }, [rapport]);
 
   const computed = useMemo(() => {
@@ -435,7 +438,46 @@ export default function RapportQAPanel({
             </div>
 
             <div className="bg-[#1f2a36] border border-[#334155] rounded-lg p-4">
-              <h4 className="text-white font-semibold mb-3">Actions recommandees</h4>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h4 className="text-white font-semibold">Actions recommandees</h4>
+                <button
+                  onClick={() => {
+                    if (showRecommendationsEditor) {
+                      setRecommendationsDraft(rapport.recommandations || "");
+                    }
+                    setShowRecommendationsEditor((prev) => !prev);
+                  }}
+                  disabled={readOnly || updating}
+                  className="px-3 py-1.5 border border-[#3b4754] rounded-md text-white text-sm hover:bg-[#283039] disabled:opacity-50"
+                >
+                  {showRecommendationsEditor ? "Annuler" : "Modifier"}
+                </button>
+              </div>
+              {showRecommendationsEditor && (
+                <div className="mb-4 space-y-2">
+                  <textarea
+                    value={recommendationsDraft}
+                    onChange={(e) => setRecommendationsDraft(e.target.value)}
+                    rows={5}
+                    placeholder="Saisir les actions recommandees..."
+                    className="w-full px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-md text-white"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() =>
+                        onUpdate({
+                          recommandations: recommendationsDraft || undefined,
+                        })
+                      }
+                      disabled={updating || readOnly}
+                      className="px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-700 font-medium disabled:opacity-50"
+                    >
+                      {updating ? "Enregistrement..." : "Enregistrer"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 {computed.recommendations.length > 0 ? (
                   computed.recommendations.map((line, index) => (

@@ -30,6 +30,7 @@ export default function UserStoriesPage() {
   const [modules, setModules] = useState<Module[]>([]);
   const [selectedModule, setSelectedModule] = useState<number | null>(null);
   const [epics, setEpics] = useState<Epic[]>([]);
+  const [allEpics, setAllEpics] = useState<Epic[]>([]);
   const [selectedEpic, setSelectedEpic] = useState<number | null>(null);
   const [userStories, setUserStories] = useState<UserStory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,6 +83,7 @@ export default function UserStoriesPage() {
       setSelectedEpic(null);
       setModules([]);
       setEpics([]);
+      setAllEpics([]);
       setUserStories([]);
 
       loadModules(selectedProject);
@@ -90,7 +92,7 @@ export default function UserStoriesPage() {
   }, [selectedProject]);
 
   useEffect(() => {
-    if (selectedProject && selectedModule) {
+    if (selectedProject) {
       // Reset epic-dependent data when module changes
       setSelectedEpic(null);
       setEpics([]);
@@ -101,7 +103,7 @@ export default function UserStoriesPage() {
   }, [selectedProject, selectedModule]);
 
   useEffect(() => {
-    if (selectedProject && selectedModule && selectedEpic) {
+    if (selectedProject) {
       loadUserStories(selectedProject, selectedModule, selectedEpic);
     }
   }, [selectedProject, selectedModule, selectedEpic, filters]);
@@ -140,17 +142,17 @@ export default function UserStoriesPage() {
     try {
       const modulesData = await getModules(projectId);
       setModules(modulesData);
-      if (modulesData.length > 0) {
-        setSelectedModule(modulesData[0].id);
-      } else {
-        setSelectedModule(null);
-        setSelectedEpic(null);
+      setSelectedModule(null);
+      setSelectedEpic(null);
+      if (modulesData.length === 0) {
         setEpics([]);
+        setAllEpics([]);
         setUserStories([]);
       }
     } catch (error: any) {
       console.error("Erreur chargement modules:", error);
       setModules([]);
+      setAllEpics([]);
       setSelectedModule(null);
       setSelectedEpic(null);
       setEpics([]);
@@ -158,29 +160,75 @@ export default function UserStoriesPage() {
     }
   };
 
-  const loadEpics = async (projectId: number, moduleId: number) => {
+  const loadEpics = async (projectId: number, moduleId: number | null) => {
     try {
+      if (!moduleId) {
+        const modulesData = modules.length > 0 ? modules : await getModules(projectId);
+        if (modulesData.length === 0) {
+          setEpics([]);
+          setAllEpics([]);
+          setSelectedEpic(null);
+          return;
+        }
+
+        const epicLists = await Promise.all(
+          modulesData.map((module) => getEpics(projectId, module.id).catch(() => []))
+        );
+        const epicsData = epicLists.flat();
+        setAllEpics(epicsData);
+        setEpics(epicsData);
+        setSelectedEpic(null);
+        return;
+      }
+
       const epicsData = await getEpics(projectId, moduleId);
       setEpics(epicsData);
-      if (epicsData.length > 0) {
-        setSelectedEpic(epicsData[0].id);
-      } else {
-        setSelectedEpic(null);
-        setUserStories([]);
-      }
+      setAllEpics((prev) => (prev.length > 0 ? prev : epicsData));
+      setSelectedEpic(null);
     } catch (error: any) {
       console.error("Erreur chargement epics:", error);
       setEpics([]);
+      setAllEpics([]);
       setSelectedEpic(null);
       setUserStories([]);
     }
   };
 
-  const loadUserStories = async (projectId: number, moduleId: number, epicId: number) => {
+  const loadUserStories = async (
+    projectId: number,
+    moduleId: number | null,
+    epicId: number | null
+  ) => {
     setIsLoading(true);
     setError(null);
     try {
-      const usData = await getUserStories(projectId, moduleId, epicId, filters.statut as any);
+      const statut = filters.statut as any;
+      let usData: UserStory[] = [];
+
+      if (moduleId && epicId) {
+        usData = await getUserStories(projectId, moduleId, epicId, statut);
+      } else if (moduleId && !epicId) {
+        const epicsData = epics.length > 0 ? epics : await getEpics(projectId, moduleId);
+        const results = await Promise.all(
+          epicsData.map((epic) =>
+            getUserStories(projectId, moduleId, epic.id, statut).catch(() => [])
+          )
+        );
+        usData = results.flat();
+      } else {
+        const modulesData = modules.length > 0 ? modules : await getModules(projectId);
+        const epicLists = await Promise.all(
+          modulesData.map((module) => getEpics(projectId, module.id).catch(() => []))
+        );
+        const epicsData = epicLists.flat();
+        const results = await Promise.all(
+          epicsData.map((epic) =>
+            getUserStories(projectId, epic.module_id, epic.id, statut).catch(() => [])
+          )
+        );
+        usData = results.flat();
+      }
+
       let filteredData = usData;
       
       // Filter by priority if selected
@@ -203,11 +251,18 @@ export default function UserStoriesPage() {
     }
   };
 
-  const handleChangeStatus = async (usId: number, newStatus: "to_do" | "in_progress" | "done") => {
-    if (!selectedProject || !selectedModule || !selectedEpic) return;
+  const handleChangeStatus = async (
+    usId: number,
+    newStatus: "to_do" | "in_progress" | "done",
+    epicId?: number
+  ) => {
+    if (!selectedProject) return;
+    const resolvedEpicId = epicId ?? selectedEpic;
+    const resolvedModuleId = selectedModule ?? allEpics.find((epic) => epic.id === resolvedEpicId)?.module_id;
+    if (!resolvedModuleId || !resolvedEpicId) return;
     setActionLoading(usId);
     try {
-      await changeUserStoryStatus(selectedProject, selectedModule, selectedEpic, usId, { statut: newStatus });
+      await changeUserStoryStatus(selectedProject, resolvedModuleId, resolvedEpicId, usId, { statut: newStatus });
       await loadUserStories(selectedProject, selectedModule, selectedEpic);
     } catch (error: any) {
       alert("Erreur lors du changement de statut: " + (error.response?.data?.detail || error.message));
@@ -216,11 +271,14 @@ export default function UserStoriesPage() {
     }
   };
 
-  const handleAssignAssignee = async (usId: number, memberId: number) => {
-    if (!selectedProject || !selectedModule || !selectedEpic) return;
+  const handleAssignAssignee = async (usId: number, memberId: number, epicId?: number) => {
+    if (!selectedProject) return;
+    const resolvedEpicId = epicId ?? selectedEpic;
+    const resolvedModuleId = selectedModule ?? allEpics.find((epic) => epic.id === resolvedEpicId)?.module_id;
+    if (!resolvedModuleId || !resolvedEpicId) return;
     setAssigneeLoading(usId);
     try {
-      await assignAssignee(selectedProject, selectedModule, selectedEpic, usId, { assignee_id: memberId });
+      await assignAssignee(selectedProject, resolvedModuleId, resolvedEpicId, usId, { assignee_id: memberId });
       await loadUserStories(selectedProject, selectedModule, selectedEpic);
     } catch (error: any) {
       alert("Erreur lors de l'assignation: " + (error.response?.data?.detail || error.message));
@@ -229,11 +287,14 @@ export default function UserStoriesPage() {
     }
   };
 
-  const handleRemoveAssignee = async (usId: number) => {
-    if (!selectedProject || !selectedModule || !selectedEpic) return;
+  const handleRemoveAssignee = async (usId: number, epicId?: number) => {
+    if (!selectedProject) return;
+    const resolvedEpicId = epicId ?? selectedEpic;
+    const resolvedModuleId = selectedModule ?? allEpics.find((epic) => epic.id === resolvedEpicId)?.module_id;
+    if (!resolvedModuleId || !resolvedEpicId) return;
     setAssigneeLoading(usId);
     try {
-      await removeAssignee(selectedProject, selectedModule, selectedEpic, usId);
+      await removeAssignee(selectedProject, resolvedModuleId, resolvedEpicId, usId);
       await loadUserStories(selectedProject, selectedModule, selectedEpic);
     } catch (error: any) {
       alert("Erreur lors du retrait de l'assignee: " + (error.response?.data?.detail || error.message));
@@ -242,11 +303,14 @@ export default function UserStoriesPage() {
     }
   };
 
-  const handleAssignDeveloper = async (usId: number, memberId: number) => {
-    if (!selectedProject || !selectedModule || !selectedEpic) return;
+  const handleAssignDeveloper = async (usId: number, memberId: number, epicId?: number) => {
+    if (!selectedProject) return;
+    const resolvedEpicId = epicId ?? selectedEpic;
+    const resolvedModuleId = selectedModule ?? allEpics.find((epic) => epic.id === resolvedEpicId)?.module_id;
+    if (!resolvedModuleId || !resolvedEpicId) return;
     setDeveloperLoading(usId);
     try {
-      await assignDeveloper(selectedProject, selectedModule, selectedEpic, usId, { developeur_id: memberId });
+      await assignDeveloper(selectedProject, resolvedModuleId, resolvedEpicId, usId, { developeur_id: memberId });
       await loadUserStories(selectedProject, selectedModule, selectedEpic);
     } catch (error: any) {
       alert("Erreur lors de l'assignation du développeur: " + (error.response?.data?.detail || error.message));
@@ -255,11 +319,14 @@ export default function UserStoriesPage() {
     }
   };
 
-  const handleAssignTester = async (usId: number, memberId: number) => {
-    if (!selectedProject || !selectedModule || !selectedEpic) return;
+  const handleAssignTester = async (usId: number, memberId: number, epicId?: number) => {
+    if (!selectedProject) return;
+    const resolvedEpicId = epicId ?? selectedEpic;
+    const resolvedModuleId = selectedModule ?? allEpics.find((epic) => epic.id === resolvedEpicId)?.module_id;
+    if (!resolvedModuleId || !resolvedEpicId) return;
     setTesterLoading(usId);
     try {
-      await assignTester(selectedProject, selectedModule, selectedEpic, usId, { testeur_id: memberId });
+      await assignTester(selectedProject, resolvedModuleId, resolvedEpicId, usId, { testeur_id: memberId });
       await loadUserStories(selectedProject, selectedModule, selectedEpic);
     } catch (error: any) {
       alert("Erreur lors de l'assignation du testeur: " + (error.response?.data?.detail || error.message));
@@ -285,15 +352,18 @@ export default function UserStoriesPage() {
     };
   };
 
-  const openDetailsModal = async (usId: number) => {
-    if (!selectedProject || !selectedModule || !selectedEpic) return;
+  const openDetailsModal = async (usId: number, epicId?: number) => {
+    if (!selectedProject) return;
+    const resolvedEpicId = epicId ?? selectedEpic;
+    const resolvedModuleId = selectedModule ?? allEpics.find((epic) => epic.id === resolvedEpicId)?.module_id;
+    if (!resolvedModuleId || !resolvedEpicId) return;
 
     setDetailsError(null);
     setIsDetailsLoading(true);
     setDetailsUserStory(null);
 
     try {
-      const userStory = await getUserStoryById(selectedProject, selectedModule, selectedEpic, usId);
+      const userStory = await getUserStoryById(selectedProject, resolvedModuleId, resolvedEpicId, usId);
       setDetailsUserStory(userStory);
     } catch (error: any) {
       setDetailsError(error.response?.data?.detail || "Impossible de charger les détails de la user story");
@@ -308,15 +378,18 @@ export default function UserStoriesPage() {
     setIsDetailsLoading(false);
   };
 
-  const openEditModal = async (usId: number) => {
-    if (!selectedProject || !selectedModule || !selectedEpic) return;
+  const openEditModal = async (usId: number, epicId?: number) => {
+    if (!selectedProject) return;
+    const resolvedEpicId = epicId ?? selectedEpic;
+    const resolvedModuleId = selectedModule ?? allEpics.find((epic) => epic.id === resolvedEpicId)?.module_id;
+    if (!resolvedModuleId || !resolvedEpicId) return;
 
     setEditError(null);
     setIsEditLoading(true);
     setEditUserStory(null);
 
     try {
-      const userStory = await getUserStoryById(selectedProject, selectedModule, selectedEpic, usId);
+      const userStory = await getUserStoryById(selectedProject, resolvedModuleId, resolvedEpicId, usId);
       const parsed = parseDescriptionParts(userStory.description);
 
       setEditUserStory(userStory);
@@ -345,7 +418,10 @@ export default function UserStoriesPage() {
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProject || !selectedModule || !selectedEpic || !editUserStory) return;
+    if (!selectedProject || !editUserStory) return;
+    const resolvedEpicId = selectedEpic ?? editUserStory.epic_id;
+    const resolvedModuleId = selectedModule ?? allEpics.find((epic) => epic.id === resolvedEpicId)?.module_id;
+    if (!resolvedModuleId || !resolvedEpicId) return;
 
     if (!editTitre.trim() || !editRole.trim() || !editAction.trim()) {
       setEditError("Veuillez remplir tous les champs obligatoires");
@@ -356,7 +432,7 @@ export default function UserStoriesPage() {
     setEditError(null);
 
     try {
-      await updateUserStory(selectedProject, selectedModule, selectedEpic, editUserStory.id, {
+      await updateUserStory(selectedProject, resolvedModuleId, resolvedEpicId, editUserStory.id, {
         titre: editTitre.trim(),
         role: editRole.trim(),
         action: editAction.trim(),
@@ -382,6 +458,7 @@ export default function UserStoriesPage() {
     { href: `${ROUTES.SCRUM_MASTER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.SCRUM_MASTER}/user-stories`, icon: "description", label: "User Stories" },
     { href: `${ROUTES.SCRUM_MASTER}/team`, icon: "groups", label: "Équipe" },
+    { href: `${ROUTES.SCRUM_MASTER}/cahier-tests`, icon: "menu_book", label: "Cahier de Tests" },
     { href: `${ROUTES.SCRUM_MASTER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.SCRUM_MASTER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
@@ -456,7 +533,7 @@ export default function UserStoriesPage() {
     >
       <div className="max-w-350 mx-auto flex flex-col gap-6">
         {/* Selectors */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="flex flex-col gap-4">
           {/* Project Selector */}
           {projects.length > 0 ? (
             <ProjectSelectorCard
@@ -481,78 +558,85 @@ export default function UserStoriesPage() {
             </div>
           )}
 
-          {/* Module Selector */}
-          {modules.length > 0 && (
-            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-4">
-              <label className="text-[#9dabb9] text-sm font-bold mb-2 block">Module</label>
-              <select
-                value={selectedModule || ""}
-                onChange={(e) => {
-                  const moduleId = Number(e.target.value);
-                  setSelectedEpic(null);
-                  setUserStories([]);
-                  setSelectedModule(moduleId);
-                }}
-                className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
-              >
-                {modules.map((module) => (
-                  <option key={module.id} value={module.id}>
-                    {module.nom}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Module Selector */}
+            {modules.length > 0 && (
+              <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-4">
+                <label className="text-[#9dabb9] text-sm font-bold mb-2 block">Module</label>
+                <select
+                  value={selectedModule || ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const moduleId = value ? Number(value) : null;
+                    setSelectedEpic(null);
+                    setSelectedModule(moduleId);
+                  }}
+                  className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
+                >
+                  <option value="">Tous les modules</option>
+                  {modules.map((module) => (
+                    <option key={module.id} value={module.id}>
+                      {module.nom}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-          {/* Epic Selector */}
-          {epics.length > 0 && (
-            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-4">
-              <label className="text-[#9dabb9] text-sm font-bold mb-2 block">Epic</label>
-              <select
-                value={selectedEpic || ""}
-                onChange={(e) => setSelectedEpic(Number(e.target.value))}
-                className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
-              >
-                {epics.map((epic) => (
-                  <option key={epic.id} value={epic.id}>
-                    {epic.titre}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
+            {/* Epic Selector */}
+            {epics.length > 0 && (
+              <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-4">
+                <label className="text-[#9dabb9] text-sm font-bold mb-2 block">Epic</label>
+                <select
+                  value={selectedEpic || ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSelectedEpic(value ? Number(value) : null);
+                  }}
+                  className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
+                >
+                  <option value="">Tous les epics</option>
+                  {epics.map((epic) => (
+                    <option key={epic.id} value={epic.id}>
+                      {epic.titre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-        {/* Filters */}
-        <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-4">
-          <h3 className="text-white text-sm font-bold mb-3">Filtres</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-[#9dabb9] text-xs font-bold mb-1 block">Statut</label>
-              <select
-                value={filters.statut}
-                onChange={(e) => setFilters({ ...filters, statut: e.target.value })}
-                className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
-              >
-                <option value="">Tous</option>
-                <option value="to_do">À faire</option>
-                <option value="in_progress">En cours</option>
-                <option value="done">Terminées</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-[#9dabb9] text-xs font-bold mb-1 block">Priorité</label>
-              <select
-                value={filters.priorite}
-                onChange={(e) => setFilters({ ...filters, priorite: e.target.value })}
-                className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
-              >
-                <option value="">Toutes</option>
-                <option value="must_have">Must Have</option>
-                <option value="should_have">Should Have</option>
-                <option value="could_have">Could Have</option>
-                <option value="wont_have">Won't Have</option>
-              </select>
+            {/* Filters */}
+            <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-4">
+              <h3 className="text-white text-sm font-bold mb-3">Filtres</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[#9dabb9] text-xs font-bold mb-1 block">Statut</label>
+                  <select
+                    value={filters.statut}
+                    onChange={(e) => setFilters({ ...filters, statut: e.target.value })}
+                    className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
+                  >
+                    <option value="">Tous</option>
+                    <option value="to_do">À faire</option>
+                    <option value="in_progress">En cours</option>
+                    <option value="done">Terminées</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[#9dabb9] text-xs font-bold mb-1 block">Priorité</label>
+                  <select
+                    value={filters.priorite}
+                    onChange={(e) => setFilters({ ...filters, priorite: e.target.value })}
+                    className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
+                  >
+                    <option value="">Toutes</option>
+                    <option value="must_have">Must Have</option>
+                    <option value="should_have">Should Have</option>
+                    <option value="could_have">Could Have</option>
+                    <option value="wont_have">Won't Have</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -576,29 +660,12 @@ export default function UserStoriesPage() {
         )}
 
         {/* User Stories List */}
-        {!isLoading && !selectedEpic && (
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-8 text-center">
-            <span className="material-symbols-outlined text-[#9dabb9] text-5xl mb-4">description</span>
-            <h3 className="text-white text-lg font-bold mb-2">Sélectionnez un Epic</h3>
-            <p className="text-[#9dabb9] text-sm mb-4">
-              Choisissez un projet, module et epic pour voir les user stories
-            </p>
-            <Link
-              href={`${ROUTES.SCRUM_MASTER}/user-stories/new${selectedProject && selectedModule && selectedEpic ? `?project=${selectedProject}&module=${selectedModule}&epic=${selectedEpic}` : ''}`}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors shadow-lg shadow-primary/20"
-            >
-              <span className="material-symbols-outlined text-[18px]">add</span>
-              <span>Nouvelle User Story</span>
-            </Link>
-          </div>
-        )}
-
-        {!isLoading && selectedEpic && userStories.length === 0 && (
+        {!isLoading && userStories.length === 0 && (
           <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-8 text-center">
             <span className="material-symbols-outlined text-[#9dabb9] text-5xl mb-4">description</span>
             <h3 className="text-white text-lg font-bold mb-2">Aucune user story</h3>
             <p className="text-[#9dabb9] text-sm mb-4">
-              Décomposez cet epic en créant des user stories
+              Aucune user story ne correspond aux filtres ou à la sélection actuelle.
             </p>
             <Link
               href={`${ROUTES.SCRUM_MASTER}/user-stories/new${selectedProject && selectedModule && selectedEpic ? `?project=${selectedProject}&module=${selectedModule}&epic=${selectedEpic}` : ''}`}
@@ -690,7 +757,7 @@ export default function UserStoriesPage() {
                   
                   <div className="flex items-center gap-2 ml-4">
                     <button
-                      onClick={() => openDetailsModal(us.id)}
+                      onClick={() => openDetailsModal(us.id, us.epic_id)}
                       className="p-2 hover:bg-primary/20 rounded-lg transition-colors"
                       title="Voir détails"
                       type="button"
@@ -698,7 +765,7 @@ export default function UserStoriesPage() {
                       <span className="material-symbols-outlined text-primary">visibility</span>
                     </button>
                     <button
-                      onClick={() => openEditModal(us.id)}
+                      onClick={() => openEditModal(us.id, us.epic_id)}
                       className="p-2 hover:bg-primary/20 rounded-lg transition-colors"
                       title="Modifier"
                       type="button"
@@ -727,7 +794,7 @@ export default function UserStoriesPage() {
                         disabled={developerLoading === us.id}
                         onChange={(e) => {
                           const val = e.target.value;
-                          if (val) handleAssignDeveloper(us.id, Number(val));
+                          if (val) handleAssignDeveloper(us.id, Number(val), us.epic_id);
                         }}
                         className="bg-[#283039] border border-[#3b4754] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-primary disabled:opacity-50"
                       >
@@ -760,7 +827,7 @@ export default function UserStoriesPage() {
                         disabled={testerLoading === us.id}
                         onChange={(e) => {
                           const val = e.target.value;
-                          if (val) handleAssignTester(us.id, Number(val));
+                          if (val) handleAssignTester(us.id, Number(val), us.epic_id);
                         }}
                         className="bg-[#283039] border border-[#3b4754] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-emerald-400 disabled:opacity-50"
                       >
@@ -788,7 +855,7 @@ export default function UserStoriesPage() {
                           {us.assignee.nom}
                         </span>
                         <button
-                          onClick={() => handleRemoveAssignee(us.id)}
+                          onClick={() => handleRemoveAssignee(us.id, us.epic_id)}
                           disabled={assigneeLoading === us.id}
                           className="p-1 hover:bg-red-500/20 rounded transition-colors"
                           title="Retirer l'assignee"
@@ -807,7 +874,7 @@ export default function UserStoriesPage() {
                         disabled={assigneeLoading === us.id}
                         onChange={(e) => {
                           const val = e.target.value;
-                          if (val) handleAssignAssignee(us.id, Number(val));
+                          if (val) handleAssignAssignee(us.id, Number(val), us.epic_id);
                         }}
                         className="bg-[#283039] border border-[#3b4754] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-purple-400 disabled:opacity-50"
                       >
@@ -828,7 +895,7 @@ export default function UserStoriesPage() {
                 <div className="flex items-center gap-2 pt-4 border-t border-[#3b4754]">
                   <span className="text-[#9dabb9] text-xs font-bold mr-2">Changer le statut:</span>
                   <button
-                    onClick={() => handleChangeStatus(us.id, "to_do")}
+                    onClick={() => handleChangeStatus(us.id, "to_do", us.epic_id)}
                     disabled={actionLoading === us.id || us.statut === "to_do"}
                     className={`px-3 py-1 rounded text-xs font-bold transition-colors ${
                       us.statut === "to_do"
@@ -839,7 +906,7 @@ export default function UserStoriesPage() {
                     À faire
                   </button>
                   <button
-                    onClick={() => handleChangeStatus(us.id, "in_progress")}
+                    onClick={() => handleChangeStatus(us.id, "in_progress", us.epic_id)}
                     disabled={actionLoading === us.id || us.statut === "in_progress"}
                     className={`px-3 py-1 rounded text-xs font-bold transition-colors ${
                       us.statut === "in_progress"
@@ -850,7 +917,7 @@ export default function UserStoriesPage() {
                     En cours
                   </button>
                   <button
-                    onClick={() => handleChangeStatus(us.id, "done")}
+                    onClick={() => handleChangeStatus(us.id, "done", us.epic_id)}
                     disabled={actionLoading === us.id || us.statut === "done"}
                     className={`px-3 py-1 rounded text-xs font-bold transition-colors ${
                       us.statut === "done"
