@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import io
 import json
+import logging
 import os
 import re
 import time
@@ -38,6 +39,8 @@ from schemas.cahier_test_global import (
     CreateCasTestRequest,
     UpdateCasTestRequest,
 )
+
+logger = logging.getLogger(__name__)
 
 # ─── Prompt système ───────────────────────────────────────────────────────────
 
@@ -97,6 +100,28 @@ Sprints et User Stories :
 {sprints_content}
 
 Génère le cahier de tests complet en JSON selon le schéma demandé.
+"""
+
+USER_PROMPT_SINGLE_US_TEMPLATE = """\
+Voici le contexte du projet Scrum :
+
+Projet : {projet_nom}
+Description : {projet_description}
+
+Génère des cas de tests UNIQUEMENT pour cette user story :
+- user_story_id: {user_story_id}
+- reference: {user_story_reference}
+- titre: {user_story_titre}
+- description: {user_story_description}
+- criteres_acceptation: {user_story_criteres}
+- sprint: {sprint_nom}
+- module: {module_nom}
+- epic: {epic_nom}
+
+Contraintes supplémentaires :
+1) Retourne entre 2 et 5 cas de test pour CETTE user story uniquement.
+2) Tous les cas retournés doivent avoir user_story_id = {user_story_id}.
+3) Retourne UNIQUEMENT un JSON valide au format {{"cas_tests": [...]}}.
 """
 
 BUG_SUGGESTION_SYSTEM_PROMPT = """\
@@ -234,6 +259,30 @@ class CahierTestGlobalService:
     def _attach_user_story_display_many(self, cases: List[CasTest]) -> List[CasTest]:
         return [self._attach_user_story_display(cas) for cas in cases]
 
+    def _sync_existing_rapport_if_any(self, cahier_id: int, projet_id: int) -> None:
+        """
+        Met a jour automatiquement le rapport QA existant apres changement du cahier.
+        Silencieux en cas d'erreur pour ne pas bloquer la mise a jour du cas de test.
+        """
+        try:
+            from services.rapport_service import RapportService
+
+            RapportService(self.db).sync_rapport_with_cahier(cahier_id, projet_id)
+        except Exception as exc:
+            logger.warning(
+                "Rapport QA auto-sync skipped for cahier_id=%s projet_id=%s: %s",
+                cahier_id,
+                projet_id,
+                exc,
+            )
+
+    @staticmethod
+    def _version_sort_key(version: str) -> tuple[int, int, int]:
+        match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", (version or "").strip())
+        if not match:
+            return 0, 0, 0
+        return tuple(map(int, match.groups()))
+
     # ── Points d'entrée publics ──────────────────────────────────────────
 
     def demarrer_generation(
@@ -283,6 +332,7 @@ class CahierTestGlobalService:
                 self.db.add(cahier)
                 self.db.commit()
                 self.db.refresh(cahier)
+            self.repo.add_version_history(cahier.id, version, source="generation_manuelle")
             return cahier
 
         # Créer le job de génération IA (type=generate_tests)
@@ -305,6 +355,8 @@ class CahierTestGlobalService:
             self.db.refresh(cahier)
         else:
             cahier = self.repo.create_cahier(projet_id, user_id, version, ai_generation_id=gen.id)
+
+        self.repo.add_version_history(cahier.id, version, source="generation_ai")
 
         return gen
 
@@ -363,8 +415,12 @@ class CahierTestGlobalService:
         cahier = self.repo.get_by_id(cahier_id)
         if cahier:
             cahier.version = self._increment_cahier_minor_version(cahier.version)
+            self.db.commit()
+            self.db.refresh(cahier)
+            self.repo.add_version_history(cahier.id, cahier.version, source="edit_manuelle")
 
         self.repo.recalculer_stats(cahier_id)
+        self._sync_existing_rapport_if_any(cahier_id, projet_id)
         return self._attach_user_story_display(cas)
 
     def _increment_cahier_minor_version(self, current_version: Optional[str]) -> str:
@@ -427,7 +483,10 @@ class CahierTestGlobalService:
 
     def valider_cahier(self, cahier_id: int, projet_id: int, version: Optional[str]) -> CahierTestGlobal:
         self._verifier_appartenance(cahier_id, projet_id)
-        return self.repo.valider(cahier_id, version)
+        cahier = self.repo.valider(cahier_id, version)
+        if cahier:
+            self.repo.add_version_history(cahier.id, cahier.version, source="validation")
+        return cahier
 
     def update_cas_test(
         self,
@@ -436,6 +495,7 @@ class CahierTestGlobalService:
         projet_id: int,
         data: UpdateCasTestRequest,
         changed_by_id: Optional[int] = None,
+        sync_rapport: bool = True,
     ) -> CasTest:
         self._verifier_appartenance(cahier_id, projet_id)
         cas = self.repo.get_cas_test(cas_id, cahier_id)
@@ -504,6 +564,8 @@ class CahierTestGlobalService:
 
         if data.statut_test is not None:
             self.repo.recalculer_stats(cahier_id)
+            if sync_rapport:
+                self._sync_existing_rapport_if_any(cahier_id, projet_id)
         return self._attach_user_story_display(updated)
 
     def list_cas_test_history(self, cahier_id: int, cas_id: int, projet_id: int) -> list:
@@ -535,7 +597,22 @@ class CahierTestGlobalService:
         cahier = self.repo.get_by_projet(projet_id)
         if not cahier:
             raise HTTPException(status_code=404, detail="Aucun cahier de tests généré pour ce projet.")
+        self.repo.add_version_history(cahier.id, cahier.version, source="courante")
         return cahier
+
+    def list_cahier_versions(self, projet_id: int) -> list:
+        cahier = self.repo.get_by_projet(projet_id)
+        if not cahier:
+            raise HTTPException(status_code=404, detail="Aucun cahier de tests généré pour ce projet.")
+
+        self.repo.add_version_history(cahier.id, cahier.version, source="courante")
+        entries = self.repo.list_version_history(cahier.id)
+        entries_sorted = sorted(
+            entries,
+            key=lambda item: self._version_sort_key(item.version),
+            reverse=True,
+        )
+        return entries_sorted
 
     def get_cahier_detail(self, projet_id: int) -> CahierTestGlobal:
         cahier = self.repo.get_detail_by_projet(projet_id)
@@ -1109,12 +1186,17 @@ class CahierTestGlobalService:
                     projet_id=projet_id,
                     data=UpdateCasTestRequest(**payload),
                     changed_by_id=current_user.id,
+                    sync_rapport=False,
                 )
                 imported_count += 1
             except HTTPException as exc:
                 errors.append(f"Ligne {row} ({test_ref}): {exc.detail}")
             except Exception as exc:
                 errors.append(f"Ligne {row} ({test_ref}): {str(exc)}")
+
+        if imported_count > 0:
+            self.repo.recalculer_stats(cahier_id)
+            self._sync_existing_rapport_if_any(cahier_id, projet_id)
 
         return {
             "imported_count": imported_count,
@@ -1136,38 +1218,53 @@ class CahierTestGlobalService:
         gen = self.ai_repo.get_by_id(generation_id)
         projet = self.db.query(Projet).filter(Projet.id == gen.projet_id).first()
 
-        # ── Étape 2 : Récupérer sprints & user stories ─────────────────────
-        self.ai_repo.add_log(generation_id, "reading_sprints",
-                             "Récupération des sprints et user stories…", 15)
+        # ── Étape 2 : Récupérer les user stories ───────────────────────────
+        self.ai_repo.add_log(generation_id, "reading_user_stories",
+                             "Récupération des user stories du projet…", 15)
         self.ai_repo.update_progress(generation_id, 15)
 
-        sprints_content = self._construire_contenu_sprints(gen.projet_id)
-
-        nb_sprints = sprints_content.count("--- Sprint") + sprints_content.count("---")
-        self.ai_repo.add_log(generation_id, "reading_sprints",
-                             f"Données récupérées ({len(sprints_content)} caractères).", 25)
+        user_stories = self._list_user_stories_for_ai_generation(gen.projet_id)
+        self.ai_repo.add_log(generation_id, "reading_user_stories",
+                             f"{len(user_stories)} user stories détectées pour génération unitaire.", 25)
         self.ai_repo.update_progress(generation_id, 25)
 
-        # ── Étape 3 : Envoi du prompt à l'IA ──────────────────────────────
+        # ── Étape 3 : Envoi des prompts à l'IA (par user story) ───────────
         self.ai_repo.add_log(generation_id, "sending_prompt",
-                             "Envoi du prompt au modèle IA…", 35)
+                             "Génération des cas de tests par user story…", 35)
         self.ai_repo.update_progress(generation_id, 35)
 
-        raw_json = self._appeler_ia(
-            projet.nom,
-            projet.description or "",
-            sprints_content,
-            generation_id,
-            gen.user_id,
-        )
+        generated_cases = []
+        for us_index, user_story in enumerate(user_stories, start=1):
+            prompt = self._build_prompt_for_single_us(
+                projet_nom=projet.nom,
+                projet_description=projet.description or "",
+                user_story=user_story,
+            )
+            raw_json = self._appeler_ia_prompt(prompt, generation_id, gen.user_id)
+            parsed = self._parser_reponse(raw_json)
+            us_cases = parsed.cas_tests or []
+
+            for case in us_cases:
+                # Association forcée au contexte de la user story courante.
+                case.user_story_id = user_story.id
+                generated_cases.append(case)
+
+            progress = 35 + int((us_index / len(user_stories)) * 30)
+            progress = min(progress, 65)
+            self.ai_repo.update_progress(generation_id, progress)
+            self.ai_repo.add_log(
+                generation_id,
+                "sending_prompt",
+                f"US {user_story.id}: {len(us_cases)} cas générés.",
+                progress,
+            )
 
         self.ai_repo.update_progress(generation_id, 65)
         self.ai_repo.add_log(generation_id, "parsing",
-                             "Réponse IA reçue — analyse du JSON…", 65)
+                             "Toutes les réponses IA ont été analysées.", 65)
 
-        # ── Étape 4 : Validation JSON ──────────────────────────────────────
-        parsed = self._parser_reponse(raw_json)
-        nb_cas = len(parsed.cas_tests)
+        # ── Étape 4 : Agrégation des cas ───────────────────────────────────
+        nb_cas = len(generated_cases)
 
         self.ai_repo.update_progress(generation_id, 75)
         self.ai_repo.add_log(generation_id, "saving",
@@ -1178,7 +1275,7 @@ class CahierTestGlobalService:
         if not cahier:
             raise ValueError("Cahier de tests introuvable lors de la sauvegarde.")
 
-        for i, cas in enumerate(parsed.cas_tests, start=1):
+        for i, cas in enumerate(generated_cases, start=1):
             sprint = (cas.sprint or "")[:100]
             module = (cas.module or "")[:200]
             sous_module = (cas.sous_module or "")[:200]
@@ -1617,21 +1714,52 @@ class CahierTestGlobalService:
 
         return "\n".join(lines)
 
-    def _appeler_ia(self, projet_nom: str, projet_description: str,
-                    sprints_content: str, generation_id: int, user_id: Optional[int]) -> str:
-        """Envoie le prompt à l'IA et retourne la réponse brute."""
-        api_key = self._get_api_key_for_request(user_id)
-
-        # Limiter la taille du contenu
-        max_chars = 40_000
-        if len(sprints_content) > max_chars:
-            sprints_content = sprints_content[:max_chars] + "\n[... contenu tronqué ...]"
-
-        full_prompt = USER_PROMPT_TEMPLATE.format(
-            projet_nom=projet_nom,
-            projet_description=projet_description,
-            sprints_content=sprints_content,
+    def _list_user_stories_for_ai_generation(self, projet_id: int) -> List[UserStory]:
+        user_stories = (
+            self.db.query(UserStory)
+            .join(Epic, UserStory.epic_id == Epic.id)
+            .join(Module, Epic.module_id == Module.id)
+            .options(
+                joinedload(UserStory.sprint),
+                joinedload(UserStory.epic).joinedload(Epic.module),
+            )
+            .filter(Module.projet_id == projet_id)
+            .order_by(UserStory.id.asc())
+            .all()
         )
+        if not user_stories:
+            raise ValueError(
+                "Aucune user story trouvée pour ce projet. "
+                "Veuillez d'abord créer des user stories."
+            )
+        return user_stories
+
+    def _build_prompt_for_single_us(
+        self,
+        projet_nom: str,
+        projet_description: str,
+        user_story: UserStory,
+    ) -> str:
+        sprint_nom = user_story.sprint.nom if user_story.sprint else "N/A"
+        epic_nom = user_story.epic.titre if user_story.epic else "N/A"
+        module_nom = user_story.epic.module.nom if (user_story.epic and user_story.epic.module) else "N/A"
+        us_ref = user_story.reference or f"US-{user_story.id}"
+
+        return USER_PROMPT_SINGLE_US_TEMPLATE.format(
+            projet_nom=projet_nom,
+            projet_description=projet_description or "",
+            user_story_id=user_story.id,
+            user_story_reference=us_ref,
+            user_story_titre=user_story.titre or "",
+            user_story_description=user_story.description or "",
+            user_story_criteres=user_story.criteresAcceptation or "",
+            sprint_nom=sprint_nom,
+            module_nom=module_nom,
+            epic_nom=epic_nom,
+        )
+
+    def _appeler_ia_prompt(self, full_prompt: str, generation_id: int, user_id: Optional[int]) -> str:
+        api_key = self._get_api_key_for_request(user_id)
 
         max_retries = 3
         for attempt in range(max_retries):
@@ -1645,7 +1773,8 @@ class CahierTestGlobalService:
                 delay_match = re.search(r"retry_delay\s*\{\s*seconds:\s*(\d+)", err_str)
                 wait = int(delay_match.group(1)) + 5 if delay_match else 30 * (2 ** attempt)
                 self.ai_repo.add_log(
-                    generation_id, "retrying",
+                    generation_id,
+                    "retrying",
                     f"Quota dépassé (429) — nouvelle tentative dans {wait}s "
                     f"(essai {attempt + 1}/{max_retries - 1})…",
                     35,
@@ -1653,6 +1782,21 @@ class CahierTestGlobalService:
                 time.sleep(wait)
 
         raise RuntimeError("Échec après toutes les tentatives IA.")
+
+    def _appeler_ia(self, projet_nom: str, projet_description: str,
+                    sprints_content: str, generation_id: int, user_id: Optional[int]) -> str:
+        """Envoie le prompt à l'IA et retourne la réponse brute."""
+        # Limiter la taille du contenu
+        max_chars = 40_000
+        if len(sprints_content) > max_chars:
+            sprints_content = sprints_content[:max_chars] + "\n[... contenu tronqué ...]"
+
+        full_prompt = USER_PROMPT_TEMPLATE.format(
+            projet_nom=projet_nom,
+            projet_description=projet_description,
+            sprints_content=sprints_content,
+        )
+        return self._appeler_ia_prompt(full_prompt, generation_id, user_id)
 
     @staticmethod
     def _appeler_openrouter(full_prompt: str, api_key: str, system_prompt: str = SYSTEM_PROMPT) -> str:

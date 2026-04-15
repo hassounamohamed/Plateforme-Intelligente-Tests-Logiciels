@@ -7,7 +7,7 @@ Tables :
 """
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from db.database import Base
@@ -45,7 +45,28 @@ class CahierTestGlobal(Base):
         cascade="all, delete-orphan",
         order_by="CasTest.ordre",
     )
+    version_history = relationship(
+        "CahierVersionHistory",
+        back_populates="cahier",
+        cascade="all, delete-orphan",
+        order_by="CahierVersionHistory.created_at.desc()",
+    )
     rapport_qa = relationship("RapportQA", back_populates="cahier", uselist=False, cascade="all, delete-orphan")
+
+
+class CahierVersionHistory(Base):
+    __tablename__ = "cahier_version_history"
+    __table_args__ = (
+        UniqueConstraint("cahier_id", "version", name="uq_cahier_version_history_cahier_version"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    cahier_id = Column(Integer, ForeignKey("cahier_test_global.id", ondelete="CASCADE"), nullable=False)
+    version = Column(String(20), nullable=False)
+    source = Column(String(50), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    cahier = relationship("CahierTestGlobal", back_populates="version_history")
 
 
 class CasTest(Base):

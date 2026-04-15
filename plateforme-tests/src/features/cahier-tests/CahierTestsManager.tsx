@@ -6,6 +6,7 @@ import {
   StatistiquesCahier,
   AIGeneration,
   ImportExcelResult,
+  CahierVersionHistoryItem,
   RapportQA,
 } from "@/types";
 import {
@@ -18,6 +19,8 @@ import {
   exporterWord,
   exporterPDF,
   importerExcel,
+  getCasTestHistory,
+  getCahierVersions,
   downloadFile,
 } from "./api";
 import {
@@ -55,6 +58,15 @@ export default function CahierTestsManager({
   rapportOnly = false,
   rapportReadOnly,
 }: CahierTestsManagerProps) {
+  type CasHistoryTimelineItem = {
+    id: number;
+    casId: number;
+    casRef: string;
+    casTitle: string;
+    changedAt: string;
+    changes: string[];
+  };
+
   const confirmDialog = useConfirmDialog();
   const [cahier, setCahier] = useState<CahierTestGlobalDetail | null>(null);
   const [stats, setStats] = useState<StatistiquesCahier | null>(null);
@@ -68,6 +80,12 @@ export default function CahierTestsManager({
   const [exporting, setExporting] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [availableVersions, setAvailableVersions] = useState<CahierVersionHistoryItem[]>([]);
+  const [selectedVersion, setSelectedVersion] = useState<string>("1.0.0");
+  const [showHistoryTimeline, setShowHistoryTimeline] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [historyTimeline, setHistoryTimeline] = useState<CasHistoryTimelineItem[]>([]);
   const [rapport, setRapport] = useState<RapportQA | null>(null);
   const [rapportLoading, setRapportLoading] = useState(false);
   const [generatingRapportMode, setGeneratingRapportMode] = useState<
@@ -87,6 +105,72 @@ export default function CahierTestsManager({
       .replace(/_+/g, "_")
       .replace(/^_+|_+$/g, "")
       .slice(0, 80) || `projet_${projectId}`;
+  };
+
+  const versionOptions = React.useMemo(() => {
+    const fromApi = availableVersions.map((item) => item.version);
+    const base = cahier?.version ? [cahier.version, ...fromApi] : fromApi;
+    return Array.from(new Set(base));
+  }, [availableVersions, cahier?.version]);
+
+  const selectedVersionIsCurrent = !cahier || selectedVersion === cahier.version;
+
+  const describeHistoryChanges = (entry: any): string[] => {
+    const changes: string[] = [];
+    if (entry.old_statut_test !== entry.new_statut_test) {
+      changes.push(`Statut: ${entry.old_statut_test || "-"} -> ${entry.new_statut_test || "-"}`);
+    }
+    if (entry.old_type_test !== entry.new_type_test) {
+      changes.push(`Type: ${entry.old_type_test || "-"} -> ${entry.new_type_test || "-"}`);
+    }
+    if (entry.old_commentaire !== entry.new_commentaire) {
+      changes.push("Commentaire mis à jour");
+    }
+    if (entry.old_bug_titre_correction !== entry.new_bug_titre_correction) {
+      changes.push("Titre de correction bug mis à jour");
+    }
+    if (entry.old_bug_nom_tache !== entry.new_bug_nom_tache) {
+      changes.push("Nom de tâche bug mis à jour");
+    }
+
+    return changes.length > 0 ? changes : ["Modification du cas de test"];
+  };
+
+  const loadHistoryTimeline = async () => {
+    if (!cahier) return;
+
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const entriesByCase = await Promise.all(
+        cahier.cas_tests.map(async (cas) => {
+          const entries = await getCasTestHistory(projectId, cahier.id, cas.id);
+          return entries.map((entry) => ({
+            id: entry.id,
+            casId: cas.id,
+            casRef: cas.test_ref,
+            casTitle: cas.test_case,
+            changedAt: entry.changed_at,
+            changes: describeHistoryChanges(entry),
+          }));
+        })
+      );
+
+      const merged = entriesByCase
+        .flat()
+        .sort(
+          (a, b) =>
+            new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime()
+        );
+
+      setHistoryTimeline(merged);
+    } catch (err: any) {
+      setHistoryError(
+        err?.response?.data?.detail || "Impossible de charger l'historique global."
+      );
+    } finally {
+      setHistoryLoading(false);
+    }
   };
 
   const loadCahier = async () => {
@@ -111,12 +195,19 @@ export default function CahierTestsManager({
       setGenerating(false);
       setCurrentGeneration(null);
 
-      const [cahierData, statsData] = await Promise.all([
+      const [cahierData, statsData, versionsData] = await Promise.all([
         getCahierDetail(projectId),
         getStatistiques(projectId),
+        getCahierVersions(projectId),
       ]);
       setCahier(cahierData);
       setStats(statsData);
+      setAvailableVersions(versionsData);
+      setSelectedVersion((prev) =>
+        versionsData.some((entry) => entry.version === prev) ? prev : cahierData.version
+      );
+      setHistoryTimeline([]);
+      setHistoryError(null);
 
       setRapportLoading(true);
       try {
@@ -136,6 +227,7 @@ export default function CahierTestsManager({
       if (err.response?.status === 404) {
         setCahier(null);
         setStats(null);
+        setAvailableVersions([]);
         setRapport(null);
         setError("Aucun cahier de tests disponible pour ce projet.");
       } else {
@@ -151,6 +243,26 @@ export default function CahierTestsManager({
   useEffect(() => {
     loadCahier();
   }, [projectId]);
+
+  useEffect(() => {
+    if (!cahier) return;
+    if (!versionOptions.includes(selectedVersion)) {
+      setSelectedVersion(cahier.version);
+    }
+  }, [cahier, selectedVersion, versionOptions]);
+
+  useEffect(() => {
+    if (!cahier) return;
+    if (!selectedVersionIsCurrent && showHistoryTimeline && historyTimeline.length === 0 && !historyLoading) {
+      loadHistoryTimeline();
+    }
+  }, [
+    cahier,
+    selectedVersionIsCurrent,
+    showHistoryTimeline,
+    historyTimeline.length,
+    historyLoading,
+  ]);
 
   const handleGenerate = async () => {
     setShowRegenerateMenu(false);
@@ -445,6 +557,34 @@ export default function CahierTestsManager({
                 {cahier?.statut}
               </span>
             </p>
+            <div className="mt-3 flex items-center gap-3">
+              <label className="text-sm text-[#9dabb9]">Versions:</label>
+              <select
+                value={selectedVersion}
+                onChange={(e) => {
+                  setSelectedVersion(e.target.value);
+                  setShowHistoryTimeline(e.target.value !== cahier?.version);
+                }}
+                className="px-3 py-1.5 rounded-md bg-[#1f2731] border border-[#3b4754] text-white text-sm"
+              >
+                {versionOptions.map((version) => (
+                  <option key={version} value={version}>
+                    v{version}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={async () => {
+                  setShowHistoryTimeline((prev) => !prev);
+                  if (!showHistoryTimeline && historyTimeline.length === 0 && !historyLoading) {
+                    await loadHistoryTimeline();
+                  }
+                }}
+                className="px-3 py-1.5 border border-[#3b4754] rounded-md text-white text-sm hover:bg-[#283039]"
+              >
+                {showHistoryTimeline ? "Masquer historique" : "Voir historique"}
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -557,6 +697,59 @@ export default function CahierTestsManager({
           </div>
         </div>
       </div>
+      )}
+
+      {!rapportOnly && cahier && !selectedVersionIsCurrent && (
+        <div className="bg-[#101722] border border-[#3b4754] rounded-lg p-4">
+          <p className="text-sm text-[#d6e3f0]">
+            Vous consultez la version <span className="font-semibold">v{selectedVersion}</span> en mode historique.
+            Le projet conserve un cahier actif ({`v${cahier.version}`}) et l'historique des modifications des cas de test.
+          </p>
+        </div>
+      )}
+
+      {!rapportOnly && showHistoryTimeline && (
+        <div className="bg-surface-dark rounded-lg border border-[#3b4754] p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-white font-semibold text-lg">Historique des modifications</h3>
+            <button
+              onClick={loadHistoryTimeline}
+              disabled={historyLoading}
+              className="px-3 py-1.5 border border-[#3b4754] rounded-md text-sm text-white hover:bg-[#283039] disabled:opacity-60"
+            >
+              {historyLoading ? "Chargement..." : "Rafraîchir"}
+            </button>
+          </div>
+
+          {historyError && (
+            <div className="text-sm text-red-400">{historyError}</div>
+          )}
+
+          {!historyLoading && !historyError && historyTimeline.length === 0 && (
+            <div className="text-sm text-[#9dabb9]">Aucune modification historique trouvée.</div>
+          )}
+
+          {!historyLoading && historyTimeline.length > 0 && (
+            <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+              {historyTimeline.map((item) => (
+                <div
+                  key={`${item.casId}-${item.id}`}
+                  className="rounded-md border border-[#2e3945] bg-[#111924] p-3"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm text-white font-medium">
+                      {item.casRef} - {item.casTitle}
+                    </p>
+                    <p className="text-xs text-[#9dabb9]">
+                      {new Date(item.changedAt).toLocaleString("fr-FR")}
+                    </p>
+                  </div>
+                  <p className="mt-2 text-sm text-[#c4d2df]">{item.changes.join(" • ")}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Rapport QA */}

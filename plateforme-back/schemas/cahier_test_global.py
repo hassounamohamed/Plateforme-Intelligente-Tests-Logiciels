@@ -240,6 +240,14 @@ class StatistiquesResponse(BaseModel):
     pct_non_execute:    float
 
 
+class CahierVersionHistoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    version: str
+    source: Optional[str]
+    created_at: datetime
+
+
 # ─── Structure JSON attendue de l'IA ─────────────────────────────────────────
 
 class AICasTest(BaseModel):
