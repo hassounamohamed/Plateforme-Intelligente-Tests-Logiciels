@@ -65,53 +65,6 @@ function formatDate(value?: string): string {
   }).format(date);
 }
 
-function normalizeTrendLabel(value: string | null | undefined, executed: number): string {
-  if (executed === 0) return "Non evaluable";
-  if (!value) return "Stable";
-  const lower = value.toLowerCase();
-  if (lower.includes("amelior")) return "Amelioration";
-  if (lower.includes("degrad")) return "Degradation";
-  return "Stable";
-}
-
-function computeDecision(passRate: number, executed: number, failed: number, critical: number): "GO" | "NO GO" {
-  if (executed === 0) return "NO GO";
-  if (critical > 0) return "NO GO";
-  if (failed > 0) return "NO GO";
-  if (passRate < 75) return "NO GO";
-  return "GO";
-}
-
-function buildTrendData(executed: number, failed: number): Array<{ label: string; exec: number; fail: number }> {
-  const labels = ["J-5", "J-4", "J-3", "J-2", "J-1", "J"];
-  if (executed <= 0) {
-    return labels.map((label) => ({ label, exec: 0, fail: 0 }));
-  }
-
-  const execPoints = [
-    Math.max(0, Math.round(executed * 0.15)),
-    Math.max(0, Math.round(executed * 0.3)),
-    Math.max(0, Math.round(executed * 0.42)),
-    Math.max(0, Math.round(executed * 0.58)),
-    Math.max(0, Math.round(executed * 0.76)),
-    executed,
-  ];
-  const failPoints = [
-    Math.max(0, Math.round(failed * 0.12)),
-    Math.max(0, Math.round(failed * 0.2)),
-    Math.max(0, Math.round(failed * 0.36)),
-    Math.max(0, Math.round(failed * 0.52)),
-    Math.max(0, Math.round(failed * 0.75)),
-    failed,
-  ];
-
-  return labels.map((label, i) => ({
-    label,
-    exec: execPoints[i],
-    fail: failPoints[i],
-  }));
-}
-
 export default function RapportQAPanel({
   projectId,
   projectName,
@@ -135,35 +88,31 @@ export default function RapportQAPanel({
   const [editVersion, setEditVersion] = React.useState("");
   const [editStatut, setEditStatut] = React.useState("brouillon");
   const [editRecommandations, setEditRecommandations] = React.useState("");
+  const [showRecommendationsEditor, setShowRecommendationsEditor] = React.useState(false);
+  const [recommendationsDraft, setRecommendationsDraft] = React.useState("");
 
   React.useEffect(() => {
     if (!rapport) return;
     setEditVersion(rapport.version || "");
     setEditStatut(rapport.statut || "brouillon");
     setEditRecommandations(rapport.recommandations || "");
+    setRecommendationsDraft(rapport.recommandations || "");
   }, [rapport]);
 
   const computed = useMemo(() => {
     const executed = rapport?.nombreTestsExecutes ?? 0;
     const passed = rapport?.nombreTestsReussis ?? 0;
     const failed = rapport?.nombreTestsEchoues ?? 0;
-    const blocked = Math.max(0, executed - passed - failed);
-    const passRate = rapport?.tauxReussite ?? (executed > 0 ? (passed / executed) * 100 : 0);
-    const coverage = rapport?.indicateurs?.tauxCouverture ?? 0;
-    const estimatedTotal = coverage > 0 ? Math.round((executed * 100) / coverage) : executed;
-    const total = Math.max(executed, estimatedTotal);
-    const pending = Math.max(0, total - executed);
+    const blocked = rapport?.nombreTestsBloques ?? 0;
+    const total = rapport?.nombreTestsTotal ?? executed;
+    const pending = rapport?.nombreTestsNonExecutes ?? 0;
+    const passRate = rapport?.passRate ?? 0;
+    const coverage = rapport?.coverageRate ?? 0;
     const critical = rapport?.indicateurs?.nombreAnomaliesCritiques ?? 0;
-    const decision = computeDecision(passRate, executed, failed, critical);
-    const trend = normalizeTrendLabel(rapport?.indicateurs?.tendance, executed);
-    const qualityIndex = rapport?.indicateurs?.indiceQualite ?? 0;
-
-    const observation =
-      executed === 0
-        ? "Aucun test n'a ete execute. Le rapport ne peut pas etre evalue."
-        : failed > 0 || critical > 0
-          ? "Des echecs et/ou anomalies critiques sont detectes. Stabilisation requise avant release."
-          : "Les indicateurs sont stables avec une execution exploitable pour validation de release.";
+    const decision = (rapport?.decisionRelease as "GO" | "NO GO" | undefined) ?? "NO GO";
+    const trend = rapport?.trendDisplay ?? "Stable";
+    const qualityIndex = rapport?.qualityIndex ?? 0;
+    const observation = rapport?.observationMessage || "";
 
     const pieData = [
       { name: "Reussis", value: passed, color: CHART_COLORS.passed },
@@ -182,12 +131,8 @@ export default function RapportQAPanel({
       },
     ];
 
-    const trendData = buildTrendData(executed, failed);
-
-    const recommendations = (rapport?.recommandations || "")
-      .split(/\r?\n/)
-      .map((line) => line.replace(/^[-*]\s*/, "").trim())
-      .filter(Boolean);
+    const trendData = rapport?.trendData || [];
+    const recommendations = rapport?.recommendationLines || [];
 
     return {
       executed,
@@ -493,7 +438,46 @@ export default function RapportQAPanel({
             </div>
 
             <div className="bg-[#1f2a36] border border-[#334155] rounded-lg p-4">
-              <h4 className="text-white font-semibold mb-3">Actions recommandees</h4>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h4 className="text-white font-semibold">Actions recommandees</h4>
+                <button
+                  onClick={() => {
+                    if (showRecommendationsEditor) {
+                      setRecommendationsDraft(rapport.recommandations || "");
+                    }
+                    setShowRecommendationsEditor((prev) => !prev);
+                  }}
+                  disabled={readOnly || updating}
+                  className="px-3 py-1.5 border border-[#3b4754] rounded-md text-white text-sm hover:bg-[#283039] disabled:opacity-50"
+                >
+                  {showRecommendationsEditor ? "Annuler" : "Modifier"}
+                </button>
+              </div>
+              {showRecommendationsEditor && (
+                <div className="mb-4 space-y-2">
+                  <textarea
+                    value={recommendationsDraft}
+                    onChange={(e) => setRecommendationsDraft(e.target.value)}
+                    rows={5}
+                    placeholder="Saisir les actions recommandees..."
+                    className="w-full px-3 py-2 bg-[#0f172a] border border-[#334155] rounded-md text-white"
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() =>
+                        onUpdate({
+                          recommandations: recommendationsDraft || undefined,
+                        })
+                      }
+                      disabled={updating || readOnly}
+                      className="px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-700 font-medium disabled:opacity-50"
+                    >
+                      {updating ? "Enregistrement..." : "Enregistrer"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 {computed.recommendations.length > 0 ? (
                   computed.recommendations.map((line, index) => (

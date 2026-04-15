@@ -29,8 +29,7 @@ export default function CasTestsTable({
   const [selectedReadOnly, setSelectedReadOnly] = useState(false);
   const [filterStatut, setFilterStatut] = useState<StatutTest | "all">("all");
   const [filterSprint, setFilterSprint] = useState<string>("all");
-  const [filterModule, setFilterModule] = useState<string>("all");
-  const [filterSousModule, setFilterSousModule] = useState<string>("all");
+  const [filterUserStory, setFilterUserStory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -52,11 +51,8 @@ export default function CasTestsTable({
   const sprints = Array.from(
     new Set(casTests.map((c) => c.sprint).filter(Boolean))
   );
-  const modules = Array.from(
-    new Set(casTests.map((c) => c.module).filter(Boolean))
-  );
-  const sousModules = Array.from(
-    new Set(casTests.map((c) => c.sous_module).filter(Boolean))
+  const userStories = Array.from(
+    new Set(casTests.map((c) => c.user_story_reference).filter(Boolean))
   );
 
   // Filtrer les cas de tests
@@ -64,13 +60,14 @@ export default function CasTestsTable({
     if (filterStatut !== "all" && cas.statut_test !== filterStatut)
       return false;
     if (filterSprint !== "all" && cas.sprint !== filterSprint) return false;
-    if (filterModule !== "all" && cas.module !== filterModule) return false;
-    if (filterSousModule !== "all" && cas.sous_module !== filterSousModule)
+    if (filterUserStory !== "all" && cas.user_story_reference !== filterUserStory)
       return false;
     if (
       searchQuery &&
       !cas.test_case.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !cas.test_ref.toLowerCase().includes(searchQuery.toLowerCase())
+      !cas.test_ref.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !(cas.user_story_reference || "").toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !(cas.user_story_titre || "").toLowerCase().includes(searchQuery.toLowerCase())
     )
       return false;
     return true;
@@ -147,33 +144,17 @@ export default function CasTestsTable({
             </select>
           )}
 
-          {/* Filtre Module */}
-          {modules.length > 0 && (
+          {/* Filtre User Story */}
+          {userStories.length > 0 && (
             <select
               className="px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
-              value={filterModule}
-              onChange={(e) => setFilterModule(e.target.value)}
+              value={filterUserStory}
+              onChange={(e) => setFilterUserStory(e.target.value)}
             >
-              <option value="all">Tous les modules</option>
-              {modules.map((module) => (
-                <option key={module} value={module!}>
-                  {module}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {/* Filtre Sous-module */}
-          {sousModules.length > 0 && (
-            <select
-              className="px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
-              value={filterSousModule}
-              onChange={(e) => setFilterSousModule(e.target.value)}
-            >
-              <option value="all">Tous les sous-modules</option>
-              {sousModules.map((sousModule) => (
-                <option key={sousModule} value={sousModule!}>
-                  {sousModule}
+              <option value="all">Toutes les user stories</option>
+              {userStories.map((reference) => (
+                <option key={reference} value={reference!}>
+                  {reference}
                 </option>
               ))}
             </select>
@@ -198,7 +179,7 @@ export default function CasTestsTable({
                 Sprint
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#9dabb9] uppercase">
-                Module
+                User Story
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#9dabb9] uppercase">
                 Cas de Test
@@ -244,7 +225,8 @@ export default function CasTestsTable({
                     {cas.sprint || "-"}
                   </td>
                   <td className="px-4 py-3 text-sm text-[#9dabb9]">
-                    {cas.module || "-"}
+                    {cas.user_story_reference || `US-${cas.user_story_id}`}
+                     
                   </td>
                   <td className="px-4 py-3 text-sm text-white">
                     <div className="max-w-md truncate" title={cas.test_case}>

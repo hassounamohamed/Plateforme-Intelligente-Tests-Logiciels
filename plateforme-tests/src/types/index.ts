@@ -346,8 +346,7 @@ export type PrioriteUS = "must_have" | "should_have" | "could_have" | "wont_have
 export type StatutUS = "to_do" | "in_progress" | "done";
 
 export interface UserStory {
-  end_date: string | number | Date;
-  end_date: import("react/jsx-runtime").JSX.Element;
+  end_date?: string | number | Date;
   id: number;
   reference?: string;
   titre: string;
@@ -521,6 +520,17 @@ export interface RapportQA {
   nombreTestsExecutes: number;
   nombreTestsReussis: number;
   nombreTestsEchoues: number;
+  nombreTestsBloques?: number;
+  nombreTestsTotal?: number;
+  nombreTestsNonExecutes?: number;
+  passRate?: number;
+  coverageRate?: number;
+  qualityIndex?: number;
+  trendDisplay?: string;
+  decisionRelease?: "GO" | "NO GO" | string;
+  observationMessage?: string;
+  recommendationLines?: string[];
+  trendData?: Array<{ label: string; exec: number; fail: number }>;
   recommandations?: string | null;
   cahierId?: number;
   sprintId?: number;
@@ -651,6 +661,9 @@ export type StatutTest = "Non exécuté" | "Réussi" | "Échoué" | "Bloqué";
 export interface CasTest {
   id: number;
   cahier_id: number;
+  user_story_id: number;
+  user_story_reference?: string | null;
+  user_story_titre?: string | null;
   sprint: string | null;
   module: string | null;
   sous_module: string | null;
@@ -796,6 +809,7 @@ export interface GenererCahierPayload {
 }
 
 export interface CreateCasTestPayload {
+  user_story_id?: number;
   sprint?: string;
   module?: string;
   sous_module?: string;
@@ -827,6 +841,14 @@ export interface UpdateCasTestPayload {
   commentaire?: string;
   bug_titre_correction?: string;
   bug_nom_tache?: string;
+}
+
+export interface CahierUserStoryOption {
+  id: number;
+  reference?: string | null;
+  titre: string;
+  sprint_nom?: string | null;
+  module_nom?: string | null;
 }
 
 export interface ValiderCahierPayload {

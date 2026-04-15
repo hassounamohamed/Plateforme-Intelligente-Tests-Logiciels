@@ -47,6 +47,12 @@ class RecommandationQualiteResponse(BaseModel):
     statut: Optional[str]
 
 
+class RapportTrendPointResponse(BaseModel):
+    label: str
+    exec: int
+    fail: int
+
+
 class RapportQAResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -59,6 +65,17 @@ class RapportQAResponse(BaseModel):
     nombreTestsExecutes: int
     nombreTestsReussis: int
     nombreTestsEchoues: int
+    nombreTestsBloques: int = 0
+    nombreTestsTotal: int = 0
+    nombreTestsNonExecutes: int = 0
+    passRate: float = 0.0
+    coverageRate: float = 0.0
+    qualityIndex: float = 0.0
+    trendDisplay: str = "Stable"
+    decisionRelease: str = "NO GO"
+    observationMessage: str = ""
+    recommendationLines: List[str] = Field(default_factory=list)
+    trendData: List[RapportTrendPointResponse] = Field(default_factory=list)
     recommandations: Optional[str]
     indicateurs: Optional[IndicateurQualiteResponse] = None
     recommandations_qualite: List[RecommandationQualiteResponse] = Field(default_factory=list)
