@@ -70,21 +70,27 @@ class EpicService:
         )
         return {us_id: idx + 1 for idx, (us_id,) in enumerate(rows)}
 
+    def _project_reference_prefix(self, projet_id: int) -> str:
+        projet = self.projet_repo.get_by_id(projet_id)
+        return (projet.key if projet and projet.key else "US").upper()
+
     def _apply_reference_to_epic_userstories(self, projet_id: int, epic):
         mapping = self._build_project_us_number_map(projet_id)
+        prefix = self._project_reference_prefix(projet_id)
         for us in epic.userstories or []:
             numero = mapping.get(us.id)
             if numero is not None:
-                us.reference = f"US-{numero}"
+                us.reference = f"{prefix}-{numero}"
         return epic
 
     def _apply_reference_to_epics_userstories(self, projet_id: int, epics: List):
         mapping = self._build_project_us_number_map(projet_id)
+        prefix = self._project_reference_prefix(projet_id)
         for epic in epics:
             for us in epic.userstories or []:
                 numero = mapping.get(us.id)
                 if numero is not None:
-                    us.reference = f"US-{numero}"
+                    us.reference = f"{prefix}-{numero}"
         return epics
 
     # ── Création ────────────────────────────────────────────────────────────

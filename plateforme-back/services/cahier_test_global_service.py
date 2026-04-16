@@ -260,6 +260,10 @@ class CahierTestGlobalService:
         )
         return {us_id: idx + 1 for idx, (us_id,) in enumerate(rows)}
 
+    def _project_reference_prefix(self, projet_id: int) -> str:
+        projet = self.db.query(Projet).filter(Projet.id == projet_id).first()
+        return (projet.key if projet and projet.key else "US").upper()
+
     def _resolve_projet_id_from_case(self, cas: CasTest) -> Optional[int]:
         user_story = getattr(cas, "user_story", None)
         if user_story and user_story.epic and user_story.epic.module:
@@ -274,7 +278,12 @@ class CahierTestGlobalService:
         user_story = getattr(cas, "user_story", None)
         if user_story and number_map is not None:
             numero = number_map.get(user_story.id)
-            cas.user_story_reference = f"US-{numero}" if numero else None
+            if numero:
+                projet_id = self._resolve_projet_id_from_case(cas)
+                prefix = self._project_reference_prefix(projet_id) if projet_id else "US"
+                cas.user_story_reference = f"{prefix}-{numero}"
+            else:
+                cas.user_story_reference = None
         else:
             cas.user_story_reference = user_story.reference if user_story else None
         cas.user_story_titre = user_story.titre if user_story else None
@@ -939,11 +948,12 @@ class CahierTestGlobalService:
             .order_by(UserStory.id.asc())
             .all()
         )
+        prefix = self._project_reference_prefix(projet_id)
 
         return [
             {
                 "id": us.id,
-                "reference": f"US-{index}",
+                "reference": f"{prefix}-{index}",
                 "titre": us.titre,
                 "sprint_nom": us.sprints[0].nom if us.sprints else None,
                 "module_nom": us.epic.module.nom if (us.epic and us.epic.module) else None,
@@ -1733,8 +1743,8 @@ class CahierTestGlobalService:
             for us in sprint.userstories:
                 module_nom     = us.epic.module.nom if (us.epic and us.epic.module) else "N/A"
                 epic_nom       = us.epic.titre if us.epic else "N/A"
-                us_ref = us.reference or f"US-{us.id}"
-                lines.append(f"  [US-{us.id}] Reference: {us_ref} | Module: {module_nom} | Epic: {epic_nom}")
+                us_ref = us.reference or str(us.id)
+                lines.append(f"  [{us_ref}] Reference: {us_ref} | Module: {module_nom} | Epic: {epic_nom}")
                 lines.append(f"    Titre       : {us.titre}")
                 if us.description:
                     lines.append(f"    Description : {us.description}")
@@ -1772,7 +1782,7 @@ class CahierTestGlobalService:
         sprint_nom = user_story.sprint.nom if user_story.sprint else "N/A"
         epic_nom = user_story.epic.titre if user_story.epic else "N/A"
         module_nom = user_story.epic.module.nom if (user_story.epic and user_story.epic.module) else "N/A"
-        us_ref = user_story.reference or f"US-{user_story.id}"
+        us_ref = user_story.reference or str(user_story.id)
 
         return USER_PROMPT_SINGLE_US_TEMPLATE.format(
             projet_nom=projet_nom,

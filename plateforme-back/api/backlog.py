@@ -112,4 +112,4 @@ async def reordonner_backlog(
 
     Scrum Master uniquement.
     """
-    return svc.reordonner(projet_id, data)
+    return svc.reordonner(projet_id, data, current_user.id)

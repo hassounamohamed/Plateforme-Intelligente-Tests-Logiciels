@@ -246,7 +246,7 @@ export default function ScrumMasterDashboard() {
                           <div className="flex items-center gap-2 mb-1">
                             {(us.reference || us.id) && (
                               <span className="text-[#9dabb9] text-xs font-mono bg-[#1c2229] px-1.5 py-0.5 rounded">
-                                {us.reference || `US-${us.id}`}
+                                {us.reference || String(us.id)}
                               </span>
                             )}
                             <h4 className="text-white font-medium text-sm">{us.titre}</h4>

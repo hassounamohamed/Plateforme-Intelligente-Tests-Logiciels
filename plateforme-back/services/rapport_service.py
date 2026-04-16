@@ -587,7 +587,7 @@ class RapportService:
         self.db.refresh(rapport)
         return rapport
 
-    def exporter_rapport_qa_pdf(self, cahier_id: int, projet_id: int) -> bytes:
+    def exporter_rapport_qa_pdf(self, cahier_id: int, projet_id: int, user_id: int) -> bytes:
         try:
             from reportlab.lib.pagesizes import A4
             from reportlab.lib import colors
@@ -732,9 +732,17 @@ class RapportService:
 
         doc.build(story)
         buf.seek(0)
+        self.notification_service.notify_project_users(
+            project_id=projet_id,
+            titre="Rapport exporte",
+            message=f"Le rapport QA du cahier {cahier_id} a ete exporte en PDF.",
+            notification_type=TypeNotification.REPORT_EXPORTED,
+            priorite="basse",
+            exclude_user_id=user_id,
+        )
         return buf.read()
 
-    def exporter_rapport_qa_word(self, cahier_id: int, projet_id: int) -> bytes:
+    def exporter_rapport_qa_word(self, cahier_id: int, projet_id: int, user_id: int) -> bytes:
         try:
             from docx import Document
             from docx.shared import Pt, RGBColor
@@ -834,4 +842,12 @@ class RapportService:
         buf = io.BytesIO()
         doc.save(buf)
         buf.seek(0)
+        self.notification_service.notify_project_users(
+            project_id=projet_id,
+            titre="Rapport exporte",
+            message=f"Le rapport QA du cahier {cahier_id} a ete exporte en Word.",
+            notification_type=TypeNotification.REPORT_EXPORTED,
+            priorite="basse",
+            exclude_user_id=user_id,
+        )
         return buf.read()

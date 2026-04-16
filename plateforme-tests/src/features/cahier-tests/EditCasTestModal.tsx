@@ -385,7 +385,7 @@ export default function EditCasTestModal({
               <div>
                 <p className="text-xs text-[#9dabb9] uppercase mb-1">User Story</p>
                 <p className="text-white font-medium">
-                  {casTest.user_story_reference || `US-${casTest.user_story_id}`}
+                  {casTest.user_story_reference || String(casTest.user_story_id)}
                 </p>
                 {casTest.user_story_titre && (
                   <p className="text-xs text-[#9dabb9] mt-1">{casTest.user_story_titre}</p>
@@ -545,7 +545,7 @@ export default function EditCasTestModal({
             </div>
             <div>
               <p className="text-xs text-[#9dabb9]">User Story</p>
-              <p className="font-medium text-white">{casTest.user_story_reference || `US-${casTest.user_story_id}`}</p>
+              <p className="font-medium text-white">{casTest.user_story_reference || String(casTest.user_story_id)}</p>
               
             </div>
           </div>

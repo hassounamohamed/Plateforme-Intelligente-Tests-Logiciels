@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
@@ -321,6 +321,36 @@ export default function BacklogPage() {
         return statut;
     }
   };
+
+  const sortedBacklogItems = useMemo(() => {
+    const getReferenceNumber = (reference?: string) => {
+      if (!reference) return Number.POSITIVE_INFINITY;
+
+      const matches = reference.match(/\d+/g);
+      if (!matches) return Number.POSITIVE_INFINITY;
+
+      const value = Number(matches[matches.length - 1]);
+      return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
+    };
+
+    return [...backlogItems].sort((left, right) => {
+      const leftReference = getReferenceNumber(left.reference);
+      const rightReference = getReferenceNumber(right.reference);
+
+      if (leftReference !== rightReference) {
+        return leftReference - rightReference;
+      }
+
+      const leftOrder = left.ordre ?? Number.POSITIVE_INFINITY;
+      const rightOrder = right.ordre ?? Number.POSITIVE_INFINITY;
+
+      if (leftOrder !== rightOrder) {
+        return leftOrder - rightOrder;
+      }
+
+      return left.titre.localeCompare(right.titre, "fr", { sensitivity: "base" });
+    });
+  }, [backlogItems]);
 
   const sidebarLinks = [
     { href: ROUTES.PRODUCT_OWNER, icon: "dashboard", label: "Dashboard" },
@@ -780,17 +810,12 @@ export default function BacklogPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {backlogItems.map((item, index) => (
+            {sortedBacklogItems.map((item) => (
               <div
                 key={item.id}
                 className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-4 hover:border-primary/50 transition-colors"
               >
                 <div className="flex items-start gap-4">
-                  {/* Order Number */}
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-[#283039] text-slate-500 dark:text-[#9dabb9] text-sm font-bold shrink-0">
-                    {item.ordre || index + 1}
-                  </div>
-
                   {/* Content */}
                   <div className="flex-1">
                     <div className="flex items-start justify-between mb-2">

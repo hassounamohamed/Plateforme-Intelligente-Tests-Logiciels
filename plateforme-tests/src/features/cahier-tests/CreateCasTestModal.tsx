@@ -159,7 +159,7 @@ export default function CreateCasTestModal({
                 <option value="">{loadingUserStories ? "Chargement des user stories..." : "Sélectionner une user story"}</option>
                 {userStories.map((story) => (
                   <option key={story.id} value={story.id}>
-                    {(story.reference || `US-${story.id}`)} 
+                    {(story.reference || String(story.id))}
                   </option>
                 ))}
               </select>

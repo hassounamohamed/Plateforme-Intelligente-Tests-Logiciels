@@ -9,8 +9,10 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from core.config import AI_API_KEY, AI_API_URL, AI_MODEL
+from models.notification import TypeNotification
 from repositories.backlog_repository import BacklogRepository
 from repositories.projet_repository import ProjetRepository
+from services.notification_service import NotificationService
 from schemas.backlog import ReordonnerBacklogRequest
 from models.scrum import UserStory, Epic, Module
 
@@ -23,6 +25,7 @@ class BacklogService:
     def __init__(self, db: Session):
         self.repo = BacklogRepository(db)
         self.projet_repo = ProjetRepository(db)
+        self.notification_service = NotificationService(db)
         self.api_key_service = None
 
     def _get_api_key_service(self):
@@ -75,12 +78,17 @@ class BacklogService:
         )
         return {us_id: idx + 1 for idx, (us_id,) in enumerate(rows)}
 
+    def _project_reference_prefix(self, projet_id: int) -> str:
+        projet = self.projet_repo.get_by_id(projet_id)
+        return (projet.key if projet and projet.key else "US").upper()
+
     def _apply_project_reference(self, projet_id: int, stories: List) -> List:
         mapping = self._build_project_us_number_map(projet_id)
+        prefix = self._project_reference_prefix(projet_id)
         for us in stories:
             numero = mapping.get(us.id)
             if numero is not None:
-                us.reference = f"US-{numero}"
+                us.reference = f"{prefix}-{numero}"
         return stories
 
     # ── Backlog ──────────────────────────────────────────────────────────────
@@ -132,9 +140,17 @@ class BacklogService:
 
     # ── Drag & drop ──────────────────────────────────────────────────────────
 
-    def reordonner(self, projet_id: int, data: ReordonnerBacklogRequest) -> List:
+    def reordonner(self, projet_id: int, data: ReordonnerBacklogRequest, current_user_id: int) -> List:
         self._verifier_projet(projet_id)
         stories = self.repo.reordonner(projet_id, data.ordre)
+        self.notification_service.notify_project_users(
+            project_id=projet_id,
+            titre="Backlog mis a jour",
+            message="L'ordre du backlog a ete mis a jour.",
+            notification_type=TypeNotification.BACKLOG_UPDATED,
+            priorite="moyenne",
+            exclude_user_id=current_user_id,
+        )
         return self._apply_project_reference(projet_id, stories)
 
     def suggest_backlog_item(self, projet_id: int, prompt: str, current_user_id: int) -> dict:
