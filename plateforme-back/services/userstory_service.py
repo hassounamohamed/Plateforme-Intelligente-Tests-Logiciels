@@ -9,6 +9,7 @@ from repositories.scrum_repository import UserStoryRepository
 from repositories.epic_repository import EpicRepository
 from repositories.module_repository import ModuleRepository
 from repositories.projet_repository import ProjetRepository
+from models.scrum import UserStory, Epic, Module
 from models.notification import TypeNotification
 from services.notification_service import NotificationService
 from schemas.userstory import (
@@ -47,7 +48,47 @@ class UserStoryService:
                 ids.add(value)
         return ids
 
+    def _build_project_us_number_map(self, projet_id: int) -> dict[int, int]:
+        rows = (
+            self.db.query(UserStory.id)
+            .join(Epic, UserStory.epic_id == Epic.id)
+            .join(Module, Epic.module_id == Module.id)
+            .filter(Module.projet_id == projet_id)
+            .order_by(UserStory.id.asc())
+            .all()
+        )
+        return {us_id: idx + 1 for idx, (us_id,) in enumerate(rows)}
+
+    def _apply_project_reference(self, projet_id: int, stories: List) -> List:
+        mapping = self._build_project_us_number_map(projet_id)
+        for us in stories:
+            numero = mapping.get(us.id)
+            if numero is not None:
+                us.reference = f"US-{numero}"
+        return stories
+
+    def _get_projet_id_from_us(self, us) -> Optional[int]:
+        if us and getattr(us, "epic", None) and getattr(us.epic, "module", None):
+            return us.epic.module.projet_id
+        if not us:
+            return None
+        row = (
+            self.db.query(Module.projet_id)
+            .select_from(UserStory)
+            .join(Epic, UserStory.epic_id == Epic.id)
+            .join(Module, Epic.module_id == Module.id)
+            .filter(UserStory.id == us.id)
+            .first()
+        )
+        return row[0] if row else None
+
     def _us_ref(self, us) -> str:
+        projet_id = self._get_projet_id_from_us(us)
+        if projet_id:
+            mapping = self._build_project_us_number_map(projet_id)
+            numero = mapping.get(us.id)
+            if numero:
+                return f"US-{numero}"
         return us.reference or f"US-{us.id}"
 
     def _notify_assignment(self, us, user_id: int, role_label: str):
@@ -169,6 +210,7 @@ class UserStoryService:
             priorite="moyenne",
             exclude_user_id=current_user_id,
         )
+        self._apply_project_reference(projet_id, [created])
         return created
 
     # ── Lecture ─────────────────────────────────────────────────────────────
@@ -185,6 +227,7 @@ class UserStoryService:
         stories = self.repo.get_by_epic(epic_id)
         if statut:
             stories = [us for us in stories if us.statut == statut]
+        self._apply_project_reference(projet_id, stories)
         # Tri MoSCoW : must_have > should_have > could_have > wont_have
         ordre = {"must_have": 0, "should_have": 1, "could_have": 2, "wont_have": 3}
         stories.sort(key=lambda us: ordre.get(us.priorite, 99))
@@ -193,13 +236,17 @@ class UserStoryService:
     def get_user_story(self, projet_id: int, module_id: int, epic_id: int, us_id: int):
         self._verifier_module(module_id, projet_id)
         self._verifier_epic(epic_id, module_id)
-        return self._get_us_ou_404(us_id, epic_id)
+        story = self._get_us_ou_404(us_id, epic_id)
+        self._apply_project_reference(projet_id, [story])
+        return story
 
     def get_backlog(self, projet_id: int, module_id: int, epic_id: int):
         """User stories non encore affectées à un sprint."""
         self._verifier_module(module_id, projet_id)
         self._verifier_epic(epic_id, module_id)
-        return self.repo.get_backlog(epic_id)
+        stories = self.repo.get_backlog(epic_id)
+        self._apply_project_reference(projet_id, stories)
+        return stories
 
     # ── Modification ─────────────────────────────────────────────────────────
 
@@ -255,6 +302,8 @@ class UserStoryService:
                 priorite="basse",
                 exclude_user_id=current_user_id,
             )
+        if updated:
+            self._apply_project_reference(projet_id, [updated])
         return updated
 
     # ── Assigner assignee ─────────────────────────────────────────────────────
@@ -277,6 +326,8 @@ class UserStoryService:
         updated = self.repo.update(us_id, {"assigneeId": data.assignee_id})
         if updated and data.assignee_id != previous_assignee_id:
             self._notify_assignment(updated, data.assignee_id, "responsable")
+        if updated:
+            self._apply_project_reference(projet_id, [updated])
         return updated
 
     def retirer_assignee(
@@ -304,6 +355,8 @@ class UserStoryService:
                 notification_type=TypeNotification.USER_STORY_UPDATED,
                 priorite="basse",
             )
+        if updated:
+            self._apply_project_reference(projet_id, [updated])
         return updated
 
     # ── Statut ───────────────────────────────────────────────────────────────
@@ -335,6 +388,8 @@ class UserStoryService:
                 priorite="moyenne",
                 exclude_user_id=current_user_id,
             )
+        if updated:
+            self._apply_project_reference(projet_id, [updated])
         return updated
 
     # ── Assigner développeur ─────────────────────────────────────────────────
@@ -356,6 +411,8 @@ class UserStoryService:
         updated = self.repo.update(us_id, {"developerId": data.developeur_id})
         if updated and data.developeur_id != previous_developer_id:
             self._notify_assignment(updated, data.developeur_id, "developpeur")
+        if updated:
+            self._apply_project_reference(projet_id, [updated])
         return updated
 
     def assigner_testeur(
@@ -387,6 +444,8 @@ class UserStoryService:
         updated = self.repo.update(us_id, {"testerId": data.testeur_id})
         if updated and data.testeur_id != previous_tester_id:
             self._notify_assignment(updated, data.testeur_id, "testeur")
+        if updated:
+            self._apply_project_reference(projet_id, [updated])
         return updated
 
     # ── Valider ──────────────────────────────────────────────────────────────
@@ -417,6 +476,8 @@ class UserStoryService:
                 priorite="moyenne",
                 exclude_user_id=current_user_id,
             )
+        if updated:
+            self._apply_project_reference(projet_id, [updated])
         return updated
 
     # ── Suppression ──────────────────────────────────────────────────────────

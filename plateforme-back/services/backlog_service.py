@@ -12,6 +12,7 @@ from core.config import AI_API_KEY, AI_API_URL, AI_MODEL
 from repositories.backlog_repository import BacklogRepository
 from repositories.projet_repository import ProjetRepository
 from schemas.backlog import ReordonnerBacklogRequest
+from models.scrum import UserStory, Epic, Module
 
 TRIS_VALIDES = {"priorite", "points", "ordre", "statut"}
 STATUTS_VALIDES = {"to_do", "in_progress", "done"}
@@ -63,6 +64,25 @@ class BacklogService:
                                 detail=f"Projet {projet_id} introuvable.")
         return projet
 
+    def _build_project_us_number_map(self, projet_id: int) -> dict[int, int]:
+        rows = (
+            self.repo.db.query(UserStory.id)
+            .join(Epic, UserStory.epic_id == Epic.id)
+            .join(Module, Epic.module_id == Module.id)
+            .filter(Module.projet_id == projet_id)
+            .order_by(UserStory.id.asc())
+            .all()
+        )
+        return {us_id: idx + 1 for idx, (us_id,) in enumerate(rows)}
+
+    def _apply_project_reference(self, projet_id: int, stories: List) -> List:
+        mapping = self._build_project_us_number_map(projet_id)
+        for us in stories:
+            numero = mapping.get(us.id)
+            if numero is not None:
+                us.reference = f"US-{numero}"
+        return stories
+
     # ── Backlog ──────────────────────────────────────────────────────────────
 
     def get_backlog(
@@ -93,7 +113,7 @@ class BacklogService:
                 detail=f"Tri invalide. Valeurs : {', '.join(TRIS_VALIDES)}",
             )
 
-        return self.repo.get_backlog(
+        stories = self.repo.get_backlog(
             projet_id=projet_id,
             module_id=module_id,
             epic_id=epic_id,
@@ -102,6 +122,7 @@ class BacklogService:
             non_planifiees=non_planifiees,
             tri=tri,
         )
+        return self._apply_project_reference(projet_id, stories)
 
     # ── Indicateurs ──────────────────────────────────────────────────────────
 
@@ -113,7 +134,8 @@ class BacklogService:
 
     def reordonner(self, projet_id: int, data: ReordonnerBacklogRequest) -> List:
         self._verifier_projet(projet_id)
-        return self.repo.reordonner(projet_id, data.ordre)
+        stories = self.repo.reordonner(projet_id, data.ordre)
+        return self._apply_project_reference(projet_id, stories)
 
     def suggest_backlog_item(self, projet_id: int, prompt: str, current_user_id: int) -> dict:
         projet = self._verifier_projet(projet_id)

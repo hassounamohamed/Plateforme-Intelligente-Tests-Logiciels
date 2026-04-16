@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
@@ -311,13 +312,13 @@ export default function ProjectsManagementPage() {
   };
 
   const headerActions = (
-    <button
+    <Button
       onClick={handleCreateProject}
-      className="flex h-10 px-4 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg items-center gap-2 transition-colors"
+      className="h-10 px-4 text-sm font-bold gap-2"
     >
       <span className="material-symbols-outlined text-[18px]">add</span>
       <span>Nouveau Projet</span>
-    </button>
+    </Button>
   );
 
   return (
@@ -344,13 +345,15 @@ export default function ProjectsManagementPage() {
           <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-white text-lg font-bold">Mes Projets</h2>
-              <button
+              <Button
                 onClick={handleCreateProject}
-                className="text-primary hover:text-blue-400 text-sm font-medium flex items-center gap-1"
+                variant="outline"
+                size="sm"
+                className="gap-1 border-primary/40 text-primary hover:bg-primary/10 hover:text-primary"
               >
                 <span className="material-symbols-outlined text-[18px]">add</span>
                 Créer
-              </button>
+              </Button>
             </div>
 
             {isLoading ? (
@@ -360,12 +363,12 @@ export default function ProjectsManagementPage() {
             ) : projects.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-slate-500 dark:text-[#9dabb9] mb-4">Aucun projet</p>
-                <button
+                <Button
                   onClick={handleCreateProject}
-                  className="px-4 py-2 bg-primary hover:bg-blue-600 text-white rounded-lg text-sm"
+                  className="h-9 px-4 text-sm font-medium"
                 >
                   Créer votre premier projet
-                </button>
+                </Button>
               </div>
             ) : (
               <div className="space-y-3 max-h-150 overflow-y-auto">
@@ -394,56 +397,66 @@ export default function ProjectsManagementPage() {
                         </span>
                       </div>
                       <div className="flex gap-1">
-                        <button
+                        <Button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleOpenAttachments(project);
                           }}
-                          className="p-1 hover:bg-purple-500/10 rounded"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-violet-600 hover:bg-violet-500/10 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300"
                           title="Pièces jointes"
                         >
-                          <span className="material-symbols-outlined text-[18px] text-purple-400">attach_file</span>
-                        </button>
-                        <button
+                          <span className="material-symbols-outlined text-[18px]">attach_file</span>
+                        </Button>
+                        <Button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleOpenAssignMembers(project);
                           }}
-                          className="p-1 hover:bg-blue-500/10 rounded"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-blue-600 hover:bg-blue-500/10 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                           title="Assigner des membres"
                         >
-                          <span className="material-symbols-outlined text-[18px] text-blue-400">group_add</span>
-                        </button>
-                        <button
+                          <span className="material-symbols-outlined text-[18px]">group_add</span>
+                        </Button>
+                        <Button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleArchiveProject(project.id);
                           }}
-                          className="p-1 hover:bg-yellow-500/10 rounded"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
                           title="Archiver le projet"
                         >
-                          <span className="material-symbols-outlined text-[18px] text-yellow-400">archive</span>
-                        </button>
-                        <button
+                          <span className="material-symbols-outlined text-[18px]">archive</span>
+                        </Button>
+                        <Button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleEditProject(project);
                           }}
-                          className="p-1 hover:bg-[#283039] rounded"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-slate-600 hover:bg-muted hover:text-foreground dark:text-[#9dabb9]"
                           title="Modifier"
                         >
-                          <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-[#9dabb9]">edit</span>
-                        </button>
-                        <button
+                          <span className="material-symbols-outlined text-[18px]">edit</span>
+                        </Button>
+                        <Button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteProject(project.id);
                           }}
-                          className="p-1 hover:bg-red-500/10 rounded"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                           title="Supprimer"
                         >
-                          <span className="material-symbols-outlined text-[18px] text-red-400">delete</span>
-                        </button>
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                        </Button>
                       </div>
                     </div>
                     <p className="text-sm text-slate-500 dark:text-[#9dabb9] line-clamp-2">
@@ -462,13 +475,15 @@ export default function ProjectsManagementPage() {
                 {selectedProject ? `Modules: ${selectedProject.nom}` : "Modules"}
               </h2>
               {selectedProject && (
-                <button
+                <Button
                   onClick={handleCreateModule}
-                  className="text-primary hover:text-blue-400 text-sm font-medium flex items-center gap-1"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 border-primary/40 text-primary hover:bg-primary/10 hover:text-primary"
                 >
                   <span className="material-symbols-outlined text-[18px]">add</span>
                   Créer
-                </button>
+                </Button>
               )}
             </div>
 
@@ -479,12 +494,12 @@ export default function ProjectsManagementPage() {
             ) : modules.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-slate-500 dark:text-[#9dabb9] mb-4">Aucun module</p>
-                <button
+                <Button
                   onClick={handleCreateModule}
-                  className="px-4 py-2 bg-primary hover:bg-blue-600 text-white rounded-lg text-sm"
+                  className="h-9 px-4 text-sm font-medium"
                 >
                   Créer le premier module
-                </button>
+                </Button>
               </div>
             ) : (
               <div className="space-y-3 max-h-150 overflow-y-auto">
@@ -499,18 +514,22 @@ export default function ProjectsManagementPage() {
                         <h3 className="text-white font-bold">{module.nom}</h3>
                       </div>
                       <div className="flex gap-1">
-                        <button
+                        <Button
                           onClick={() => handleEditModule(module)}
-                          className="p-1 hover:bg-[#283039] rounded"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-slate-600 hover:bg-muted hover:text-foreground dark:text-[#9dabb9]"
                         >
-                          <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-[#9dabb9]">edit</span>
-                        </button>
-                        <button
+                          <span className="material-symbols-outlined text-[18px]">edit</span>
+                        </Button>
+                        <Button
                           onClick={() => handleDeleteModule(module.id)}
-                          className="p-1 hover:bg-red-500/10 rounded"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                         >
-                          <span className="material-symbols-outlined text-[18px] text-red-400">delete</span>
-                        </button>
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                        </Button>
                       </div>
                     </div>
                     <p className="text-sm text-slate-500 dark:text-[#9dabb9]">
@@ -564,14 +583,16 @@ export default function ProjectsManagementPage() {
                   {attachmentsProject.nom}
                 </p>
               </div>
-              <button
+              <Button
                 onClick={() => setShowAttachments(false)}
-                className="p-2 hover:bg-[#283039] rounded-lg transition-colors"
+                variant="ghost"
+                size="icon-sm"
+                className="text-slate-600 hover:bg-muted hover:text-foreground dark:text-[#9dabb9]"
               >
-                <span className="material-symbols-outlined text-slate-500 dark:text-[#9dabb9]">
+                <span className="material-symbols-outlined">
                   close
                 </span>
-              </button>
+              </Button>
             </div>
             <AttachmentList
               attachments={attachmentsProject.attachments || []}

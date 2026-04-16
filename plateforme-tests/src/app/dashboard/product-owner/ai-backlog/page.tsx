@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -258,10 +259,10 @@ function AIBacklogContent() {
                 )}
               </div>
               <div className="flex items-end">
-                <button
+                <Button
                   onClick={handleStart}
                   disabled={!selectedProject || isRunning || isStarting}
-                  className="flex items-center gap-2 bg-primary hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
+                  className="h-10 px-6 gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isStarting || isRunning ? (
                     <>
@@ -276,7 +277,7 @@ function AIBacklogContent() {
                       <span>Générer le Backlog IA</span>
                     </>
                   )}
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -408,7 +409,7 @@ function AIBacklogContent() {
                 </div>
                 <Link
                   href={`${ROUTES.PRODUCT_OWNER}/ai-backlog/review/${generation.id}?projectId=${selectedProject}`}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shrink-0"
+                  className="inline-flex h-10 items-center gap-2 rounded-lg bg-green-600 px-5 font-medium text-white transition-colors hover:bg-green-700 shrink-0"
                 >
                   <span className="material-symbols-outlined text-[18px]">
                     rate_review
@@ -425,15 +426,15 @@ function AIBacklogContent() {
                   La génération a échoué. Vérifiez que le projet possède un
                   cahier des charges (TXT/PDF) en pièce jointe.
                 </p>
-                <button
+                <Button
                   onClick={handleStart}
-                  className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0"
+                  className="h-9 px-4 gap-2 text-sm font-medium shrink-0"
                 >
                   <span className="material-symbols-outlined text-[16px]">
                     refresh
                   </span>
                   Réessayer
-                </button>
+                </Button>
               </div>
             )}
           </div>

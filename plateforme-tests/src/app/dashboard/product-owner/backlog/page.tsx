@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { Sidebar } from "@/components/dashboard/Sidebar";
@@ -335,28 +336,30 @@ export default function BacklogPage() {
 
   const headerActions = (
     <div className="flex items-center gap-2">
-      <button
+      <Button
         onClick={() => setActivePanel("backlog")}
-        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+        variant={activePanel === "backlog" ? "default" : "outline"}
+        className={`flex items-center gap-1.5 px-3 text-sm font-medium transition-colors ${
           activePanel === "backlog"
-            ? "bg-primary text-white"
-            : "bg-slate-100 dark:bg-[#283039] text-slate-600 dark:text-[#9dabb9] hover:text-white"
+            ? ""
+            : "text-slate-600 hover:bg-muted hover:text-foreground dark:text-[#9dabb9]"
         }`}
       >
         <span className="material-symbols-outlined text-[16px]">list</span>
         Voir Backlog
-      </button>
-      <button
+      </Button>
+      <Button
         onClick={() => setActivePanel("ai")}
-        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+        variant={activePanel === "ai" ? "default" : "outline"}
+        className={`flex items-center gap-1.5 px-3 text-sm font-medium transition-colors ${
           activePanel === "ai"
-            ? "bg-primary text-white"
-            : "bg-slate-100 dark:bg-[#283039] text-slate-600 dark:text-[#9dabb9] hover:text-white"
+            ? ""
+            : "text-slate-600 hover:bg-muted hover:text-foreground dark:text-[#9dabb9]"
         }`}
       >
         <span className="material-symbols-outlined text-[16px]">smart_toy</span>
         Génération IA
-      </button>
+      </Button>
     </div>
   );
 
@@ -455,10 +458,10 @@ export default function BacklogPage() {
                   Projet sélectionné: <span className="text-white font-semibold">{selectedProjectData?.nom || "-"}</span>
                 </p>
                 <div className="flex items-center">
-                  <button
+                  <Button
                     onClick={handleStartGeneration}
                     disabled={!selectedProject || isGenerationRunning || isStartingGeneration}
-                    className="flex items-center gap-2 bg-primary hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg font-medium transition-colors"
+                    className="h-10 px-6 gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isStartingGeneration || isGenerationRunning ? (
                       <>
@@ -467,11 +470,11 @@ export default function BacklogPage() {
                       </>
                     ) : (
                       <>
-                        <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+                        
                         <span>Générer le Backlog IA</span>
                       </>
                     )}
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -585,7 +588,7 @@ export default function BacklogPage() {
                     </div>
                     <Link
                       href={`${ROUTES.PRODUCT_OWNER}/ai-backlog/review/${generation.id}?projectId=${selectedProject}`}
-                      className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shrink-0"
+                      className="inline-flex h-10 items-center gap-2 rounded-lg bg-green-600 px-5 font-medium text-white transition-colors hover:bg-green-700 shrink-0"
                     >
                       <span className="material-symbols-outlined text-[18px]">rate_review</span>
                       Réviser & Approuver
@@ -598,13 +601,13 @@ export default function BacklogPage() {
                     <p className="text-red-400 flex-1 text-sm">
                       La génération a échoué. Vérifiez que le projet possède un cahier des charges TXT/PDF.
                     </p>
-                    <button
+                    <Button
                       onClick={handleStartGeneration}
-                      className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0"
+                      className="h-9 px-4 gap-2 text-sm font-medium shrink-0"
                     >
                       <span className="material-symbols-outlined text-[16px]">refresh</span>
                       Réessayer
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>

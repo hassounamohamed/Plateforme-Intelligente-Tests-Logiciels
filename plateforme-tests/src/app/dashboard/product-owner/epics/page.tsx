@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
@@ -203,14 +204,14 @@ export default function EpicsManagementPage() {
   };
 
   const headerActions = (
-    <button
+    <Button
       onClick={handleCreateEpic}
       disabled={!selectedProject || !selectedModule}
-      className="flex h-10 px-4 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      className="h-10 px-4 text-sm font-bold gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       <span className="material-symbols-outlined text-[18px]">add</span>
       <span>Nouvel Epic</span>
-    </button>
+    </Button>
   );
 
   return (
@@ -304,12 +305,12 @@ export default function EpicsManagementPage() {
           ) : filteredEpics.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-slate-500 dark:text-[#9dabb9] mb-4">Aucun epic trouvé</p>
-              <button
+              <Button
                 onClick={handleCreateEpic}
-                className="px-4 py-2 bg-primary hover:bg-blue-600 text-white rounded-lg text-sm"
+                className="h-9 px-4 text-sm font-medium"
               >
                 Créer le premier epic
-              </button>
+              </Button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -359,22 +360,26 @@ export default function EpicsManagementPage() {
                         <option value="in_progress">In Progress</option>
                         <option value="done">Done</option>
                       </select>
-                      <button
+                      <Button
                         onClick={() => handleEditEpic(epic)}
-                        className="p-1 hover:bg-[#283039] rounded"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-slate-600 hover:bg-muted hover:text-foreground dark:text-[#9dabb9]"
                       >
-                        <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-[#9dabb9]">
+                        <span className="material-symbols-outlined text-[18px]">
                           edit
                         </span>
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         onClick={() => handleDeleteEpic(epic.id)}
-                        className="p-1 hover:bg-red-500/10 rounded"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                       >
-                        <span className="material-symbols-outlined text-[18px] text-red-400">
+                        <span className="material-symbols-outlined text-[18px]">
                           delete
                         </span>
-                      </button>
+                      </Button>
                     </div>
                   </div>
                   {epic.user_stories && epic.user_stories.length > 0 && (

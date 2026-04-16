@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from repositories.sprint_repository import SprintRepository, STATUTS_VALIDES
 from repositories.projet_repository import ProjetRepository
+from models.scrum import UserStory, Epic, Module
 from models.notification import TypeNotification
 from services.notification_service import NotificationService
 from schemas.sprint import (
@@ -52,6 +53,39 @@ class SprintService:
             priorite=priorite,
             exclude_user_id=exclude_user_id,
         )
+
+    def _build_project_us_number_map(self, projet_id: int) -> dict[int, int]:
+        rows = (
+            self.repo.db.query(UserStory.id)
+            .join(Epic, UserStory.epic_id == Epic.id)
+            .join(Module, Epic.module_id == Module.id)
+            .filter(Module.projet_id == projet_id)
+            .order_by(UserStory.id.asc())
+            .all()
+        )
+        return {us_id: idx + 1 for idx, (us_id,) in enumerate(rows)}
+
+    def _apply_reference_to_sprint(self, sprint, projet_id: Optional[int] = None):
+        if not sprint:
+            return sprint
+        effective_projet_id = projet_id or sprint.projet_id
+        if not effective_projet_id:
+            return sprint
+        mapping = self._build_project_us_number_map(effective_projet_id)
+        for us in sprint.userstories or []:
+            numero = mapping.get(us.id)
+            if numero is not None:
+                us.reference = f"US-{numero}"
+        return sprint
+
+    def _apply_reference_to_sprints(self, sprints: List, projet_id: int) -> List:
+        mapping = self._build_project_us_number_map(projet_id)
+        for sprint in sprints:
+            for us in sprint.userstories or []:
+                numero = mapping.get(us.id)
+                if numero is not None:
+                    us.reference = f"US-{numero}"
+        return sprints
 
     # ── Helpers ────────────────────────────────────────────────────────────
 
@@ -117,11 +151,13 @@ class SprintService:
 
     def get_sprints(self, projet_id: int) -> List:
         self._verifier_projet(projet_id)
-        return self.repo.get_by_projet(projet_id)
+        sprints = self.repo.get_by_projet(projet_id)
+        return self._apply_reference_to_sprints(sprints, projet_id)
 
     def get_sprint(self, projet_id: int, sprint_id: int):
         self._verifier_projet(projet_id)
-        return self._get_sprint_ou_404(sprint_id, projet_id)
+        sprint = self._get_sprint_ou_404(sprint_id, projet_id)
+        return self._apply_reference_to_sprint(sprint, projet_id)
 
     def get_sprint_flexible(self, projet_id: int, sprint_id: int):
         """
@@ -137,11 +173,14 @@ class SprintService:
         
         # Charger avec les user stories
         sprint_with_stories = self.repo.get_with_userstories(sprint_id)
-        return sprint_with_stories
+        return self._apply_reference_to_sprint(sprint_with_stories, sprint.projet_id)
 
     def get_sprint_actif(self, projet_id: int):
         self._verifier_projet(projet_id)
-        return self.repo.get_actif(projet_id)
+        sprint = self.repo.get_actif(projet_id)
+        if sprint:
+            sprint = self.repo.get_with_userstories(sprint.id) or sprint
+        return self._apply_reference_to_sprint(sprint, projet_id)
 
     # ── Modification ─────────────────────────────────────────────────────────
 
@@ -189,7 +228,7 @@ class SprintService:
                     priorite="moyenne",
                     exclude_user_id=current_user_id,
                 )
-        return updated
+        return self._apply_reference_to_sprint(updated, projet_id)
 
     def demarrer_sprint_flexible(self, projet_id: int, sprint_id: int, current_user_id: int):
         """Version flexible qui accepte n'importe quel projet_id"""
@@ -219,7 +258,7 @@ class SprintService:
                     priorite="moyenne",
                     exclude_user_id=current_user_id,
                 )
-        return updated
+        return self._apply_reference_to_sprint(updated, sprint.projet_id)
 
     def cloturer_sprint(self, projet_id: int, sprint_id: int, current_user_id: int):
         sprint = self._get_sprint_ou_404(sprint_id, projet_id)
@@ -241,7 +280,7 @@ class SprintService:
                     priorite="moyenne",
                     exclude_user_id=current_user_id,
                 )
-        return updated
+        return self._apply_reference_to_sprint(updated, projet_id)
 
     def cloturer_sprint_flexible(self, projet_id: int, sprint_id: int, current_user_id: int):
         """Version flexible qui accepte n'importe quel projet_id"""
@@ -267,7 +306,7 @@ class SprintService:
                     priorite="moyenne",
                     exclude_user_id=current_user_id,
                 )
-        return updated
+        return self._apply_reference_to_sprint(updated, sprint.projet_id)
 
     # ── User Stories ─────────────────────────────────────────────────────────
 
@@ -297,7 +336,7 @@ class SprintService:
                     priorite="moyenne",
                     exclude_user_id=current_user_id,
                 )
-        return updated
+        return self._apply_reference_to_sprint(updated, projet_id)
 
     def ajouter_userstories_flexible(self, projet_id: int, sprint_id: int, data: AjouterUserStoriesRequest, current_user_id: int):
         """Version flexible qui accepte n'importe quel projet_id"""
@@ -330,7 +369,7 @@ class SprintService:
                     priorite="moyenne",
                     exclude_user_id=current_user_id,
                 )
-        return updated
+        return self._apply_reference_to_sprint(updated, sprint.projet_id)
 
     def retirer_userstories(self, projet_id: int, sprint_id: int, data: RetirerUserStoriesRequest, current_user_id: int):
         sprint = self._get_sprint_ou_404(sprint_id, projet_id)
@@ -356,7 +395,7 @@ class SprintService:
                 priorite="basse",
                 exclude_user_id=current_user_id,
             )
-        return updated
+        return self._apply_reference_to_sprint(updated, projet_id)
 
     def retirer_userstories_flexible(self, projet_id: int, sprint_id: int, data: RetirerUserStoriesRequest, current_user_id: int):
         """Version flexible qui accepte n'importe quel projet_id"""
@@ -390,7 +429,7 @@ class SprintService:
                 priorite="basse",
                 exclude_user_id=current_user_id,
             )
-        return updated
+        return self._apply_reference_to_sprint(updated, sprint.projet_id)
 
     # ── Vélocité ─────────────────────────────────────────────────────────────
 

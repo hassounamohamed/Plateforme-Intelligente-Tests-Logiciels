@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
@@ -169,21 +170,22 @@ export default function ProfilePage() {
                   </p>
                 </div>
                 {!isEditing ? (
-                  <button
+                  <Button
                     onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors"
+                    className="h-9 px-4 gap-2 text-sm font-bold"
                   >
                     <span className="material-symbols-outlined text-[18px]">edit</span>
                     Modifier
-                  </button>
+                  </Button>
                 ) : (
-                  <button
+                  <Button
                     onClick={() => setIsEditing(false)}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-bold rounded-lg transition-colors"
+                    variant="outline"
+                    className="h-9 px-4 gap-2 text-sm font-bold border-border"
                   >
                     <span className="material-symbols-outlined text-[18px]">close</span>
                     Annuler
-                  </button>
+                  </Button>
                 )}
               </div>
               <form onSubmit={handleSubmit} className="p-5 space-y-4">
@@ -227,13 +229,13 @@ export default function ProfilePage() {
                 </div>
                 {isEditing && (
                   <div className="flex justify-end pt-2">
-                    <button
+                    <Button
                       type="submit"
-                      className="flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors"
+                      className="h-10 px-6 gap-2 text-sm font-bold"
                     >
                       <span className="material-symbols-outlined text-[18px]">save</span>
                       Enregistrer
-                    </button>
+                    </Button>
                   </div>
                 )}
               </form>
@@ -285,13 +287,13 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div className="flex justify-end pt-2">
-                  <button
+                  <Button
                     type="submit"
-                    className="flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors"
+                    className="h-10 px-6 gap-2 text-sm font-bold"
                   >
                     <span className="material-symbols-outlined text-[18px]">lock</span>
                     Changer le Mot de Passe
-                  </button>
+                  </Button>
                 </div>
               </form>
             </div>

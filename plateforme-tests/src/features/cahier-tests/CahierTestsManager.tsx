@@ -614,7 +614,7 @@ export default function CahierTestsManager({
                   onClick={() => setShowRegenerateMenu(!showRegenerateMenu)}
                   className="px-4 py-2 border border-[#3b4754] rounded-md text-white hover:bg-[#283039] font-medium"
                 >
-                  🔄 Regénérer
+                   Regénérer
                 </button>
                 {showRegenerateMenu && (
                   <>
@@ -627,7 +627,7 @@ export default function CahierTestsManager({
                         onClick={handleGenerate}
                         className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-[#283039]"
                       >
-                        🤖 Regénérer avec l'IA
+                         Regénérer avec l'IA
                       </button>
                       <button
                         onClick={handleCreateManual}
@@ -660,7 +660,7 @@ export default function CahierTestsManager({
                 onClick={() => setShowExportMenu(!showExportMenu)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
               >
-                📥 Exporter
+                 Exporter
               </button>
               {showExportMenu && (
                 <>
@@ -730,7 +730,7 @@ export default function CahierTestsManager({
           )}
 
           {!historyLoading && historyTimeline.length > 0 && (
-            <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-95 overflow-y-auto pr-1">
               {historyTimeline.map((item) => (
                 <div
                   key={`${item.casId}-${item.id}`}

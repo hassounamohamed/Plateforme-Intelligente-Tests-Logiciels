@@ -379,7 +379,7 @@ export default function BacklogPage() {
                     </span>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[#9dabb9] text-xs font-mono">#{item.id}</span>
+                        <span className="text-[#9dabb9] text-xs font-mono">{item.reference || `US-${item.id}`}</span>
                         <h4 className="text-white font-medium text-sm">{item.titre}</h4>
                       </div>
                       {item.description && (

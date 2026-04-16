@@ -249,15 +249,44 @@ class CahierTestGlobalService:
 
         return user_stories[0].id
 
-    @staticmethod
-    def _attach_user_story_display(cas: CasTest) -> CasTest:
+    def _build_project_us_number_map(self, projet_id: int) -> dict[int, int]:
+        rows = (
+            self.db.query(UserStory.id)
+            .join(Epic, UserStory.epic_id == Epic.id)
+            .join(Module, Epic.module_id == Module.id)
+            .filter(Module.projet_id == projet_id)
+            .order_by(UserStory.id.asc())
+            .all()
+        )
+        return {us_id: idx + 1 for idx, (us_id,) in enumerate(rows)}
+
+    def _resolve_projet_id_from_case(self, cas: CasTest) -> Optional[int]:
         user_story = getattr(cas, "user_story", None)
-        cas.user_story_reference = user_story.reference if user_story else None
+        if user_story and user_story.epic and user_story.epic.module:
+            return user_story.epic.module.projet_id
+        return None
+
+    def _attach_user_story_display(
+        self,
+        cas: CasTest,
+        number_map: Optional[dict[int, int]] = None,
+    ) -> CasTest:
+        user_story = getattr(cas, "user_story", None)
+        if user_story and number_map is not None:
+            numero = number_map.get(user_story.id)
+            cas.user_story_reference = f"US-{numero}" if numero else None
+        else:
+            cas.user_story_reference = user_story.reference if user_story else None
         cas.user_story_titre = user_story.titre if user_story else None
         return cas
 
     def _attach_user_story_display_many(self, cases: List[CasTest]) -> List[CasTest]:
-        return [self._attach_user_story_display(cas) for cas in cases]
+        number_map: Optional[dict[int, int]] = None
+        if cases:
+            projet_id = self._resolve_projet_id_from_case(cases[0])
+            if projet_id:
+                number_map = self._build_project_us_number_map(projet_id)
+        return [self._attach_user_story_display(cas, number_map) for cas in cases]
 
     def _sync_existing_rapport_if_any(self, cahier_id: int, projet_id: int) -> None:
         """
@@ -905,7 +934,7 @@ class CahierTestGlobalService:
             self.db.query(UserStory)
             .join(Epic, UserStory.epic_id == Epic.id)
             .join(Module, Epic.module_id == Module.id)
-            .options(joinedload(UserStory.sprint), joinedload(UserStory.epic).joinedload(Epic.module))
+            .options(joinedload(UserStory.sprints), joinedload(UserStory.epic).joinedload(Epic.module))
             .filter(Module.projet_id == projet_id)
             .order_by(UserStory.id.asc())
             .all()
@@ -914,12 +943,12 @@ class CahierTestGlobalService:
         return [
             {
                 "id": us.id,
-                "reference": us.reference,
+                "reference": f"US-{index}",
                 "titre": us.titre,
-                "sprint_nom": us.sprint.nom if us.sprint else None,
+                "sprint_nom": us.sprints[0].nom if us.sprints else None,
                 "module_nom": us.epic.module.nom if (us.epic and us.epic.module) else None,
             }
-            for us in user_stories
+            for index, us in enumerate(user_stories, start=1)
         ]
 
     def get_assignable_members(self, cahier_id: int, projet_id: int) -> list[dict]:
