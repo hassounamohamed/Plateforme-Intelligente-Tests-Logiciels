@@ -4,7 +4,7 @@ Service de génération IA du backlog Scrum à partir d'un cahier des charges.
 Flux :
   1. Créer un enregistrement AIGeneration (status=pending)
   2. Lire le fichier du cahier des charges attaché au projet
-  3. Envoyer au modèle via Google AI Studio (Gemini)
+  3. Envoyer au modèle via open router
   4. Analyser la réponse JSON
   5. Sauvegarder les modules / epics / user stories dans ai_generated_items
   6. Passer le status en completed (ou failed)

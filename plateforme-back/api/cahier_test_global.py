@@ -7,6 +7,7 @@ Endpoints :
   GET    /projets/{projet_id}/cahier-tests/generations/{gen_id}                     Détail + logs d'un job
   GET    /projets/{projet_id}/cahier-tests                                          Récupérer le cahier (résumé)
   GET    /projets/{projet_id}/cahier-tests/detail                                   Cahier + tous les cas de tests
+    GET    /projets/{projet_id}/cahier-tests/versions                                 Lister les versions disponibles
   GET    /projets/{projet_id}/cahier-tests/{cahier_id}/cas-tests                    Lister les cas de tests
   PATCH  /projets/{projet_id}/cahier-tests/{cahier_id}/cas-tests/{cas_id}          Modifier un cas de test
   POST   /projets/{projet_id}/cahier-tests/{cahier_id}/cas-tests/{cas_id}/capture  Upload capture d'écran
@@ -41,6 +42,7 @@ from schemas.cahier_test_global import (
     AssignableMemberResponse,
     BugSuggestionResponse,
     CasTestHistoryResponse,
+    CahierVersionHistoryResponse,
     CahierTestGlobalDetailResponse,
     CahierTestGlobalResponse,
     CasTestResponse,
@@ -325,6 +327,20 @@ async def get_statistiques(
 ):
     _ensure_cahier_allowed_role(current_user)
     return svc.get_statistiques(projet_id)
+
+
+@router.get(
+    "/versions",
+    response_model=List[CahierVersionHistoryResponse],
+    summary="Lister les versions disponibles du cahier de tests",
+)
+async def list_cahier_versions(
+    projet_id: int,
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: CahierTestGlobalService = Depends(get_service),
+):
+    _ensure_cahier_allowed_role(current_user)
+    return svc.list_cahier_versions(projet_id)
 
 
 # ─── Cas de tests ─────────────────────────────────────────────────────────────

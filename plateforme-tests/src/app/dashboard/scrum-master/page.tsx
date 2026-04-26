@@ -244,9 +244,9 @@ export default function ScrumMasterDashboard() {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            {us.id && (
+                            {(us.reference || us.id) && (
                               <span className="text-[#9dabb9] text-xs font-mono bg-[#1c2229] px-1.5 py-0.5 rounded">
-                                #{us.id}
+                                {us.reference || String(us.id)}
                               </span>
                             )}
                             <h4 className="text-white font-medium text-sm">{us.titre}</h4>
@@ -309,7 +309,7 @@ export default function ScrumMasterDashboard() {
                   <div className="bg-[#283039] rounded-xl p-4 border border-[#3b4754]/50 shadow-sm flex flex-col justify-center">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="material-symbols-outlined text-[#9dabb9] text-[16px]">subject</span>
-                      <p className="text-[#9dabb9] text-xs font-bold uppercase tracking-wider">Stories</p>
+                      <p className="text-[#9dabb9] text-xs font-bold uppercase tracking-wider"> User Stories</p>
                     </div>
                     <p className="text-white text-3xl font-black">{backlogIndicateurs.total_stories}</p>
                   </div>

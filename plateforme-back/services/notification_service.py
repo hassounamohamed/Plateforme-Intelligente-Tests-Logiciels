@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from models.notification import TypeNotification
+from models.scrum import Epic, Module, Projet, Sprint, UserStory
 from repositories.notification_repository import NotificationRepository
 
 
@@ -232,6 +233,46 @@ NOTIFICATION_CATALOG = [
         "priorite": "basse",
         "message": "Le rapport QA a ete exporte.",
     },
+    {
+        "type": TypeNotification.REPORT_GENERATED,
+        "title": "Rapport genere",
+        "severity": "info",
+        "domain": "qa_tests",
+        "priorite": "moyenne",
+        "message": "Un rapport QA a ete genere.",
+    },
+    {
+        "type": TypeNotification.SPRINT_ENDED,
+        "title": "Sprint termine",
+        "severity": "info",
+        "domain": "scrum_sprint",
+        "priorite": "moyenne",
+        "message": "Le sprint est termine.",
+    },
+    {
+        "type": TypeNotification.ANOMALY_CREATED,
+        "title": "Anomalie creee",
+        "severity": "warning",
+        "domain": "qa_tests",
+        "priorite": "moyenne",
+        "message": "Une nouvelle anomalie a ete enregistree.",
+    },
+    {
+        "type": TypeNotification.VALIDATION_REQUIRED,
+        "title": "Validation requise",
+        "severity": "warning",
+        "domain": "qa_tests",
+        "priorite": "haute",
+        "message": "Une validation est requise de votre part.",
+    },
+    {
+        "type": TypeNotification.RECOMMENDATION_AVAILABLE,
+        "title": "Recommandation disponible",
+        "severity": "info",
+        "domain": "qa_tests",
+        "priorite": "basse",
+        "message": "De nouvelles recommandations qualite sont disponibles.",
+    },
 ]
 
 
@@ -331,6 +372,103 @@ class NotificationService:
                 )
             )
         return created
+
+    def get_project_user_ids(self, project_id: int) -> list[int]:
+        projet = self.db.query(Projet).filter(Projet.id == project_id).first()
+        if not projet:
+            return []
+
+        ids = {member.id for member in (projet.membres or []) if member and member.id}
+        if projet.productOwnerId:
+            ids.add(projet.productOwnerId)
+        return list(ids)
+
+    def get_project_id_from_user_story(self, user_story_id: int) -> int | None:
+        row = (
+            self.db.query(Module.projet_id)
+            .select_from(UserStory)
+            .join(Epic, UserStory.epic_id == Epic.id)
+            .join(Module, Epic.module_id == Module.id)
+            .filter(UserStory.id == user_story_id)
+            .first()
+        )
+        return row[0] if row else None
+
+    def get_project_id_from_sprint(self, sprint_id: int) -> int | None:
+        row = self.db.query(Sprint.projet_id).filter(Sprint.id == sprint_id).first()
+        return row[0] if row else None
+
+    def notify_project_users(
+        self,
+        project_id: int,
+        titre: str,
+        message: str,
+        notification_type: TypeNotification,
+        priorite: str = "moyenne",
+        exclude_user_id: int | None = None,
+        dedupe_window_seconds: int = 300,
+    ):
+        user_ids = self.get_project_user_ids(project_id)
+        if not user_ids:
+            return []
+
+        return self.notify_users(
+            user_ids=user_ids,
+            titre=titre,
+            message=message,
+            notification_type=notification_type,
+            priorite=priorite,
+            exclude_user_id=exclude_user_id,
+            dedupe_window_seconds=dedupe_window_seconds,
+        )
+
+    def notify_user_story_project_users(
+        self,
+        user_story_id: int,
+        titre: str,
+        message: str,
+        notification_type: TypeNotification,
+        priorite: str = "moyenne",
+        exclude_user_id: int | None = None,
+        dedupe_window_seconds: int = 300,
+    ):
+        project_id = self.get_project_id_from_user_story(user_story_id)
+        if not project_id:
+            return []
+
+        return self.notify_project_users(
+            project_id=project_id,
+            titre=titre,
+            message=message,
+            notification_type=notification_type,
+            priorite=priorite,
+            exclude_user_id=exclude_user_id,
+            dedupe_window_seconds=dedupe_window_seconds,
+        )
+
+    def notify_sprint_project_users(
+        self,
+        sprint_id: int,
+        titre: str,
+        message: str,
+        notification_type: TypeNotification,
+        priorite: str = "moyenne",
+        exclude_user_id: int | None = None,
+        dedupe_window_seconds: int = 300,
+    ):
+        project_id = self.get_project_id_from_sprint(sprint_id)
+        if not project_id:
+            return []
+
+        return self.notify_project_users(
+            project_id=project_id,
+            titre=titre,
+            message=message,
+            notification_type=notification_type,
+            priorite=priorite,
+            exclude_user_id=exclude_user_id,
+            dedupe_window_seconds=dedupe_window_seconds,
+        )
 
     def create_demo_notifications(self, user_id: int):
         payloads = [

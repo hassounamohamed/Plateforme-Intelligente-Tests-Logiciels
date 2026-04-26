@@ -124,7 +124,7 @@ async def export_rapport_qa_pdf(
     svc: RapportService = Depends(get_service),
 ):
     _ensure_rapport_allowed_role(current_user)
-    data = svc.exporter_rapport_qa_pdf(cahier_id, projet_id)
+    data = svc.exporter_rapport_qa_pdf(cahier_id, projet_id, current_user.id)
     return Response(
         content=data,
         media_type="application/pdf",
@@ -144,7 +144,7 @@ async def export_rapport_qa_word(
     svc: RapportService = Depends(get_service),
 ):
     _ensure_rapport_allowed_role(current_user)
-    data = svc.exporter_rapport_qa_word(cahier_id, projet_id)
+    data = svc.exporter_rapport_qa_word(cahier_id, projet_id, current_user.id)
     return Response(
         content=data,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",

@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Sidebar } from "@/components/dashboard/Sidebar";
@@ -121,12 +122,14 @@ export default function ProductOwnerDashboard() {
             <div className="flex-1">
               <h3 className="text-red-400 font-semibold mb-1">Erreur de chargement</h3>
               <p className="text-red-300 text-sm">{error}</p>
-              <button
+              <Button
                 onClick={loadData}
-                className="mt-3 text-sm text-red-400 hover:text-red-300 underline"
+                variant="ghost"
+                size="sm"
+                className="mt-3 h-8 px-2 text-red-500 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
               >
                 Réessayer
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -186,15 +189,23 @@ export default function ProductOwnerDashboard() {
               </p>
             </div>
             <div className="flex bg-slate-100 dark:bg-[#283039] rounded-lg p-1 self-start sm:self-auto">
-              <button className="px-3 py-1 bg-primary text-white text-xs font-bold rounded shadow-sm">
+              <Button size="xs" className="h-7 px-3 text-xs font-bold shadow-sm">
                 30 Jours
-              </button>
-              <button className="px-3 py-1 text-slate-500 dark:text-[#9dabb9] hover:text-white text-xs font-medium rounded transition-colors">
+              </Button>
+              <Button
+                variant="ghost"
+                size="xs"
+                className="h-7 px-3 text-xs font-medium text-slate-600 hover:bg-muted hover:text-foreground dark:text-[#9dabb9]"
+              >
                 7 Jours
-              </button>
-              <button className="px-3 py-1 text-slate-500 dark:text-[#9dabb9] hover:text-white text-xs font-medium rounded transition-colors">
+              </Button>
+              <Button
+                variant="ghost"
+                size="xs"
+                className="h-7 px-3 text-xs font-medium text-slate-600 hover:bg-muted hover:text-foreground dark:text-[#9dabb9]"
+              >
                 24 Heures
-              </button>
+              </Button>
             </div>
           </div>
           <div className="h-60 w-full flex items-center justify-center">

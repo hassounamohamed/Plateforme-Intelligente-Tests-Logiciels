@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
 
 import { ROUTES } from "@/lib/constants";
 import { selectOAuthRoleApi } from "@/features/auth/api";
@@ -95,8 +96,16 @@ export default function SelectRolePage() {
 				onSubmit={onSubmit}
 				className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-[#3b4754] bg-white dark:bg-surface-dark p-6 shadow-lg ring-1 ring-inset ring-primary-100 dark:ring-primary-900/40"
 			>
-				<div className="mb-1 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15 text-primary">
-					<span className="material-symbols-outlined text-[26px]">person</span>
+				<div className="mb-3 flex items-center gap-3">
+					<Image
+						src="/favicon-32x32.png"
+						alt="FlowPilot logo"
+						width={40}
+						height={40}
+						className="rounded-xl"
+						priority
+					/>
+					<span className="text-lg font-semibold text-slate-900 dark:text-white">FlowPilot</span>
 				</div>
 				<h1 className="text-xl font-semibold text-slate-900 dark:text-white">Choisissez votre role</h1>
 				<p className="mt-2 text-sm text-slate-600 dark:text-[#9dabb9]">

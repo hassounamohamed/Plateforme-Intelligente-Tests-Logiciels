@@ -540,7 +540,54 @@ class RapportService:
 
         return rapport
 
-    def exporter_rapport_qa_pdf(self, cahier_id: int, projet_id: int) -> bytes:
+    def sync_rapport_with_cahier(self, cahier_id: int, projet_id: int) -> Optional[RapportQA]:
+        """
+        Synchronise automatiquement le rapport QA avec l'etat courant du cahier.
+        Ne cree pas de nouveau rapport et n'incremente pas la version.
+        """
+        cahier = self._verifier_appartenance(cahier_id, projet_id)
+        rapport = self.db.query(RapportQA).filter(RapportQA.cahierId == cahier_id).first()
+        if not rapport:
+            return None
+
+        stats = self._compute_rapport_stats(cahier)
+        generated_payload = self._build_manual_recommendations(stats)
+
+        rapport.dateGeneration = datetime.utcnow()
+        rapport.tauxReussite = stats["taux_reussite"]
+        rapport.nombreTestsExecutes = stats["executes"]
+        rapport.nombreTestsReussis = stats["reussi"]
+        rapport.nombreTestsEchoues = stats["echoue"]
+
+        # On preserve une recommendation manuelle existante.
+        if not (rapport.recommandations or "").strip():
+            rapport.recommandations = generated_payload.get("recommandations") or ""
+
+        indicateur = rapport.indicateurs
+        if indicateur is None:
+            indicateur = IndicateurQualite(rapportId=rapport.id)
+            self.db.add(indicateur)
+
+        indicateur.tauxCouverture = float(generated_payload.get("taux_couverture") or stats["taux_couverture"])
+        indicateur.tauxReussite = float(generated_payload.get("taux_reussite") or stats["taux_reussite"])
+        indicateur.nombreAnomalies = int(generated_payload.get("nombre_anomalies") or stats["anomalies_total"])
+        indicateur.nombreAnomaliesCritiques = int(
+            generated_payload.get("nombre_anomalies_critiques") or stats["critical_failed"]
+        )
+        indicateur.indiceQualite = float(generated_payload.get("indice_qualite") or 0.0)
+        indicateur.tendance = generated_payload.get("tendance") or "stable"
+
+        # On remet a jour les recommandations qualite structurees pour rester coherentes avec les KPIs.
+        self._sync_recommandations_qualite(
+            rapport,
+            generated_payload.get("recommandations_qualite") or [],
+        )
+
+        self.db.commit()
+        self.db.refresh(rapport)
+        return rapport
+
+    def exporter_rapport_qa_pdf(self, cahier_id: int, projet_id: int, user_id: int) -> bytes:
         try:
             from reportlab.lib.pagesizes import A4
             from reportlab.lib import colors
@@ -685,9 +732,17 @@ class RapportService:
 
         doc.build(story)
         buf.seek(0)
+        self.notification_service.notify_project_users(
+            project_id=projet_id,
+            titre="Rapport exporte",
+            message=f"Le rapport QA du cahier {cahier_id} a ete exporte en PDF.",
+            notification_type=TypeNotification.REPORT_EXPORTED,
+            priorite="basse",
+            exclude_user_id=user_id,
+        )
         return buf.read()
 
-    def exporter_rapport_qa_word(self, cahier_id: int, projet_id: int) -> bytes:
+    def exporter_rapport_qa_word(self, cahier_id: int, projet_id: int, user_id: int) -> bytes:
         try:
             from docx import Document
             from docx.shared import Pt, RGBColor
@@ -787,4 +842,12 @@ class RapportService:
         buf = io.BytesIO()
         doc.save(buf)
         buf.seek(0)
+        self.notification_service.notify_project_users(
+            project_id=projet_id,
+            titre="Rapport exporte",
+            message=f"Le rapport QA du cahier {cahier_id} a ete exporte en Word.",
+            notification_type=TypeNotification.REPORT_EXPORTED,
+            priorite="basse",
+            exclude_user_id=user_id,
+        )
         return buf.read()

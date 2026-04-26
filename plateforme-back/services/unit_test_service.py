@@ -326,6 +326,17 @@ class UnitTestService:
                 if cahier and cahier.ai_generation_id == generation_id:
                     cahier.statut = "failed"
                     self.db.commit()
+                self.notification_service.notify_project_users(
+                    project_id=gen.projet_id,
+                    titre="IA en echec",
+                    message=(
+                        f"La generation IA de tests unitaires a echoue pour la user story "
+                        f"{us_id}."
+                    ),
+                    notification_type=TypeNotification.AI_FAILED,
+                    priorite="haute",
+                    exclude_user_id=gen.user_id,
+                )
 
     def _run(self, generation_id: int, us_id: int, filename: str) -> None:
 
@@ -411,6 +422,19 @@ class UnitTestService:
         cahier.nombreTests = nb_tests
         cahier.statut      = "brouillon"
         self.db.commit()
+
+        if gen:
+            self.notification_service.notify_project_users(
+                project_id=gen.projet_id,
+                titre="Nouveau test cree",
+                message=(
+                    f"{nb_tests} test(s) unitaire(s) ont ete generes pour la user story "
+                    f"{us_id}."
+                ),
+                notification_type=TypeNotification.TEST_CREATED,
+                priorite="moyenne",
+                exclude_user_id=gen.user_id,
+            )
 
         # Étape 6 : terminé
         self.ai_repo.update_status(generation_id, "completed", 100)
@@ -607,7 +631,7 @@ class UnitTestService:
         use_docker: bool = False,
     ) -> ExecutionTest:
         t = self.get_test(test_id, us_id, projet_id)
-        us = self._get_us(us_id, projet_id)
+        self._get_us(us_id, projet_id)
         if not getattr(t, "code", None):
             raise HTTPException(status_code=400, detail="Le test n'a pas de code exécutable.")
 
@@ -643,9 +667,8 @@ class UnitTestService:
         self.db.commit()
         self.db.refresh(exec_record)
 
-        related_ids = list(self._us_related_user_ids(us))
-        self.notification_service.notify_users(
-            user_ids=related_ids,
+        self.notification_service.notify_user_story_project_users(
+            user_story_id=us_id,
             titre="Test execute",
             message=f"Le test {t.nom} vient d'etre execute (statut: {statut}).",
             notification_type=TypeNotification.TEST_EXECUTED,
@@ -655,8 +678,8 @@ class UnitTestService:
 
         outcome_type = TypeNotification.TEST_PASSED if statut == "RÉUSSI" else TypeNotification.TEST_FAILED
         outcome_priority = "basse" if statut == "RÉUSSI" else "haute"
-        self.notification_service.notify_users(
-            user_ids=related_ids,
+        self.notification_service.notify_user_story_project_users(
+            user_story_id=us_id,
             titre="Test reussi" if statut == "RÉUSSI" else "Test echoue",
             message=f"Le test {t.nom} s'est termine avec le statut {statut}.",
             notification_type=outcome_type,
@@ -734,7 +757,7 @@ class UnitTestService:
         data:      ValiderTestRequest,
     ) -> ValidationTest:
         t = self.get_test(test_id, us_id, projet_id)  # vérifie l'accès
-        us = self._get_us(us_id, projet_id)
+        self._get_us(us_id, projet_id)
         v = ValidationTest(
             testId       = test_id,
             validatorId  = user_id,
@@ -747,8 +770,8 @@ class UnitTestService:
         self.db.commit()
         self.db.refresh(v)
 
-        self.notification_service.notify_users(
-            user_ids=list(self._us_related_user_ids(us)),
+        self.notification_service.notify_user_story_project_users(
+            user_story_id=us_id,
             titre="Resultat valide",
             message=f"Le resultat du test {t.nom} a ete valide.",
             notification_type=TypeNotification.TEST_RESULT_VALIDATED,

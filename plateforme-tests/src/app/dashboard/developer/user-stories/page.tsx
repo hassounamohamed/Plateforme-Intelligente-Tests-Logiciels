@@ -6,14 +6,16 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { ProjectSelectorCard } from "@/components/dashboard/ProjectSelectorCard";
 import { ROUTES } from "@/lib/constants";
+import { useAuthStore } from "@/features/auth/store";
 import { getMyProjectsAsMember } from "@/features/projects/api";
 import { getModules } from "@/features/modules/api";
 import { getEpics } from "@/features/epics/api";
-import { getUserStories } from "@/features/userstories/api";
+import { changeUserStoryStatus, getUserStories } from "@/features/userstories/api";
 import { ArrowRight, FileText, Flag, LayoutDashboard, X } from "lucide-react";
 import { Project, Module, Epic, UserStory, PrioriteUS, StatutUS } from "@/types";
 
 export default function UserStoriesPage() {
+  const { user } = useAuthStore();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
@@ -27,6 +29,7 @@ export default function UserStoriesPage() {
   const [selectedStory, setSelectedStory] = useState<UserStory | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<StatutUS | "all">("all");
+  const [statusUpdating, setStatusUpdating] = useState(false);
 
   useEffect(() => {
     loadProjects();
@@ -237,6 +240,58 @@ export default function UserStoriesPage() {
   const formatStatus = (status: StatutUS): string => {
     const map: Record<StatutUS, string> = { to_do: "À faire", in_progress: "En cours", done: "Terminé" };
     return map[status] || status;
+  };
+
+  const getStoryModuleId = (story: UserStory): number | null => {
+    const epic = epics.find((item) => item.id === story.epic_id);
+    return epic?.module_id ?? null;
+  };
+
+  const isStoryAssignedToMe = (story: UserStory | null): boolean => {
+    if (!story || !user) return false;
+    return story.developerId === user.id;
+  };
+
+  const replaceStoryInLists = (updatedStory: UserStory) => {
+    setSelectedStory(updatedStory);
+    setAllUserStories((previous) =>
+      previous.map((story) => (story.id === updatedStory.id ? updatedStory : story))
+    );
+    setUserStories((previous) =>
+      previous.map((story) => (story.id === updatedStory.id ? updatedStory : story))
+    );
+  };
+
+  const handleChangeSelectedStoryStatus = async (nextStatus: StatutUS) => {
+    if (!selectedProject || !selectedStory || !user) return;
+    if (!isStoryAssignedToMe(selectedStory)) {
+      setError("Vous ne pouvez modifier que les user stories qui vous sont assignées.");
+      return;
+    }
+
+    const moduleId = getStoryModuleId(selectedStory);
+    if (!moduleId) {
+      setError("Impossible de résoudre le module de cette user story.");
+      return;
+    }
+
+    setStatusUpdating(true);
+    setError(null);
+    try {
+      const updated = await changeUserStoryStatus(
+        selectedProject.id,
+        moduleId,
+        selectedStory.epic_id,
+        selectedStory.id,
+        { statut: nextStatus }
+      );
+      replaceStoryInLists(updated);
+    } catch (err) {
+      console.error("Erreur lors du changement de statut:", err);
+      setError("Erreur lors du changement de statut de la user story");
+    } finally {
+      setStatusUpdating(false);
+    }
   };
 
   if (loading && projects.length === 0) {
@@ -450,6 +505,12 @@ export default function UserStoriesPage() {
                               <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mt-1">{story.developer.nom}</p>
                             </div>
                           )}
+                          {isStoryAssignedToMe(story) && (
+                            <div className="bg-green-100 dark:bg-green-500/20 rounded p-2 border border-green-300 dark:border-green-500/30">
+                              <p className="text-xs text-green-700 dark:text-green-300">Assignée à vous</p>
+                              <p className="text-sm font-semibold text-green-800 dark:text-green-200 mt-1">Action autorisée</p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -591,6 +652,31 @@ export default function UserStoriesPage() {
 
             {/* Footer Modal */}
             <div className="sticky bottom-0 flex justify-end p-6 border-t border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80 gap-3">
+                {isStoryAssignedToMe(selectedStory) ? (
+                  <>
+                    {selectedStory.statut !== "done" ? (
+                      <button
+                        onClick={() => handleChangeSelectedStoryStatus("done")}
+                        disabled={statusUpdating}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white transition"
+                      >
+                        {statusUpdating ? "Mise à jour..." : "Marquer terminée"}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleChangeSelectedStoryStatus("in_progress")}
+                        disabled={statusUpdating}
+                        className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white transition"
+                      >
+                        {statusUpdating ? "Mise à jour..." : "Rouvrir"}
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex items-center px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-sm">
+                    Seules les user stories assignées à votre compte peuvent changer de statut.
+                  </div>
+                )}
               <button
                 onClick={() => setSelectedStory(null)}
                 className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg text-gray-900 dark:text-white transition"

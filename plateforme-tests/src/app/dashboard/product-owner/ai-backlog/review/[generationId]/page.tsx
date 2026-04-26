@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { useCallback, useRef } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
@@ -379,41 +380,47 @@ export default function AIBacklogReviewPage() {
 
                 {/* Action buttons */}
                 <div className="flex items-center gap-1 shrink-0">
-                  <button
+                  <Button
                     onClick={() => openEdit(item)}
                     title="Modifier"
-                    className="flex items-center justify-center h-7 w-7 rounded-lg bg-slate-100 dark:bg-[#283039] hover:bg-[#3b4754] text-slate-500 dark:text-[#9dabb9] hover:text-white transition-colors"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-slate-600 hover:bg-muted hover:text-foreground dark:text-[#9dabb9]"
                   >
                     <span className="material-symbols-outlined text-[15px]">
                       edit
                     </span>
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => handleStatusChange(item, "approved")}
                     title="Approuver"
-                    className={`flex items-center justify-center h-7 w-7 rounded-lg transition-colors ${
+                    variant="ghost"
+                    size="icon-sm"
+                    className={`transition-colors ${
                       item.status === "approved"
                         ? "bg-green-500 text-white"
-                        : "bg-slate-100 dark:bg-[#283039] hover:bg-green-500/20 text-slate-500 dark:text-[#9dabb9] hover:text-green-400"
+                        : "text-green-600 hover:bg-green-500/10 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
                     }`}
                   >
                     <span className="material-symbols-outlined text-[15px]">
                       check
                     </span>
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => handleStatusChange(item, "rejected")}
                     title="Rejeter"
-                    className={`flex items-center justify-center h-7 w-7 rounded-lg transition-colors ${
+                    variant="ghost"
+                    size="icon-sm"
+                    className={`transition-colors ${
                       item.status === "rejected"
                         ? "bg-red-500 text-white"
-                        : "bg-slate-100 dark:bg-[#283039] hover:bg-red-500/20 text-slate-500 dark:text-[#9dabb9] hover:text-red-400"
+                        : "text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                     }`}
                   >
                     <span className="material-symbols-outlined text-[15px]">
                       close
                     </span>
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -508,7 +515,7 @@ export default function AIBacklogReviewPage() {
           actions={
             <Link
               href={`${ROUTES.PRODUCT_OWNER}/backlog?tab=ai`}
-              className="flex items-center gap-1.5 text-slate-500 dark:text-[#9dabb9] hover:text-white bg-slate-100 dark:bg-[#283039] hover:bg-[#3b4754] px-3 py-2 rounded-lg text-sm transition-colors"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 px-3 text-sm text-slate-600 transition-colors hover:bg-muted hover:text-foreground dark:border-[#3b4754] dark:bg-[#283039] dark:text-[#9dabb9]"
             >
               <span className="material-symbols-outlined text-[16px]">
                 arrow_back
@@ -559,14 +566,14 @@ export default function AIBacklogReviewPage() {
             <div className="flex gap-3">
               <Link
                 href={`${ROUTES.PRODUCT_OWNER}/backlog`}
-                className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"
+                className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-5 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 <span className="material-symbols-outlined text-[18px]">list</span>
                 Voir le Backlog
               </Link>
               <Link
                 href={`${ROUTES.PRODUCT_OWNER}/epics`}
-                className="flex items-center gap-2 bg-slate-100 dark:bg-[#283039] hover:bg-[#3b4754] text-white px-5 py-2.5 rounded-lg font-medium transition-colors"
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-5 font-medium text-slate-700 transition-colors hover:bg-muted hover:text-foreground dark:border-[#3b4754] dark:bg-[#283039] dark:text-[#9dabb9]"
               >
                 <span className="material-symbols-outlined text-[18px]">content_cut</span>
                 Voir les Epics
@@ -599,21 +606,22 @@ export default function AIBacklogReviewPage() {
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                <button
+                <Button
                   type="button"
                   onClick={handleApproveAll}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-400 text-sm font-medium transition-colors"
+                  variant="ghost"
+                  className="h-9 gap-1.5 px-3 text-sm font-medium text-green-600 hover:bg-green-500/10 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
                 >
                   <span className="material-symbols-outlined text-[16px]">
                     done_all
                   </span>
                   Tout approuver
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={handleApply}
                   disabled={isApplying || approvedCount === 0}
-                  className="flex items-center gap-2 bg-primary hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg font-medium text-sm transition-colors"
+                  className="h-9 gap-2 px-5 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isApplying ? (
                     <>
@@ -628,12 +636,13 @@ export default function AIBacklogReviewPage() {
                       Appliquer au Backlog ({approvedCount})
                     </>
                   )}
-                </button>
-                  <button
+                </Button>
+                  <Button
                     type="button"
                     onClick={handleRejectGeneration}
                     disabled={isRejecting || isRegenerating || isApplying}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm font-medium transition-colors disabled:opacity-50"
+                    variant="ghost"
+                    className="h-9 gap-1.5 px-3 text-sm font-medium text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50"
                   >
                     {isRejecting ? (
                       <>
@@ -648,12 +657,13 @@ export default function AIBacklogReviewPage() {
                         Refuser la tentative
                       </>
                     )}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={handleRegenerate}
                     disabled={isRegenerating || isRejecting || isApplying}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-100 dark:bg-[#283039] hover:bg-[#3b4754] text-white text-sm font-medium transition-colors disabled:opacity-50"
+                    variant="outline"
+                    className="h-9 gap-1.5 px-3 text-sm font-medium text-slate-600 hover:bg-muted hover:text-foreground dark:text-[#9dabb9] disabled:opacity-50"
                   >
                     {isRegenerating ? (
                       <>
@@ -668,7 +678,7 @@ export default function AIBacklogReviewPage() {
                         Régénérer
                       </>
                     )}
-                  </button>
+                  </Button>
               </div>
             </div>
 
@@ -735,12 +745,14 @@ export default function AIBacklogReviewPage() {
                   Modifier — {typeLabel(editingItem.type)}
                 </h2>
               </div>
-              <button
+              <Button
                 onClick={() => setEditingItem(null)}
-                className="text-slate-500 dark:text-[#9dabb9] hover:text-white"
+                variant="ghost"
+                size="icon-sm"
+                className="text-slate-600 hover:bg-muted hover:text-foreground dark:text-[#9dabb9]"
               >
                 <span className="material-symbols-outlined">close</span>
-              </button>
+              </Button>
             </div>
 
             {/* Modal body */}
@@ -871,18 +883,19 @@ export default function AIBacklogReviewPage() {
 
             {/* Modal footer */}
             <div className="flex justify-end gap-3 p-5 border-t border-slate-200 dark:border-[#3b4754]">
-              <button
+              <Button
                 onClick={() => setEditingItem(null)}
-                className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-[#283039] hover:bg-[#3b4754] text-white text-sm transition-colors"
+                variant="outline"
+                className="h-9 px-4 text-sm"
               >
                 Annuler
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleSaveEdit}
-                className="px-4 py-2 rounded-lg bg-primary hover:bg-blue-600 text-white text-sm font-medium transition-colors"
+                className="h-9 px-4 text-sm font-medium"
               >
                 Enregistrer
-              </button>
+              </Button>
             </div>
           </div>
         </div>

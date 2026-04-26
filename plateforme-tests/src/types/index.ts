@@ -734,6 +734,12 @@ export interface StatistiquesCahier {
   pct_non_execute: number;
 }
 
+export interface CahierVersionHistoryItem {
+  version: string;
+  source?: string | null;
+  created_at: string;
+}
+
 export interface ImportExcelResult {
   imported_count: number;
   skipped_count: number;

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from repositories.epic_repository import EpicRepository, STATUTS_VALIDES
 from repositories.module_repository import ModuleRepository
 from repositories.projet_repository import ProjetRepository
+from models.scrum import UserStory, Epic, Module
 from schemas.epic import (
     CreateEpicRequest,
     UpdateEpicRequest,
@@ -58,6 +59,40 @@ class EpicService:
             )
         return epic
 
+    def _build_project_us_number_map(self, projet_id: int) -> dict[int, int]:
+        rows = (
+            self.repo.db.query(UserStory.id)
+            .join(Epic, UserStory.epic_id == Epic.id)
+            .join(Module, Epic.module_id == Module.id)
+            .filter(Module.projet_id == projet_id)
+            .order_by(UserStory.id.asc())
+            .all()
+        )
+        return {us_id: idx + 1 for idx, (us_id,) in enumerate(rows)}
+
+    def _project_reference_prefix(self, projet_id: int) -> str:
+        projet = self.projet_repo.get_by_id(projet_id)
+        return (projet.key if projet and projet.key else "US").upper()
+
+    def _apply_reference_to_epic_userstories(self, projet_id: int, epic):
+        mapping = self._build_project_us_number_map(projet_id)
+        prefix = self._project_reference_prefix(projet_id)
+        for us in epic.userstories or []:
+            numero = mapping.get(us.id)
+            if numero is not None:
+                us.reference = f"{prefix}-{numero}"
+        return epic
+
+    def _apply_reference_to_epics_userstories(self, projet_id: int, epics: List):
+        mapping = self._build_project_us_number_map(projet_id)
+        prefix = self._project_reference_prefix(projet_id)
+        for epic in epics:
+            for us in epic.userstories or []:
+                numero = mapping.get(us.id)
+                if numero is not None:
+                    us.reference = f"{prefix}-{numero}"
+        return epics
+
     # ── Création ────────────────────────────────────────────────────────────
 
     def creer_epic(
@@ -99,13 +134,16 @@ class EpicService:
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=f"Statut invalide. Valeurs acceptées : {', '.join(STATUTS_VALIDES)}",
                 )
-            return self.repo.get_by_statut(module_id, statut)
-        return self.repo.get_by_module_with_userstories(module_id)
+            epics = self.repo.get_by_statut(module_id, statut)
+            return self._apply_reference_to_epics_userstories(projet_id, epics)
+        epics = self.repo.get_by_module_with_userstories(module_id)
+        return self._apply_reference_to_epics_userstories(projet_id, epics)
 
     def get_epic(self, projet_id: int, module_id: int, epic_id: int):
         """Récupérer un epic avec ses user-stories."""
         self._verifier_module(module_id, projet_id)
-        return self._get_epic_ou_404(epic_id, module_id)
+        epic = self._get_epic_ou_404(epic_id, module_id)
+        return self._apply_reference_to_epic_userstories(projet_id, epic)
 
     def get_progression(self, projet_id: int, module_id: int, epic_id: int):
         """Calculer la progression d'un epic."""

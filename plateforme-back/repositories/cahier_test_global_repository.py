@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session, joinedload
 
-from models.cahier_test_global import CahierTestGlobal, CasTest, CasTestHistory
+from models.cahier_test_global import CahierTestGlobal, CasTest, CasTestHistory, CahierVersionHistory
 from repositories.base_repository import BaseRepository
 
 
@@ -85,6 +85,45 @@ class CahierTestGlobalRepository(BaseRepository[CahierTestGlobal]):
             self.db.commit()
             self.db.refresh(cahier)
         return cahier
+
+    def add_version_history(
+        self,
+        cahier_id: int,
+        version: str,
+        source: Optional[str] = None,
+    ) -> CahierVersionHistory:
+        existing = (
+            self.db.query(CahierVersionHistory)
+            .filter(
+                CahierVersionHistory.cahier_id == cahier_id,
+                CahierVersionHistory.version == version,
+            )
+            .first()
+        )
+        if existing:
+            if source and not existing.source:
+                existing.source = source
+                self.db.commit()
+                self.db.refresh(existing)
+            return existing
+
+        entry = CahierVersionHistory(
+            cahier_id=cahier_id,
+            version=version,
+            source=source,
+        )
+        self.db.add(entry)
+        self.db.commit()
+        self.db.refresh(entry)
+        return entry
+
+    def list_version_history(self, cahier_id: int) -> List[CahierVersionHistory]:
+        return (
+            self.db.query(CahierVersionHistory)
+            .filter(CahierVersionHistory.cahier_id == cahier_id)
+            .order_by(CahierVersionHistory.created_at.desc())
+            .all()
+        )
 
     # ── Cas de tests ──────────────────────────────────────────────────────
 

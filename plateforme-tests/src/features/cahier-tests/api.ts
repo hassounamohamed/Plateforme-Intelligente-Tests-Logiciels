@@ -7,6 +7,7 @@ import {
   StatistiquesCahier,
   AIGeneration,
   AIGenerationDetail,
+  CahierVersionHistoryItem,
   GenererCahierPayload,
   CahierUserStoryOption,
   CreateCasTestPayload,
@@ -99,6 +100,19 @@ export const getStatistiques = async (
 ): Promise<StatistiquesCahier> => {
   const response = await axiosInstance.get<StatistiquesCahier>(
     `${getCahierBase(projectId)}/stats`,
+    { suppressErrorLog: true }
+  );
+  return response.data;
+};
+
+/**
+ * Récupérer toutes les versions disponibles du cahier de tests
+ */
+export const getCahierVersions = async (
+  projectId: number
+): Promise<CahierVersionHistoryItem[]> => {
+  const response = await axiosInstance.get<CahierVersionHistoryItem[]>(
+    `${getCahierBase(projectId)}/versions`,
     { suppressErrorLog: true }
   );
   return response.data;

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from db.database import get_db
 from models.user import Utilisateur
 from core.rbac.dependencies import get_current_user_with_role
-from core.rbac.constants import ROLE_SCRUM_MASTER, ROLE_PRODUCT_OWNER
+from core.rbac.constants import ROLE_SCRUM_MASTER, ROLE_PRODUCT_OWNER, ROLE_DEVELOPPEUR
 from core.rbac.decorators import require_role
 from schemas.userstory import (
     CreateUserStoryRequest,
@@ -121,7 +121,7 @@ async def modifier_user_story(
 # ─── Statut ───────────────────────────────────────────────────────────────────
 
 @router.patch("/{us_id}/statut", response_model=UserStoryResponse)
-@require_role(ROLE_SCRUM_MASTER)
+@require_role(ROLE_SCRUM_MASTER, ROLE_DEVELOPPEUR)
 async def changer_statut(
     projet_id: int,
     module_id: int,

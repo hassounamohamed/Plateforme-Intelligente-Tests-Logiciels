@@ -44,6 +44,7 @@ class EpicInfo(BaseModel):
 class BacklogItemResponse(BaseModel):
     """Une user story dans la vue backlog, enrichie de l'info epic."""
     id: int
+    reference: Optional[str] = None
     titre: str
     description: Optional[str] = None
     criteresAcceptation: Optional[str] = None
