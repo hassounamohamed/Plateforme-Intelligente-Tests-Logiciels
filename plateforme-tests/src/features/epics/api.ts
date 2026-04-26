@@ -14,12 +14,13 @@ import {
 export const getEpics = async (
   projectId: number,
   moduleId: number,
-  status?: EpicStatus
+  status?: EpicStatus,
+  suppressErrorLog?: boolean
 ): Promise<Epic[]> => {
   const params = status ? { statut: status } : {};
   const response = await axiosInstance.get<Epic[]>(
     `/projets/${projectId}/modules/${moduleId}/epics`,
-    { params }
+    { params, suppressErrorLog }
   );
   return response.data;
 };

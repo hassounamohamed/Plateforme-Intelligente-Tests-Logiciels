@@ -3,6 +3,7 @@
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ThemeModeToggle } from "@/components/theme/ThemeModeToggle";
+import { LanguageSelector } from "@/components/dashboard/LanguageSelector";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuthStore } from "@/features/auth/store";
 import {
@@ -571,6 +572,7 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
             </div>
           )}
         </div>
+        <LanguageSelector />
         <ThemeModeToggle />
         {/* Notifications */}
         <div className="relative" ref={notificationsContainerRef}>

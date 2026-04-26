@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/features/auth/store";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { logout } from "@/lib/auth";
 import {
   Sidebar as ShadcnSidebar,
@@ -33,6 +34,26 @@ interface SidebarProps {
 export function Sidebar({ title, subtitle, icon, links }: SidebarProps) {
   const pathname = usePathname();
   const { user } = useAuthStore();
+  const { t } = useLanguage();
+
+  const labelToKey: Record<string, string> = {
+    "Dashboard": "sidebar.dashboard",
+    "Projets": "sidebar.projects",
+    "Utilisateurs": "sidebar.users",
+    "Rôles": "sidebar.roles",
+    "Paramètres": "sidebar.settings",
+    "Logs": "sidebar.logs",
+    "Roadmap": "sidebar.roadmap",
+    "Backlog": "sidebar.backlog",
+    "Sprints": "sidebar.sprints",
+    "User Stories": "sidebar.user_stories",
+    "Épics": "sidebar.epics",
+    "Équipe": "sidebar.team",
+    "Cahier de Tests": "sidebar.test_books",
+    "Rapports QA": "sidebar.qa_reports",
+    "Mon Profil": "sidebar.my_profile",
+    "IA Backlog": "sidebar.ai_backlog",
+  };
 
   // Keep a single active item: prefer the most specific matching path.
   const activeHref =
@@ -80,7 +101,9 @@ export function Sidebar({ title, subtitle, icon, links }: SidebarProps) {
                 >
                   {link.icon}
                 </span>
-                <span className="text-[15px]">{link.label}</span>
+                <span className="text-[15px]">
+                  {labelToKey[link.label] ? t(labelToKey[link.label]) : link.label}
+                </span>
                 {link.badge && (
                   <SidebarMenuBadge
                     className="ml-auto bg-primary text-white rounded-full min-w-5.5 h-5.5-1.5 flex items-center justify-center font-bold text-[11px]"
@@ -122,7 +145,7 @@ export function Sidebar({ title, subtitle, icon, links }: SidebarProps) {
         {principalLinks.length > 0 && (
           <SidebarGroup className="p-0">
             <SidebarGroupLabel className="text-[11px] font-bold text-muted-foreground/70 tracking-widest uppercase mb-1.5 px-3">
-              PRINCIPAL
+              {t("sidebar.principal") || "PRINCIPAL"}
             </SidebarGroupLabel>
             <SidebarGroupContent>{renderLinks(principalLinks)}</SidebarGroupContent>
           </SidebarGroup>
@@ -131,7 +154,7 @@ export function Sidebar({ title, subtitle, icon, links }: SidebarProps) {
         {gestionLinks.length > 0 && (
           <SidebarGroup className="p-0">
             <SidebarGroupLabel className="text-[11px] font-bold text-muted-foreground/70 tracking-widest uppercase mb-1.5 px-3">
-              GESTION
+              {t("sidebar.gestion") || "GESTION"}
             </SidebarGroupLabel>
             <SidebarGroupContent>{renderLinks(gestionLinks)}</SidebarGroupContent>
           </SidebarGroup>
