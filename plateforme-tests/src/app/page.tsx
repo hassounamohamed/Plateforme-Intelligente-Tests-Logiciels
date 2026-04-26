@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Home() {
   return (
     <div
       style={{
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: "var(--font-display), sans-serif",
         background: "#06060a",
         color: "#f0f0f5",
         overflowX: "hidden",
@@ -15,8 +16,6 @@ export default function Home() {
     >
       {/* Google Fonts */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
-
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; }
 
@@ -26,7 +25,7 @@ export default function Home() {
         .btn-primary {
           background: #4f6ef7; color: #fff; border: none; cursor: pointer;
           padding: 13px 28px; border-radius: 10px;
-          font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500;
+          font-family: inherit; font-size: 15px; font-weight: 500;
           transition: transform .2s, box-shadow .2s, background .2s;
           text-decoration: none; display: inline-block;
         }
@@ -36,7 +35,7 @@ export default function Home() {
           background: transparent; color: #f0f0f5;
           border: 1px solid rgba(255,255,255,0.07); cursor: pointer;
           padding: 13px 28px; border-radius: 10px;
-          font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500;
+          font-family: inherit; font-size: 15px; font-weight: 500;
           transition: background .2s, border-color .2s;
           text-decoration: none; display: inline-block;
         }
@@ -82,8 +81,15 @@ export default function Home() {
         }}
       >
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 32px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 22, color: "#f0f0f5", textDecoration: "none" }}>
-            <div style={{ width: 34, height: 34, background: "linear-gradient(135deg, #4f6ef7, #7c3aed)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: "#fff" }}>P</div>
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: "var(--font-display), sans-serif", fontWeight: 800, fontSize: 22, color: "#f0f0f5", textDecoration: "none" }}>
+            <Image
+              src="/favicon-32x32.png"
+              alt="FlowPilot logo"
+              width={34}
+              height={34}
+              style={{ borderRadius: 8 }}
+              priority
+            />
             FlowPilot
           </Link>
           <nav style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -120,7 +126,7 @@ export default function Home() {
               <span className="badge-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: "#4f6ef7" }} />
               IA intégrée · Nouvelle génération
             </div>
-            <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(38px, 4.5vw, 58px)", fontWeight: 800, lineHeight: 1.1, letterSpacing: "-1.5px", color: "#f0f0f5", marginBottom: 20 }}>
+            <h1 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: "clamp(38px, 4.5vw, 58px)", fontWeight: 800, lineHeight: 1.1, letterSpacing: "-1.5px", color: "#f0f0f5", marginBottom: 20 }}>
               Tests logiciels,<br />
               <span className="gradient-text">réinventés par l&apos;IA</span>
             </h1>
@@ -154,7 +160,7 @@ export default function Home() {
                   ].map((s) => (
                     <div key={s.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: 12 }}>
                       <div style={{ fontSize: 10, color: "#6b6b80", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{s.label}</div>
-                      <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 700, color: "#f0f0f5" }}>{s.val}</div>
+                      <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 20, fontWeight: 700, color: "#f0f0f5" }}>{s.val}</div>
                       <div style={{ fontSize: 10, color: s.subColor, marginTop: 2 }}>{s.sub}</div>
                     </div>
                   ))}
@@ -187,22 +193,11 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* ─── LOGOS ─── */}
-      <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "28px 32px" }}>
-        <p style={{ textAlign: "center", fontSize: 12, color: "#6b6b80", marginBottom: 20, letterSpacing: 0.5, textTransform: "uppercase" }}>Intégrations disponibles</p>
-        <div style={{ display: "flex", gap: 48, alignItems: "center", justifyContent: "center", flexWrap: "wrap" }}>
-          {["JIRA", "GITHUB", "GITLAB", "JENKINS", "SLACK", "SELENIUM", "CYPRESS"].map((name) => (
-            <span key={name} style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, color: "rgba(255,255,255,0.2)", letterSpacing: 1 }}>{name}</span>
-          ))}
-        </div>
-      </div>
-
       {/* ─── FEATURES ─── */}
       <section id="features">
         <div style={{ padding: "100px 32px", maxWidth: 1100, margin: "0 auto" }}>
           <span style={{ display: "inline-block", fontSize: 12, letterSpacing: 1, textTransform: "uppercase", color: "#4f6ef7", fontWeight: 500, marginBottom: 14 }}>Fonctionnalités</span>
-          <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(28px, 3.5vw, 42px)", fontWeight: 800, letterSpacing: -1, marginBottom: 16, lineHeight: 1.15 }}>
+          <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: "clamp(28px, 3.5vw, 42px)", fontWeight: 800, letterSpacing: -1, marginBottom: 16, lineHeight: 1.15 }}>
             Tout ce qu&apos;il faut pour<br />tester sans friction
           </h2>
           <p style={{ fontSize: 17, color: "#6b6b80", maxWidth: 500, marginBottom: 60 }}>
@@ -235,7 +230,7 @@ export default function Home() {
                 <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(79,110,247,0.1)", border: "1px solid rgba(79,110,247,0.2)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
                   <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#4f6ef7" strokeWidth={1.8}>{feat.icon}</svg>
                 </div>
-                <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 700, marginBottom: 10 }}>{feat.title}</h3>
+                <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 18, fontWeight: 700, marginBottom: 10 }}>{feat.title}</h3>
                 <p style={{ fontSize: 14.5, color: "#6b6b80", lineHeight: 1.65 }}>{feat.desc}</p>
               </div>
             ))}
@@ -247,13 +242,13 @@ export default function Home() {
       <div style={{ background: "#0f0f14", borderTop: "1px solid rgba(255,255,255,0.07)", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "60px 32px" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 32, textAlign: "center" }}>
           {[
-            { num: "10K+", label: "Équipes actives" },
-            { num: "98M", label: "Tests exécutés" },
-            { num: "70%", label: "Gain de temps moyen" },
-            { num: "99.9%", label: "Disponibilité SLA" },
+            { num: "0", label: "Équipes actives" },
+            { num: "0", label: "Tests exécutés" },
+            { num: "0%", label: "Gain de temps moyen" },
+            { num: "0%", label: "Disponibilité SLA" },
           ].map((s) => (
             <div key={s.label}>
-              <div className="stat-number-gradient" style={{ fontFamily: "'Syne', sans-serif", fontSize: 44, fontWeight: 800, lineHeight: 1, marginBottom: 8 }}>{s.num}</div>
+              <div className="stat-number-gradient" style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 44, fontWeight: 800, lineHeight: 1, marginBottom: 8 }}>{s.num}</div>
               <div style={{ fontSize: 14, color: "#6b6b80" }}>{s.label}</div>
             </div>
           ))}
@@ -264,7 +259,7 @@ export default function Home() {
       <section id="how">
         <div style={{ padding: "100px 32px", maxWidth: 1100, margin: "0 auto" }}>
           <span style={{ display: "inline-block", fontSize: 12, letterSpacing: 1, textTransform: "uppercase", color: "#4f6ef7", fontWeight: 500, marginBottom: 14 }}>Comment ça marche</span>
-          <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(28px, 3.5vw, 42px)", fontWeight: 800, letterSpacing: -1, marginBottom: 16, lineHeight: 1.15 }}>
+          <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: "clamp(28px, 3.5vw, 42px)", fontWeight: 800, letterSpacing: -1, marginBottom: 16, lineHeight: 1.15 }}>
             Opérationnel en<br />moins de 10 minutes
           </h2>
           <p style={{ fontSize: 17, color: "#6b6b80", maxWidth: 500, marginBottom: 60 }}>
@@ -278,9 +273,9 @@ export default function Home() {
               { num: "04", title: "Itérez et améliorez", text: "FlowPilot apprend de vos cycles de test pour affiner ses recommandations et maximiser votre couverture au fil du temps." },
             ].map((step, i, arr) => (
               <div key={step.num} style={{ display: "grid", gridTemplateColumns: "60px 1fr", gap: 24, padding: "32px 0", borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.07)" : "none", alignItems: "start" }}>
-                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 13, fontWeight: 700, color: "#4f6ef7", paddingTop: 4 }}>{step.num}</div>
+                <div style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 13, fontWeight: 700, color: "#4f6ef7", paddingTop: 4 }}>{step.num}</div>
                 <div>
-                  <h3 style={{ fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 700, marginBottom: 8 }}>{step.title}</h3>
+                  <h3 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: 20, fontWeight: 700, marginBottom: 8 }}>{step.title}</h3>
                   <p style={{ fontSize: 15, color: "#6b6b80", lineHeight: 1.65 }}>{step.text}</p>
                 </div>
               </div>
@@ -293,7 +288,7 @@ export default function Home() {
       <section style={{ padding: "80px 32px 100px", textAlign: "center", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", width: 500, height: 300, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(79,110,247,0.1) 0%, transparent 70%)", left: "50%", top: "50%", transform: "translate(-50%,-50%)", pointerEvents: "none" }} />
         <div style={{ position: "relative", zIndex: 1, maxWidth: 600, margin: "0 auto" }}>
-          <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(30px, 4vw, 46px)", fontWeight: 800, letterSpacing: -1, lineHeight: 1.15, marginBottom: 16 }}>
+          <h2 style={{ fontFamily: "var(--font-display), sans-serif", fontSize: "clamp(30px, 4vw, 46px)", fontWeight: 800, letterSpacing: -1, lineHeight: 1.15, marginBottom: 16 }}>
             Prêt à transformer votre QA ?
           </h2>
           <p style={{ fontSize: 17, color: "#6b6b80", marginBottom: 36 }}>
@@ -308,8 +303,14 @@ export default function Home() {
       {/* ─── FOOTER ─── */}
       <footer style={{ borderTop: "1px solid rgba(255,255,255,0.07)", padding: 32 }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 16, color: "#f0f0f5", textDecoration: "none" }}>
-            <div style={{ width: 28, height: 28, background: "linear-gradient(135deg, #4f6ef7, #7c3aed)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, color: "#fff" }}>P</div>
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: "var(--font-display), sans-serif", fontWeight: 800, fontSize: 16, color: "#f0f0f5", textDecoration: "none" }}>
+            <Image
+              src="/favicon-32x32.png"
+              alt="FlowPilot logo"
+              width={28}
+              height={28}
+              style={{ borderRadius: 8 }}
+            />
             FlowPilot
           </Link>
           <div style={{ display: "flex", gap: 24 }}>

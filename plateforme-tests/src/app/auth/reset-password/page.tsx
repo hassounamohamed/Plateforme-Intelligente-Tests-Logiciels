@@ -1,5 +1,6 @@
 ﻿import { Suspense } from "react";
 import { ResetPasswordForm } from "@/features/auth/components/ResetPasswordForm";
+import Image from "next/image";
 
 export default function ResetPasswordPage() {
 	return (
@@ -15,23 +16,16 @@ export default function ResetPasswordPage() {
 					{/* Brand / Logo Area */}
 					<div className="flex justify-center">
 						<div className="flex items-center gap-3 text-white">
-							<div className="size-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/25">
-								<svg
-									className="size-6 text-primary-foreground"
-									fill="none"
-									viewBox="0 0 48 48"
-									xmlns="http://www.w3.org/2000/svg"
-								>
-									<path
-										clipRule="evenodd"
-										d="M47.2426 24L24 47.2426L0.757355 24L24 0.757355L47.2426 24ZM12.2426 21H35.7574L24 9.24264L12.2426 21Z"
-										fill="currentColor"
-										fillRule="evenodd"
-									/>
-								</svg>
-							</div>
+							<Image
+								src="/favicon-32x32.png"
+								alt="FlowPilot logo"
+								width={40}
+								height={40}
+								className="rounded-xl shadow-lg shadow-primary/25"
+								priority
+							/>
 							<span className="text-lg font-semibold tracking-tight">
-								AgilePlatform
+								FlowPilot
 							</span>
 						</div>
 					</div>

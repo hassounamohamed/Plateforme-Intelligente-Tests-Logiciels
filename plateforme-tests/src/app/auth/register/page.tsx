@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { RegisterForm } from "@/features/auth/components/RegisterForm";
 
 export default function RegisterPage() {
@@ -8,13 +9,16 @@ export default function RegisterPage() {
 			{/* Navbar */}
 			<header className="w-full flex items-center justify-between border-b border-primary-100/70 dark:border-primary-900/50 px-6 py-4 lg:px-40 bg-white/90 dark:bg-[#151219]">
 				<div className="flex items-center gap-3">
-					<div className="flex items-center justify-center size-8 rounded-lg bg-primary-500/20 text-primary-700 dark:text-primary-200">
-						<span className="material-symbols-outlined">
-							dataset
-						</span>
-					</div>
+					<Image
+						src="/favicon-32x32.png"
+						alt="FlowPilot logo"
+						width={32}
+						height={32}
+						className="rounded-lg"
+						priority
+					/>
 					<h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-						AgileQA
+						FlowPilot
 					</h2>
 				</div>
 				<div className="flex items-center gap-4">
