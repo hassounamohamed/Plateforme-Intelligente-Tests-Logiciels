@@ -118,7 +118,7 @@ export default function SuperAdminDashboard() {
       sidebarContent={
         <Sidebar
           title="Super Admin"
-          subtitle="Agile & QA Platform"
+          subtitle="FlowPilot Platform"
           icon="admin_panel_settings"
           links={sidebarLinks}
         />

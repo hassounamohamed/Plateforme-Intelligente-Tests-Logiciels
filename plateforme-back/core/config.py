@@ -30,6 +30,8 @@ SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
 
 FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000")
 FRONTEND_RESET_PASSWORD_PATH = os.getenv("FRONTEND_RESET_PASSWORD_PATH", "/auth/reset-password")
+MOBILE_APP_BASE_URL = os.getenv("MOBILE_APP_BASE_URL", "")
+MOBILE_RESET_PASSWORD_PATH = os.getenv("MOBILE_RESET_PASSWORD_PATH", "/auth/reset-password")
 
 # ── OAuth Configuration ──────────────────────────────────────────────────────
 SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY", SECRET_KEY or "change-me-in-production")

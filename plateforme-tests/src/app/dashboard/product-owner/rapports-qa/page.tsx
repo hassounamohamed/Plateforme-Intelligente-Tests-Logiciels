@@ -74,7 +74,7 @@ export default function RapportsQAPage() {
         sidebarContent={
           <Sidebar
             title="Product Owner"
-            subtitle="Agile & QA Platform"
+            subtitle="FlowPilot Platform"
             icon="account_tree"
             links={sidebarLinks}
           />
@@ -94,7 +94,7 @@ export default function RapportsQAPage() {
         sidebarContent={
           <Sidebar
             title="Product Owner"
-            subtitle="Agile & QA Platform"
+            subtitle="FlowPilot Platform"
             icon="account_tree"
             links={sidebarLinks}
           />
@@ -117,7 +117,7 @@ export default function RapportsQAPage() {
       sidebarContent={
         <Sidebar
           title="Product Owner"
-          subtitle="Agile & QA Platform"
+          subtitle="FlowPilot Platform"
           icon="account_tree"
           links={sidebarLinks}
         />

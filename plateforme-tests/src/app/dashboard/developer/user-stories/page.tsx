@@ -297,7 +297,7 @@ export default function UserStoriesPage() {
   if (loading && projects.length === 0) {
     return (
       <DashboardLayout
-        sidebarContent={<Sidebar title="Developer" subtitle="Agile & QA Platform" icon="code" links={sidebarLinks} />}
+        sidebarContent={<Sidebar title="Developer" subtitle="FlowPilot Platform" icon="code" links={sidebarLinks} />}
         headerContent={<DashboardHeader title="User Stories" subtitle="Visualisation des user stories du projet" />}
       >
         <div className="flex items-center justify-center h-64">
@@ -310,7 +310,7 @@ export default function UserStoriesPage() {
   if (projects.length === 0) {
     return (
       <DashboardLayout
-        sidebarContent={<Sidebar title="Developer" subtitle="Agile & QA Platform" icon="code" links={sidebarLinks} />}
+        sidebarContent={<Sidebar title="Developer" subtitle="FlowPilot Platform" icon="code" links={sidebarLinks} />}
         headerContent={<DashboardHeader title="User Stories" subtitle="Visualisation des user stories du projet" />}
       >
         <div className="flex items-center justify-center h-64 text-gray-400">
@@ -322,7 +322,7 @@ export default function UserStoriesPage() {
 
   return (
     <DashboardLayout
-      sidebarContent={<Sidebar title="Developer" subtitle="Agile & QA Platform" icon="code" links={sidebarLinks} />}
+      sidebarContent={<Sidebar title="Developer" subtitle="FlowPilot Platform" icon="code" links={sidebarLinks} />}
       headerContent={<DashboardHeader title="User Stories" subtitle="Visualisation des user stories du projet" />}
     >
       <div className="space-y-6">

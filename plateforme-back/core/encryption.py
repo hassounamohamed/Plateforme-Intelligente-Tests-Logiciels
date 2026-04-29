@@ -6,16 +6,28 @@ Usage dans un modèle:
     from core.encryption import EncryptedString
     telephone = Column(EncryptedString)
 """
+import logging
 from typing import Optional
 
 from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy import String
 from sqlalchemy.types import TypeDecorator
 
+logger = logging.getLogger(__name__)
 
-def get_fernet() -> Fernet:
+_missing_key_warned = False
+
+def get_fernet() -> Optional[Fernet]:
     """Instancier Fernet avec la clé chargée depuis la config."""
     from core.config import ENCRYPTION_KEY
+    global _missing_key_warned
+    if not ENCRYPTION_KEY:
+        if not _missing_key_warned:
+            logger.warning(
+                "ENCRYPTION_KEY is missing; sensitive fields are stored in plain text until configured."
+            )
+            _missing_key_warned = True
+        return None
     return Fernet(ENCRYPTION_KEY.encode())
 
 
@@ -38,14 +50,18 @@ class EncryptedString(TypeDecorator):
         if value is None:
             return None
         fernet = get_fernet()
+        if fernet is None:
+            return value
         return fernet.encrypt(value.encode()).decode()
 
     def process_result_value(self, value: Optional[str], dialect) -> Optional[str]:
         """Déchiffrer après lecture depuis la base."""
         if value is None:
             return None
+        fernet = get_fernet()
+        if fernet is None:
+            return value
         try:
-            fernet = get_fernet()
             return fernet.decrypt(value.encode()).decode()
         except (InvalidToken, Exception):
             # Données existantes en texte clair (avant migration)

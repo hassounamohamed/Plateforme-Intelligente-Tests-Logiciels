@@ -396,7 +396,7 @@ export default function DeveloperDashboard() {
       sidebarContent={
         <Sidebar
           title="Developer"
-          subtitle="Agile & QA Platform"
+          subtitle="FlowPilot Platform"
           icon="code"
           links={sidebarLinks}
         />

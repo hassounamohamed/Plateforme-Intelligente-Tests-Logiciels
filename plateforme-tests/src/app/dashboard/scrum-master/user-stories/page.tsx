@@ -510,7 +510,7 @@ export default function UserStoriesPage() {
       sidebarContent={
         <Sidebar
           title="Scrum Master"
-          subtitle="Agile & QA Platform"
+          subtitle="FlowPilot Platform"
           icon="groups"
           links={sidebarLinks}
         />

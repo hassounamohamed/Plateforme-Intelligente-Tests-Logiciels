@@ -326,7 +326,7 @@ export default function ProjectsManagementPage() {
       sidebarContent={
         <Sidebar
           title="Product Owner"
-          subtitle="Agile & QA Platform"
+          subtitle="FlowPilot Platform"
           icon="account_tree"
           links={sidebarLinks}
         />

@@ -119,7 +119,7 @@ export default function Home() {
       {/* ─── HERO ─── */}
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 px-6 flex items-center min-h-screen">
         {/* Glow effects matching login page */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px] mask-[radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
 
@@ -132,7 +132,7 @@ export default function Home() {
             </div>
             <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight mb-6 leading-tight text-slate-900 dark:text-white">
               Tests logiciels,<br />
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-purple-600 dark:from-primary-400 dark:to-purple-400">réinventés par l&apos;IA</span>
+              <span className="bg-clip-text text-transparent bg-linear-to-r from-primary-600 to-purple-600 dark:from-primary-400 dark:to-purple-400">réinventés par l&apos;IA</span>
             </h1>
             <p className="text-lg text-slate-600 dark:text-slate-300 mb-10 max-w-lg leading-relaxed">
               FlowPilot unifie la gestion, l&apos;automatisation et l&apos;analyse de vos tests dans une seule plateforme intelligente. Livrez plus vite, sans compromis sur la qualité.
@@ -202,7 +202,7 @@ export default function Home() {
             </div>
             
             {/* Decorative float elements */}
-            <div className="absolute -bottom-6 -right-6 bg-[#16161d] border border-white/10 rounded-xl p-4 shadow-xl flex items-center gap-4 hidden lg:flex">
+            <div className="absolute -bottom-6 -right-6 bg-[#16161d] border border-white/10 rounded-xl p-4 shadow-xl items-center gap-4 hidden lg:flex">
               <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
                 <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
               </div>
@@ -272,7 +272,7 @@ export default function Home() {
             { num: "0%", label: "Disponibilité SLA" },
           ].map((s) => (
             <div key={s.label}>
-              <div className="text-5xl font-black mb-2 bg-clip-text text-transparent bg-gradient-to-br from-slate-900 to-slate-500 dark:from-white dark:to-slate-500">{s.num}</div>
+              <div className="text-5xl font-black mb-2 bg-clip-text text-transparent bg-linear-to-br from-slate-900 to-slate-500 dark:from-white dark:to-slate-500">{s.num}</div>
               <div className="text-sm font-medium text-slate-500 dark:text-slate-400">{s.label}</div>
             </div>
           ))}
@@ -336,7 +336,7 @@ export default function Home() {
 
       {/* ─── CTA ─── */}
       <section className="py-24 px-6 text-center relative overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-primary/10 dark:bg-primary-900/20 rounded-[100%] blur-3xl pointer-events-none"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-200 h-100 bg-primary/10 dark:bg-primary-900/20 rounded-[100%] blur-3xl pointer-events-none"></div>
         <div className="relative z-10 max-w-2xl mx-auto">
           <h2 className="text-4xl lg:text-5xl font-extrabold tracking-tight mb-6 text-slate-900 dark:text-white">
             Prêt à transformer votre QA ?

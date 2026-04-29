@@ -137,7 +137,7 @@ export default function EditUserStoryPage() {
         sidebarContent={
           <Sidebar
             title="Scrum Master"
-            subtitle="Agile & QA Platform"
+            subtitle="FlowPilot Platform"
             icon="groups"
             links={sidebarLinks}
           />
@@ -161,7 +161,7 @@ export default function EditUserStoryPage() {
       sidebarContent={
         <Sidebar
           title="Scrum Master"
-          subtitle="Agile & QA Platform"
+          subtitle="FlowPilot Platform"
           icon="groups"
           links={sidebarLinks}
         />
