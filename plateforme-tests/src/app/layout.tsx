@@ -4,6 +4,7 @@ import "@mantine/core/styles.css";
 import "./globals.css";
 import { AuthProvider } from "@/features/auth/store";
 import { AppColorSchemeScript, AppThemeProvider } from "@/components/theme/AppThemeProvider";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,7 +53,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AppThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <LanguageProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </LanguageProvider>
         </AppThemeProvider>
       </body>
     </html>

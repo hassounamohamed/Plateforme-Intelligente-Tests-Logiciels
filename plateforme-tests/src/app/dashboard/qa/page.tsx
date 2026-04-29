@@ -132,7 +132,7 @@ export default function QADashboard() {
       sidebarContent={
         <Sidebar
           title="Testeur QA"
-          subtitle="Agile & QA Platform"
+          subtitle="FlowPilot Platform"
           icon="science"
           links={sidebarLinks}
         />

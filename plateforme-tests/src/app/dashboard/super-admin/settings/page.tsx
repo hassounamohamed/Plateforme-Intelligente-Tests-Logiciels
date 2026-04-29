@@ -31,7 +31,7 @@ export default function SettingsPage() {
       icon: "tune",
       description: "Configuration générale de la plateforme",
       settings: [
-        { label: "Nom de la plateforme", value: "Agile & QA Platform", type: "text" },
+        { label: "Nom de la plateforme", value: "FlowPilot Platform", type: "text" },
         { label: "Mode maintenance", value: "Désactivé", type: "toggle" },
         { label: "Langue par défaut", value: "Français", type: "select" },
       ],
@@ -73,7 +73,7 @@ export default function SettingsPage() {
       sidebarContent={
         <Sidebar
           title="Super Admin"
-          subtitle="Agile & QA Platform"
+          subtitle="FlowPilot Platform"
           icon="admin_panel_settings"
           links={sidebarLinks}
         />

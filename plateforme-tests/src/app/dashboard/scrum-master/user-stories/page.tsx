@@ -172,7 +172,7 @@ export default function UserStoriesPage() {
         }
 
         const epicLists = await Promise.all(
-          modulesData.map((module) => getEpics(projectId, module.id).catch(() => []))
+          modulesData.map((module) => getEpics(projectId, module.id, undefined, true).catch(() => []))
         );
         const epicsData = epicLists.flat();
         setAllEpics(epicsData);
@@ -510,7 +510,7 @@ export default function UserStoriesPage() {
       sidebarContent={
         <Sidebar
           title="Scrum Master"
-          subtitle="Agile & QA Platform"
+          subtitle="FlowPilot Platform"
           icon="groups"
           links={sidebarLinks}
         />

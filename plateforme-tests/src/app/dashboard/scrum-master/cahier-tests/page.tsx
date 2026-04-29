@@ -66,7 +66,7 @@ export default function CahierTestsScrumMasterPage() {
   const sidebarContent = (
     <Sidebar
       title="Scrum Master"
-      subtitle="Agile & QA Platform"
+      subtitle="FlowPilot Platform"
       icon="manage_accounts"
       links={sidebarLinks}
     />

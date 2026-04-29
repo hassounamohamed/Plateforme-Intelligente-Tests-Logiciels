@@ -44,7 +44,7 @@ from api.rapport import router as rapport_router
 from api.notifications import router as notifications_router
 from api.unit_tests import router as unit_tests_router
 from api.dashboard import router as dashboard_router
-
+from api.contact import router as contact_router
 
 
 app = FastAPI(
@@ -140,7 +140,7 @@ app.include_router(rapport_router)
 app.include_router(notifications_router)
 app.include_router(unit_tests_router)
 app.include_router(dashboard_router)
-
+app.include_router(contact_router)
 # Test DB route
 @app.get("/test-db")
 def test_db(db: Session = Depends(get_db)):

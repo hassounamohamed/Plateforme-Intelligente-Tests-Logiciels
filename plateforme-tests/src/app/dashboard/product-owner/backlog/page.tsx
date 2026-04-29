@@ -402,7 +402,7 @@ export default function BacklogPage() {
       sidebarContent={
         <Sidebar
           title="Product Owner"
-          subtitle="Agile & QA Platform"
+          subtitle="FlowPilot Platform"
           icon="account_tree"
           links={sidebarLinks}
         />

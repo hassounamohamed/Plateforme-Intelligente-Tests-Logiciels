@@ -70,7 +70,7 @@ export default function ScrumMasterRapportsQAPage() {
   if (loading) {
     return (
       <DashboardLayout
-        sidebarContent={<Sidebar title="Scrum Master" subtitle="Agile & QA Platform" icon="manage_accounts" links={sidebarLinks} />}
+        sidebarContent={<Sidebar title="Scrum Master" subtitle="FlowPilot Platform" icon="manage_accounts" links={sidebarLinks} />}
         headerContent={<DashboardHeader title="Rapports QA" subtitle="Consultation des rapports QA" />}
       >
         <div className="flex items-center justify-center h-64">
@@ -82,7 +82,7 @@ export default function ScrumMasterRapportsQAPage() {
 
   return (
     <DashboardLayout
-      sidebarContent={<Sidebar title="Scrum Master" subtitle="Agile & QA Platform" icon="manage_accounts" links={sidebarLinks} />}
+      sidebarContent={<Sidebar title="Scrum Master" subtitle="FlowPilot Platform" icon="manage_accounts" links={sidebarLinks} />}
       headerContent={<DashboardHeader title="Rapports QA" subtitle={selectedProject?.nom || "Selectionnez un projet"} />}
     >
       <div className="max-w-350 mx-auto">

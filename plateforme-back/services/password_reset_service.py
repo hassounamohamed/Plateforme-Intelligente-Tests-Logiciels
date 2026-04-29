@@ -6,7 +6,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from starlette import status
 
-from core.config import FRONTEND_BASE_URL, FRONTEND_RESET_PASSWORD_PATH
+from core.config import (
+    FRONTEND_BASE_URL,
+    FRONTEND_RESET_PASSWORD_PATH,
+    MOBILE_APP_BASE_URL,
+    MOBILE_RESET_PASSWORD_PATH,
+)
 from core.security import hash_password
 from models.password_reset_token import PasswordResetToken
 from models.user import Utilisateur
@@ -23,6 +28,11 @@ class PasswordResetService:
 
     def __init__(self, db: Session):
         self.db = db
+
+    def _build_reset_link(self, token: str) -> str:
+        if MOBILE_APP_BASE_URL:
+            return f"{MOBILE_APP_BASE_URL.rstrip('/')}{MOBILE_RESET_PASSWORD_PATH}?token={token}"
+        return f"{FRONTEND_BASE_URL}{FRONTEND_RESET_PASSWORD_PATH}?token={token}"
 
     def _raise_password_reset_db_unavailable(self) -> None:
         raise HTTPException(
@@ -53,7 +63,7 @@ class PasswordResetService:
             self.db.add(reset_row)
             self.db.commit()
 
-            reset_link = f"{FRONTEND_BASE_URL}{FRONTEND_RESET_PASSWORD_PATH}?token={token}"
+            reset_link = self._build_reset_link(token)
             send_reset_email(user.email, reset_link)
 
             return {

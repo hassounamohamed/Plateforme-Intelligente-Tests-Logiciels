@@ -68,7 +68,7 @@ export default function DeveloperRapportsQAPage() {
   if (loading) {
     return (
       <DashboardLayout
-        sidebarContent={<Sidebar title="Developer" subtitle="Agile & QA Platform" icon="code" links={sidebarLinks} />}
+        sidebarContent={<Sidebar title="Developer" subtitle="FlowPilot Platform" icon="code" links={sidebarLinks} />}
         headerContent={<DashboardHeader title="Rapports QA" subtitle="Consultation des rapports QA" />}
       >
         <div className="flex items-center justify-center h-64">
@@ -80,7 +80,7 @@ export default function DeveloperRapportsQAPage() {
 
   return (
     <DashboardLayout
-      sidebarContent={<Sidebar title="Developer" subtitle="Agile & QA Platform" icon="code" links={sidebarLinks} />}
+      sidebarContent={<Sidebar title="Developer" subtitle="FlowPilot Platform" icon="code" links={sidebarLinks} />}
       headerContent={<DashboardHeader title="Rapports QA" subtitle={selectedProject?.nom || "Selectionnez un projet"} />}
     >
       <div className="max-w-350 mx-auto">
