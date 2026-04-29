@@ -8,7 +8,7 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from starlette import status
 
-from core.config import FRONTEND_BASE_URL
+from core.config import FRONTEND_BASE_URL, MOBILE_APP_BASE_URL
 from core.security import create_access_token
 from models.user import Utilisateur, Role
 from repositories.user_repository import UserRepository
@@ -66,9 +66,24 @@ class AuthService:
             } if user.role else None,
         }
 
+    def _oauth_base(self) -> str:
+        base = (MOBILE_APP_BASE_URL or "").strip()
+        if base:
+            return base.rstrip("/")
+        return FRONTEND_BASE_URL.rstrip("/")
+
+    def _is_mobile_oauth(self) -> bool:
+        return bool((MOBILE_APP_BASE_URL or "").strip())
+
     def _oauth_select_role_redirect(self, user_id: int) -> RedirectResponse:
-        base = FRONTEND_BASE_URL.rstrip("/")
-        url = f"{base}/select-role?{urlencode({'user_id': str(user_id)})}"
+        base = self._oauth_base()
+        if self._is_mobile_oauth():
+            url = (
+                f"{base}/auth/oauth/callback?"
+                f"{urlencode({'need_role': 'true', 'user_id': str(user_id)})}"
+            )
+        else:
+            url = f"{base}/select-role?{urlencode({'user_id': str(user_id)})}"
         return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
 
     def _oauth_dashboard_redirect(self, token: str) -> RedirectResponse:
@@ -77,12 +92,15 @@ class AuthService:
         return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
 
     def _frontend_login_redirect(self, params: dict[str, str]) -> RedirectResponse:
-        base = FRONTEND_BASE_URL.rstrip("/")
-        url = f"{base}/auth/login?{urlencode(params)}"
+        base = self._oauth_base()
+        if self._is_mobile_oauth():
+            url = f"{base}/auth/oauth/callback?{urlencode(params)}"
+        else:
+            url = f"{base}/auth/login?{urlencode(params)}"
         return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
 
     def _oauth_role_dashboard_redirect(self, token: str, user: Utilisateur, role_code: str | None) -> RedirectResponse:
-        base = FRONTEND_BASE_URL.rstrip("/")
+        base = self._oauth_base()
         callback_qs = {
             "need_role": "false",
             "user_id": str(user.id),
@@ -92,8 +110,6 @@ class AuthService:
             "nom": user.nom or "",
             "role": (role_code or ""),
         }
-        # Go through frontend callback page first so signIn() persists token/cookie
-        # before navigating to role dashboard (middleware then allows access).
         url = f"{base}/auth/oauth/callback?{urlencode(callback_qs)}"
         return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
 
@@ -177,9 +193,12 @@ class AuthService:
         # Si compte pas activé par super admin, rediriger vers page d'attente
         if not user.actif:
             logger.info("OAuth login denied: account pending activation user_id=%s", user.id)
-            base = FRONTEND_BASE_URL.rstrip("/")
-            url = f"{base}/auth/login?oauth_error={urlencode({'message': 'Votre compte est en attente d\'activation par un administrateur.'}).split('=', 1)[1]}"
-            return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
+            return self._frontend_login_redirect(
+                {
+                    "oauth_error": "Votre compte est en attente d'activation par un administrateur.",
+                    "pending_activation": "1",
+                }
+            )
 
         token = self.generate_token(user)
         logger.info("OAuth login success user_id=%s role_id=%s", user.id, user.role_id)
