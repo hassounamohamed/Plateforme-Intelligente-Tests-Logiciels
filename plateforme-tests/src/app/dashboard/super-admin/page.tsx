@@ -85,7 +85,6 @@ export default function SuperAdminDashboard() {
       .join(" ");
 
   const loginPath = buildPath(activityData.map((point) => point.logins));
-  const testsPath = buildPath(activityData.map((point) => point.testExecutions));
 
   const formatLabel = (rawDate: string) => {
     const parsed = new Date(rawDate);
@@ -132,7 +131,7 @@ export default function SuperAdminDashboard() {
     >
       <div className="max-w-350 mx-auto flex flex-col gap-6">
         {/* Stats Section */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <StatCard
             title="Utilisateurs Totaux"
             value={isLoading ? "..." : stats?.totalUsers.toString() || "0"}
@@ -146,16 +145,16 @@ export default function SuperAdminDashboard() {
             trend={{ value: `${stats?.inactiveUsers || 0} inactifs`, isPositive: false, label: "utilisateurs" }}
           />
           <StatCard
-            title="Sprints Réalisés"
-            value={isLoading ? "..." : stats?.completedSprints.toString() || "0"}
-            icon="sprint"
-            trend={{ value: "+28", isPositive: true, label: "ce mois" }}
-          />
-          <StatCard
             title="Santé Système"
-            value={stats?.systemHealth || "99.9%"}
+            value={stats?.systemHealth || "..."}
             icon="health_and_safety"
-            status={{ text: "Tous les systèmes opérationnels", color: "green" }}
+            status={{
+              text:
+                stats?.systemHealth === "OK"
+                  ? "Tous les systèmes opérationnels"
+                  : "Dégradation détectée",
+              color: stats?.systemHealth === "OK" ? "green" : "yellow",
+            }}
           />
         </div>
 
@@ -165,7 +164,7 @@ export default function SuperAdminDashboard() {
             <div>
               <h3 className="text-white text-lg font-bold">Activité de la Plateforme</h3>
               <p className="text-[#9dabb9] text-sm">
-                Connexions utilisateurs vs Tests automatisés
+                Connexions utilisateurs
               </p>
             </div>
             <div className="flex bg-[#283039] rounded-lg p-1 self-start sm:self-auto">
@@ -217,10 +216,6 @@ export default function SuperAdminDashboard() {
                     <span className="inline-block w-3 h-3 rounded-full bg-[#33d17a]" />
                     <span className="text-[#9dabb9]">Connexions</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-block w-3 h-3 rounded-full bg-[#4da3ff]" />
-                    <span className="text-[#9dabb9]">Tests automatisés</span>
-                  </div>
                   <span className="text-[#9dabb9] ml-auto">
                     Pic: {maxValue} événements
                   </span>
@@ -266,14 +261,6 @@ export default function SuperAdminDashboard() {
                     d={loginPath}
                     fill="none"
                     stroke="#33d17a"
-                    strokeWidth="3"
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d={testsPath}
-                    fill="none"
-                    stroke="#4da3ff"
                     strokeWidth="3"
                     strokeLinejoin="round"
                     strokeLinecap="round"

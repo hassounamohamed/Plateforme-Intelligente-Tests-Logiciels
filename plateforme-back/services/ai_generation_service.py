@@ -63,6 +63,7 @@ Structure JSON attendue :
   "modules": [
     {
       "name": "Nom du module",
+      "description": "Description brève du module",
       "epics": [
         {
           "name": "Nom de l'epic",
@@ -212,6 +213,7 @@ class AIGenerationService:
                 generation_id=generation_id,
                 type_="module",
                 title=module.name,
+                description=module.description,
             )
 
             for epic in module.epics:
@@ -471,20 +473,49 @@ class AIGenerationService:
         sprint_map:    dict[int, int] = {}   # sprint_number → Sprint.id
 
         # ── Sprints ───────────────────────────────────────────────────────
-        # Collecter tous les numéros de sprint uniques
+        # Collecter le nombre max de sprints demandé par l'IA (si fourni)
         sprint_numbers = set()
         for item in active:
             if item.type == "user_story" and item.sprint:
                 sprint_numbers.add(item.sprint)
 
-        # Créer les sprints (durée de 2 semaines par défaut)
-        for sprint_num in sorted(sprint_numbers):
-            # Calculer les dates : sprint 1 démarre maintenant, les autres suivent
-            start_date = datetime.now() + timedelta(weeks=(sprint_num - 1) * 2)
-            end_date = start_date + timedelta(weeks=2)
-            
+        max_ai_sprint = max(sprint_numbers) if sprint_numbers else 0
+
+        # Si le projet a des dates, répartir les sprints dans la fenêtre du projet.
+        if projet.dateDebut and projet.dateFin and projet.dateFin >= projet.dateDebut:
+            total_days = (projet.dateFin - projet.dateDebut).days + 1
+            sprint_length_days = 14
+            total_sprints = max(1, (total_days + sprint_length_days - 1) // sprint_length_days)
+        else:
+            total_sprints = max(1, max_ai_sprint or 1)
+
+        existing_sprints = (
+            self.db.query(Sprint)
+            .filter(Sprint.projet_id == projet_id)
+            .all()
+        )
+        existing_by_name = {s.nom: s for s in existing_sprints if s.nom}
+
+        # Créer des sprints consécutifs (1..total_sprints)
+        base_start = projet.dateDebut or datetime.now()
+        for sprint_num in range(1, total_sprints + 1):
+            start_date = base_start + timedelta(days=(sprint_num - 1) * 14)
+            end_date = start_date + timedelta(days=13)
+
+            if projet.dateFin and end_date > projet.dateFin:
+                end_date = projet.dateFin
+            sprint_name = f"Sprint {sprint_num}"
+            existing = existing_by_name.get(sprint_name)
+
+            if existing:
+                if existing.objectifSprint and "Généré automatiquement par IA" in existing.objectifSprint:
+                    existing.dateDebut = start_date
+                    existing.dateFin = end_date
+                sprint_map[sprint_num] = existing.id
+                continue
+
             sprint = Sprint(
-                nom=f"Sprint {sprint_num}",
+                nom=sprint_name,
                 dateDebut=start_date,
                 dateFin=end_date,
                 objectifSprint=f"Sprint {sprint_num} - Généré automatiquement par IA",
@@ -500,9 +531,29 @@ class AIGenerationService:
             sprints_created += 1
 
         # ── Modules ──────────────────────────────────────────────────────
+        existing_modules = (
+            self.db.query(Module)
+            .filter(Module.projet_id == projet_id)
+            .all()
+        )
+        # Case-insensitive matching by normalized name
+        existing_by_name = {m.nom.lower().strip(): m for m in existing_modules if m.nom}
+
         for idx, item in enumerate(i for i in active if i.type == "module" and i.parent_id is None):
+            module_name = item.title[:200]
+            normalized_name = module_name.lower().strip()
+            existing = existing_by_name.get(normalized_name)
+
+            if existing:
+                # Reuse existing module, update description if needed
+                if item.description and not existing.description:
+                    existing.description = item.description
+                module_id_map[item.id] = existing.id
+                existing_by_name[normalized_name] = existing
+                continue
+
             m = Module(
-                nom=item.title[:200],
+                nom=module_name,
                 description=item.description,
                 ordre=idx,
                 projet_id=projet_id,
@@ -510,6 +561,7 @@ class AIGenerationService:
             self.db.add(m)
             self.db.flush()
             module_id_map[item.id] = m.id
+            existing_by_name[normalized_name] = m
             modules_created += 1
 
         # ── Epics ─────────────────────────────────────────────────────────
@@ -563,8 +615,9 @@ class AIGenerationService:
             self.db.flush()
             
             # Lier la user story au sprint si un numéro de sprint existe
-            if item.sprint and item.sprint in sprint_map:
-                sprint_id = sprint_map[item.sprint]
+            if item.sprint:
+                sprint_number = min(item.sprint, max(sprint_map.keys() or [1]))
+                sprint_id = sprint_map.get(sprint_number)
                 sprint = self.db.query(Sprint).get(sprint_id)
                 if sprint:
                     us.sprints.append(sprint)
@@ -638,4 +691,31 @@ class AIGenerationService:
         return {
             "generation_id": generation_id,
             "status": "rejected",
+        }
+
+    def annuler_generation(self, generation_id: int) -> dict:
+        """
+        Annule une génération en cours ou en attente.
+        Les items générés sont conservés (status: cancelled).
+        """
+        gen = self.repo.get_detail(generation_id)
+        if not gen:
+            raise HTTPException(status_code=404, detail="Génération introuvable.")
+        
+        if gen.status not in ("pending", "processing"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"La génération ne peut être annulée que si elle est en attente ou en cours (statut: {gen.status}).",
+            )
+
+        self.repo.update_status(generation_id, "cancelled", gen.progress or 0)
+        self.repo.add_log(
+            generation_id,
+            "cancelled",
+            "Génération annulée par l'utilisateur.",
+            gen.progress or 0,
+        )
+        return {
+            "generation_id": generation_id,
+            "status": "cancelled",
         }

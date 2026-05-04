@@ -113,6 +113,7 @@ class AIEpic(BaseModel):
 
 class AIModule(BaseModel):
     name:  str
+    description: Optional[str] = None
     epics: List[AIEpic] = []
 
 

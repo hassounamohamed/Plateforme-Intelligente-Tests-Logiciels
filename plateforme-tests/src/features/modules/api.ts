@@ -6,13 +6,41 @@ import {
 } from "@/types";
 
 /**
+ * Deduplicate modules by name (case-insensitive), keeping the one with the most complete data
+ */
+const deduplicateModules = (modules: Module[]): Module[] => {
+  const uniqueByName = new Map<string, Module>();
+  
+  for (const module of modules) {
+    // Normalize name for comparison (lowercase, trim)
+    const normalizedName = module.nom.toLowerCase().trim();
+    const existing = uniqueByName.get(normalizedName);
+    
+    if (!existing) {
+      uniqueByName.set(normalizedName, module);
+    } else {
+      // Keep the one with description, or the one with higher ID (more recent)
+      const shouldReplace =
+        (module.description && !existing.description) ||
+        (module.id > existing.id && !existing.description);
+      
+      if (shouldReplace) {
+        uniqueByName.set(normalizedName, module);
+      }
+    }
+  }
+  
+  return Array.from(uniqueByName.values());
+};
+
+/**
  * Get all modules for a project with hierarchy
  */
 export const getModules = async (projectId: number): Promise<Module[]> => {
   const response = await axiosInstance.get<Module[]>(
     `/projets/${projectId}/modules`
   );
-  return response.data;
+  return deduplicateModules(response.data);
 };
 
 /**

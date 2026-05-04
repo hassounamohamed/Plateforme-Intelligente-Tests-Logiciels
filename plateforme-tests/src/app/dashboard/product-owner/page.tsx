@@ -10,6 +10,13 @@ import { ROUTES } from "@/lib/constants";
 import { getMyProjects } from "@/features/projects/api";
 import { getModules } from "@/features/modules/api";
 import { Project } from "@/types";
+import { getProductOwnerProgressApi, ProjectProgressPoint } from "@/features/dashboard/api";
+
+type ProgressRange = 30 | 7 | 1;
+
+const CHART_WIDTH = 1000;
+const CHART_HEIGHT = 260;
+const CHART_PADDING = { top: 20, right: 20, bottom: 36, left: 20 };
 
 export default function ProductOwnerDashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -21,10 +28,17 @@ export default function ProductOwnerDashboard() {
     totalModules: 0,
     totalEpics: 0,
   });
+  const [progressRange, setProgressRange] = useState<ProgressRange>(30);
+  const [progressData, setProgressData] = useState<ProjectProgressPoint[]>([]);
+  const [isProgressLoading, setIsProgressLoading] = useState(true);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    loadProgress(progressRange);
+  }, [progressRange]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -84,6 +98,39 @@ export default function ProductOwnerDashboard() {
       setIsLoading(false);
     }
   };
+
+  const loadProgress = async (days: ProgressRange) => {
+    setIsProgressLoading(true);
+    try {
+      const data = await getProductOwnerProgressApi(days);
+      setProgressData(data);
+    } catch (err) {
+      console.error("Erreur lors du chargement de la progression:", err);
+      setProgressData([]);
+    } finally {
+      setIsProgressLoading(false);
+    }
+  };
+
+  const maxProgress = Math.max(1, ...progressData.map((point) => point.progress));
+  const chartInnerWidth = CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right;
+  const chartInnerHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
+
+  const toChartX = (index: number) => {
+    if (progressData.length <= 1) {
+      return CHART_PADDING.left + chartInnerWidth / 2;
+    }
+    return CHART_PADDING.left + (index / (progressData.length - 1)) * chartInnerWidth;
+  };
+
+  const toChartY = (value: number) => {
+    const normalized = value / maxProgress;
+    return CHART_PADDING.top + (1 - normalized) * chartInnerHeight;
+  };
+
+  const progressPath = progressData
+    .map((point, index) => `${index === 0 ? "M" : "L"}${toChartX(index)},${toChartY(point.progress)}`)
+    .join(" ");
 
   const sidebarLinks = [
     { href: ROUTES.PRODUCT_OWNER, icon: "dashboard", label: "Dashboard" },
@@ -189,29 +236,118 @@ export default function ProductOwnerDashboard() {
               </p>
             </div>
             <div className="flex bg-slate-100 dark:bg-[#283039] rounded-lg p-1 self-start sm:self-auto">
-              <Button size="xs" className="h-7 px-3 text-xs font-bold shadow-sm">
+              <Button
+                size="xs"
+                className={`h-7 px-3 text-xs font-bold shadow-sm ${
+                  progressRange === 30 ? "" : "bg-transparent text-slate-600 dark:text-[#9dabb9]"
+                }`}
+                onClick={() => setProgressRange(30)}
+              >
                 30 Jours
               </Button>
               <Button
                 variant="ghost"
                 size="xs"
-                className="h-7 px-3 text-xs font-medium text-slate-600 hover:bg-muted hover:text-foreground dark:text-[#9dabb9]"
+                className={`h-7 px-3 text-xs font-medium ${
+                  progressRange === 7 ? "bg-primary text-white" : "text-slate-600 dark:text-[#9dabb9]"
+                }`}
+                onClick={() => setProgressRange(7)}
               >
                 7 Jours
               </Button>
               <Button
                 variant="ghost"
                 size="xs"
-                className="h-7 px-3 text-xs font-medium text-slate-600 hover:bg-muted hover:text-foreground dark:text-[#9dabb9]"
+                className={`h-7 px-3 text-xs font-medium ${
+                  progressRange === 1 ? "bg-primary text-white" : "text-slate-600 dark:text-[#9dabb9]"
+                }`}
+                onClick={() => setProgressRange(1)}
               >
                 24 Heures
               </Button>
             </div>
           </div>
-          <div className="h-60 w-full flex items-center justify-center">
-            <p className="text-slate-500 dark:text-[#9dabb9]">
-              Graphique de progression en développement
-            </p>
+          <div className="h-60 w-full">
+            {isProgressLoading ? (
+              <div className="h-full w-full flex items-center justify-center">
+                <p className="text-slate-500 dark:text-[#9dabb9]">
+                  Chargement de la progression...
+                </p>
+              </div>
+            ) : progressData.length === 0 ? (
+              <div className="h-full w-full flex items-center justify-center">
+                <p className="text-slate-500 dark:text-[#9dabb9]">
+                  Aucune donnée de progression disponible.
+                </p>
+              </div>
+            ) : (
+              <div className="h-full w-full">
+                <div className="flex items-center gap-2 text-xs mb-3">
+                  <span className="inline-block w-3 h-3 rounded-full bg-[#33d17a]" />
+                  <span className="text-slate-500 dark:text-[#9dabb9]">Progression moyenne</span>
+                  <span className="text-slate-500 dark:text-[#9dabb9] ml-auto">
+                    {progressData[progressData.length - 1]?.progress ?? 0}%
+                  </span>
+                </div>
+
+                <svg
+                  viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+                  className="w-full h-55 overflow-visible"
+                  role="img"
+                  aria-label="Graphique de progression des projets"
+                >
+                  <defs>
+                    <linearGradient id="progressGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#33d17a" stopOpacity="0.25" />
+                      <stop offset="100%" stopColor="#33d17a" stopOpacity="0.02" />
+                    </linearGradient>
+                  </defs>
+
+                  {[0.25, 0.5, 0.75, 1].map((fraction) => {
+                    const y = CHART_PADDING.top + chartInnerHeight * fraction;
+                    return (
+                      <line
+                        key={fraction}
+                        x1={CHART_PADDING.left}
+                        y1={y}
+                        x2={CHART_WIDTH - CHART_PADDING.right}
+                        y2={y}
+                        stroke="#2f3a46"
+                        strokeWidth="1"
+                        strokeDasharray="4 6"
+                      />
+                    );
+                  })}
+
+                  <path
+                    d={`${progressPath} L${toChartX(progressData.length - 1)},${
+                      CHART_HEIGHT - CHART_PADDING.bottom
+                    } L${toChartX(0)},${CHART_HEIGHT - CHART_PADDING.bottom} Z`}
+                    fill="url(#progressGradient)"
+                  />
+                  <path
+                    d={progressPath}
+                    fill="none"
+                    stroke="#33d17a"
+                    strokeWidth="2"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+
+                  {progressData.map((point, index) => (
+                    <circle
+                      key={`${point.date}-${index}`}
+                      cx={toChartX(index)}
+                      cy={toChartY(point.progress)}
+                      r="3"
+                      fill="#33d17a"
+                      stroke="#1e293b"
+                      strokeWidth="1"
+                    />
+                  ))}
+                </svg>
+              </div>
+            )}
           </div>
         </div>
 

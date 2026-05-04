@@ -144,7 +144,12 @@ class SprintService:
     def get_sprints(self, projet_id: int) -> List:
         self._verifier_projet(projet_id)
         sprints = self.repo.get_by_projet(projet_id)
-        return self._apply_reference_to_sprints(sprints, projet_id)
+        unique_by_name = {}
+        for sprint in sprints:
+            if sprint.nom and sprint.nom not in unique_by_name:
+                unique_by_name[sprint.nom] = sprint
+        unique_sprints = list(unique_by_name.values())
+        return self._apply_reference_to_sprints(unique_sprints, projet_id)
 
     def get_sprint(self, projet_id: int, sprint_id: int):
         self._verifier_projet(projet_id)

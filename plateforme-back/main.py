@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -6,9 +6,10 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
+import time
 
 from core.config import ENVIRONMENT, SESSION_COOKIE_NAME, SESSION_SAME_SITE, SESSION_SECRET_KEY
-from db.database import engine, get_db, Base
+from db.database import engine, get_db, Base, SessionLocal
 
 # Import all models to register them with SQLAlchemy
 from models import (
@@ -44,6 +45,7 @@ from api.rapport import router as rapport_router
 from api.notifications import router as notifications_router
 from api.unit_tests import router as unit_tests_router
 from api.dashboard import router as dashboard_router
+from api.product_owner_dashboard import router as product_owner_dashboard_router
 from api.contact import router as contact_router
 
 
@@ -52,6 +54,65 @@ app = FastAPI(
     description="API pour la gestion intelligente des tests logiciels avec approche Scrum",
     version="1.0.0"
 )
+
+
+@app.middleware("http")
+async def log_system_requests(request: Request, call_next):
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+    except Exception as exc:
+        status_code = 500
+        _write_system_log(
+            niveau="ERROR",
+            message=f"HTTP {request.method} {request.url.path} -> 500",
+            details=str(exc),
+        )
+        raise
+    else:
+        duration_ms = (time.perf_counter() - start) * 1000
+        if status_code >= 500:
+            level = "ERROR"
+        elif status_code >= 400:
+            level = "WARNING"
+        else:
+            level = "INFO"
+
+        details = (
+            f"status={status_code} method={request.method} path={request.url.path} "
+            f"duration_ms={duration_ms:.2f}"
+        )
+        _write_system_log(
+            niveau=level,
+            message=f"HTTP {request.method} {request.url.path} -> {status_code}",
+            details=details,
+        )
+        return response
+
+
+def _write_system_log(niveau: str, message: str, details: str | None = None) -> None:
+    try:
+        from models.log_systems import LogSystems
+
+        db = SessionLocal()
+        db.add(
+            LogSystems(
+                niveau=niveau,
+                message=message,
+                source="api",
+                details=details,
+            )
+        )
+        db.commit()
+    except Exception:
+        # Avoid breaking requests if logging fails.
+        pass
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 
 app.add_middleware(
     SessionMiddleware,
@@ -122,6 +183,23 @@ def read_root():
     return {"message": "FastAPI is running"}
 
 
+@app.get("/health")
+def health_check():
+    status = "OK"
+    db_status = "OK"
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception:
+        status = "DEGRADED"
+        db_status = "ERROR"
+
+    return {
+        "status": status,
+        "db": db_status,
+    }
+
+
 # Include routers
 app.include_router(auth_router)
 app.include_router(roles_router)
@@ -140,6 +218,7 @@ app.include_router(rapport_router)
 app.include_router(notifications_router)
 app.include_router(unit_tests_router)
 app.include_router(dashboard_router)
+app.include_router(product_owner_dashboard_router)
 app.include_router(contact_router)
 # Test DB route
 @app.get("/test-db")
