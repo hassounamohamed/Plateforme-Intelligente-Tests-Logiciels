@@ -32,6 +32,14 @@ export const getAllProjects = async (): Promise<Project[]> => {
 };
 
 /**
+ * Fetch projects assigned to a specific user (Super Admin only)
+ */
+export const getUserProjects = async (userId: number): Promise<Project[]> => {
+  const response = await axiosInstance.get<Project[]>(`${BASE_URL}/utilisateurs/${userId}`);
+  return response.data;
+};
+
+/**
  * Get a single project by ID
  */
 export const getProjectById = async (projectId: number): Promise<Project> => {
