@@ -99,6 +99,10 @@ Génère le backlog Scrum complet en JSON selon le schéma demandé.
 """
 
 
+class GenerationCancelled(Exception):
+    pass
+
+
 class AIGenerationService:
 
     def __init__(self, db: Session):
@@ -154,6 +158,8 @@ class AIGenerationService:
         """
         try:
             self._run(generation_id)
+        except GenerationCancelled:
+            return
         except Exception as exc:
             self.repo.update_status(generation_id, "failed", 0)
             self.repo.add_log(generation_id, "error", str(exc), 0)
@@ -163,11 +169,15 @@ class AIGenerationService:
     def _run(self, generation_id: int) -> None:
 
         # ── Étape 1 : Démarrage ────────────────────────────────────────────
+        self._ensure_generation_active(generation_id)
         self.repo.update_status(generation_id, "processing", 5)
         self.repo.add_log(generation_id, "reading_file",
                           "Recherche du cahier des charges…", 5)
 
+        self._ensure_generation_active(generation_id)
         gen = self.repo.get_by_id(generation_id)
+        if not gen:
+            raise GenerationCancelled()
         # Set the user_id for API key selection
         self.current_user_id = gen.user_id
 
@@ -179,16 +189,20 @@ class AIGenerationService:
                 "Veuillez d'abord l'uploader en pièce jointe du projet."
             )
 
+        self._ensure_generation_active(generation_id)
         self.repo.update_progress(generation_id, 20)
         self.repo.add_log(generation_id, "reading_file",
                           f"Fichier lu ({len(content)} caractères).", 20)
 
         # ── Étape 3 : Appel IA ─────────────────────────────────────────────
+        self._ensure_generation_active(generation_id)
         self.repo.add_log(generation_id, "sending_prompt",
                           "Envoi du prompt au modèle IA…", 30)
         self.repo.update_progress(generation_id, 30)
 
         raw_json = self._appeler_ia(content, generation_id)
+
+        self._ensure_generation_active(generation_id)
 
         self.repo.update_progress(generation_id, 60)
         self.repo.add_log(generation_id, "generating_epics",
@@ -197,11 +211,13 @@ class AIGenerationService:
         # ── Étape 4 : Validation JSON ──────────────────────────────────────
         backlog = self._parser_reponse(raw_json)
 
+        self._ensure_generation_active(generation_id)
         self.repo.update_progress(generation_id, 80)
         self.repo.add_log(generation_id, "generating_us",
                           f"{len(backlog.modules)} module(s) détecté(s).", 80)
 
         # ── Étape 5 : Sauvegarde ───────────────────────────────────────────
+        self._ensure_generation_active(generation_id)
         self.repo.add_log(generation_id, "saving",
                           "Sauvegarde des éléments en base…", 85)
 
@@ -209,14 +225,18 @@ class AIGenerationService:
         nb_us    = 0
 
         for module in backlog.modules:
+            self._ensure_generation_active(generation_id)
             module_item = self.repo.add_item(
                 generation_id=generation_id,
                 type_="module",
                 title=module.name,
                 description=module.description,
             )
+            if not module_item:
+                raise GenerationCancelled()
 
             for epic in module.epics:
+                self._ensure_generation_active(generation_id)
                 nb_epics += 1
                 epic_item = self.repo.add_item(
                     generation_id=generation_id,
@@ -224,11 +244,14 @@ class AIGenerationService:
                     title=epic.name,
                     parent_id=module_item.id,
                 )
+                if not epic_item:
+                    raise GenerationCancelled()
 
                 for us in epic.user_stories:
+                    self._ensure_generation_active(generation_id)
                     nb_us += 1
                     criteres_json = json.dumps(us.acceptance_criteria, ensure_ascii=False)
-                    self.repo.add_item(
+                    item = self.repo.add_item(
                         generation_id=generation_id,
                         type_="user_story",
                         title=us.description,
@@ -240,8 +263,11 @@ class AIGenerationService:
                         sprint=us.sprint,
                         duration=us.duration,
                     )
+                    if not item:
+                        raise GenerationCancelled()
 
         # ── Étape 6 : Terminé ──────────────────────────────────────────────
+        self._ensure_generation_active(generation_id)
         self.repo.update_status(generation_id, "completed", 100)
         self.repo.add_log(
             generation_id, "done",
@@ -696,7 +722,7 @@ class AIGenerationService:
     def annuler_generation(self, generation_id: int) -> dict:
         """
         Annule une génération en cours ou en attente.
-        Les items générés sont conservés (status: cancelled).
+        Les items et logs générés sont supprimés pour éviter toute trace partielle.
         """
         gen = self.repo.get_detail(generation_id)
         if not gen:
@@ -709,13 +735,14 @@ class AIGenerationService:
             )
 
         self.repo.update_status(generation_id, "cancelled", gen.progress or 0)
-        self.repo.add_log(
-            generation_id,
-            "cancelled",
-            "Génération annulée par l'utilisateur.",
-            gen.progress or 0,
-        )
+        self.repo.cleanup_generation_data(generation_id)
         return {
             "generation_id": generation_id,
             "status": "cancelled",
         }
+
+    def _ensure_generation_active(self, generation_id: int) -> None:
+        gen = self.repo.get_by_id(generation_id)
+        if not gen or gen.status == "cancelled":
+            self.repo.cleanup_generation_data(generation_id)
+            raise GenerationCancelled()

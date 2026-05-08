@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 # ─── Types littéraux ──────────────────────────────────────────────────────────
 
-StatusGeneration = Literal["pending", "processing", "completed", "failed", "approved", "rejected"]
+StatusGeneration = Literal["pending", "processing", "completed", "failed", "approved", "rejected", "cancelled"]
 TypeGeneration   = Literal["generate_scrum", "generate_tests"]
 StatusItem       = Literal["draft", "approved", "rejected", "modified"]
 PriorityLevel    = Literal["High", "Medium", "Low"]

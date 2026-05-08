@@ -117,7 +117,8 @@ export default function AIBacklogReviewPage() {
           detail.status === "completed" ||
           detail.status === "approved" ||
           detail.status === "failed" ||
-          detail.status === "rejected"
+          detail.status === "rejected" ||
+          detail.status === "cancelled"
         ) {
           if (pollRef.current) clearInterval(pollRef.current);
           if (detail.status === "completed" || detail.status === "approved") {

@@ -587,7 +587,8 @@ export type AIGenerationStatus =
   | "completed"
   | "failed"
   | "approved"
-  | "rejected";
+  | "rejected"
+  | "cancelled";
 
 export type AIItemStatus = "draft" | "approved" | "rejected" | "modified";
 export type AIItemType = "module" | "epic" | "user_story";

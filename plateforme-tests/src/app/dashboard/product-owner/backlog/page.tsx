@@ -92,7 +92,8 @@ export default function BacklogPage() {
         if (
           detail.status === "completed" ||
           detail.status === "failed" ||
-          detail.status === "approved"
+          detail.status === "approved" ||
+          detail.status === "cancelled"
         ) {
           if (pollRef.current) clearInterval(pollRef.current);
         }
