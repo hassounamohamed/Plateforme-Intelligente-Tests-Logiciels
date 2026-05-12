@@ -146,6 +146,22 @@ NOTIFICATION_CATALOG = [
         "message": "La user story a ete validee.",
     },
     {
+        "type": TypeNotification.USER_STORY_READY_FOR_TEST,
+        "title": "User story prete pour test",
+        "severity": "info",
+        "domain": "backlog_user_stories",
+        "priorite": "moyenne",
+        "message": "Une user story est prete pour les tests.",
+    },
+    {
+        "type": TypeNotification.USER_STORY_NEEDS_FIX,
+        "title": "User story a corriger",
+        "severity": "warning",
+        "domain": "backlog_user_stories",
+        "priorite": "haute",
+        "message": "Une user story doit etre corrigee suite aux tests.",
+    },
+    {
         "type": TypeNotification.USER_STORY_ASSIGNED_TO_ME,
         "title": "User story assignee a toi",
         "severity": "info",

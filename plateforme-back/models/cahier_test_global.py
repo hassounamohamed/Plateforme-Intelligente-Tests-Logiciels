@@ -97,7 +97,7 @@ class CasTest(Base):
     date_creation   = Column(DateTime, default=datetime.utcnow)
     type_test       = Column(String(20), default="Manuel", nullable=False)   # Manuel | Automatisé
     statut_test     = Column(String(30), default="Non exécuté", nullable=False)
-    # Non exécuté | Réussi | Échoué | Bloqué
+    # Non exécuté | En cours | Pret pour test | Terminé | Réussi | Échoué | Bloqué
     commentaire     = Column(Text, nullable=True)
     ordre           = Column(Integer, default=0)
 

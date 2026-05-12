@@ -305,6 +305,7 @@ class CahierTestGlobalService:
         else:
             cas.user_story_reference = user_story.reference if user_story else None
         cas.user_story_titre = user_story.titre if user_story else None
+        cas.user_story_statut = user_story.statut if user_story else None
         return cas
 
     def _attach_user_story_display_many(self, cases: List[CasTest]) -> List[CasTest]:
@@ -676,6 +677,28 @@ class CahierTestGlobalService:
                 }
             )
 
+        if (
+            before["statut_test"] != updated.statut_test
+            and updated.statut_test in {"Échoué", "Bloqué"}
+            and updated.user_story
+        ):
+            user_story = updated.user_story
+            if user_story.statut != "a_corriger":
+                user_story.statut = "a_corriger"
+                self.db.commit()
+                self.db.refresh(user_story)
+            if user_story.developerId:
+                self.notification_service.notify_user(
+                    user_id=user_story.developerId,
+                    titre="User story a corriger",
+                    message=(
+                        f"Un cas de test a echoue pour {self._us_ref(user_story)} "
+                        f"({user_story.titre}). La user story passe en a_corriger."
+                    ),
+                    notification_type=TypeNotification.USER_STORY_NEEDS_FIX,
+                    priorite="haute",
+                )
+
         if data.statut_test is not None:
             self.repo.recalculer_stats(cahier_id)
             if sync_rapport:
@@ -1009,23 +1032,38 @@ class CahierTestGlobalService:
         buf.seek(0)
         return buf.read()
 
-    def list_cas_tests(self, cahier_id: int, projet_id: int) -> list:
+    def list_cas_tests(
+        self,
+        cahier_id: int,
+        projet_id: int,
+        statut_test: Optional[str] = None,
+        us_statut: Optional[str] = None,
+    ) -> list:
         self._verifier_appartenance(cahier_id, projet_id)
         cases = self.repo.list_cas_tests(cahier_id)
+        if statut_test:
+            cases = [case for case in cases if case.statut_test == statut_test]
+        if us_statut:
+            cases = [case for case in cases if case.user_story and case.user_story.statut == us_statut]
         enriched = self._attach_user_story_display_many(cases)
         self._reorder_cas_tests(cahier_id)
         return enriched
 
-    def list_user_stories_for_cahier(self, projet_id: int) -> list[dict]:
-        user_stories = (
+    def list_user_stories_for_cahier(
+        self,
+        projet_id: int,
+        statut: Optional[str] = None,
+    ) -> list[dict]:
+        query = (
             self.db.query(UserStory)
             .join(Epic, UserStory.epic_id == Epic.id)
             .join(Module, Epic.module_id == Module.id)
             .options(joinedload(UserStory.sprints), joinedload(UserStory.epic).joinedload(Epic.module))
             .filter(Module.projet_id == projet_id)
-            .order_by(UserStory.id.asc())
-            .all()
         )
+        if statut:
+            query = query.filter(UserStory.statut == statut)
+        user_stories = query.order_by(UserStory.id.asc()).all()
         prefix = self._project_reference_prefix(projet_id)
 
         return [
@@ -1033,6 +1071,7 @@ class CahierTestGlobalService:
                 "id": us.id,
                 "reference": f"{prefix}-{index}",
                 "titre": us.titre,
+                "statut": us.statut,
                 "sprint_nom": us.sprints[0].nom if us.sprints else None,
                 "module_nom": us.epic.module.nom if (us.epic and us.epic.module) else None,
             }

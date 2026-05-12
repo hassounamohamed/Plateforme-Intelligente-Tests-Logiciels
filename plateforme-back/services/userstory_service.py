@@ -438,6 +438,28 @@ class UserStoryService:
                 priorite="moyenne",
                 exclude_user_id=current_user_id,
             )
+            if data.statut == "ready_for_test" and updated.testerId:
+                self.notification_service.notify_user(
+                    user_id=updated.testerId,
+                    titre="User story prete pour test",
+                    message=(
+                        f"La user story {self._us_ref(updated)} ({updated.titre}) "
+                        "est prete pour test."
+                    ),
+                    notification_type=TypeNotification.USER_STORY_READY_FOR_TEST,
+                    priorite="moyenne",
+                )
+            if data.statut == "a_corriger" and updated.developerId:
+                self.notification_service.notify_user(
+                    user_id=updated.developerId,
+                    titre="User story a corriger",
+                    message=(
+                        f"La user story {self._us_ref(updated)} ({updated.titre}) "
+                        "doit etre corrigee suite a des tests."
+                    ),
+                    notification_type=TypeNotification.USER_STORY_NEEDS_FIX,
+                    priorite="haute",
+                )
             if data.statut == "done":
                 self.notification_service.notify_project_users(
                     project_id=projet_id,

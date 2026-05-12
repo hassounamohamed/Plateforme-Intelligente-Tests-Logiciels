@@ -67,7 +67,10 @@ async def get_user_stories(
     epic_id: int,
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: UserStoryService = Depends(get_us_service),
-    statut: Optional[str] = Query(None, description="Filtrer : to_do | in_progress | done"),
+    statut: Optional[str] = Query(
+        None,
+        description="Filtrer : to_do | in_progress | ready_for_test | a_corriger | done",
+    ),
 ):
     """
     Lister les user stories d'un epic, triées par priorité MoSCoW.
@@ -132,7 +135,8 @@ async def changer_statut(
     svc: UserStoryService = Depends(get_us_service),
 ):
     """
-    Faire avancer la user story : **to_do** → **in_progress** → **done**.
+    Faire avancer la user story : **to_do** → **in_progress** → **ready_for_test**
+    → **a_corriger** → **done**.
     Scrum Master uniquement.
     """
     return svc.changer_statut(projet_id, module_id, epic_id, us_id, data, current_user.id)
