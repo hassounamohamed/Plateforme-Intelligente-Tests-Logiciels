@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, model_validator, ConfigDict
 PrioriteUS = Literal["must_have", "should_have", "could_have", "wont_have"]
 
 # Statuts alignés avec les epics
-StatutUS = Literal["to_do", "in_progress", "done"]
+StatutUS = Literal["to_do", "in_progress", "ready_for_test", "done"]
 
 # Story points Fibonacci autorisés
 STORY_POINTS_VALIDES = {1, 2, 3, 5, 8, 13, 21}
@@ -75,7 +75,7 @@ class UpdateUserStoryRequest(BaseModel):
 
 
 class ChangerStatutUSRequest(BaseModel):
-    statut: StatutUS = Field(..., description="to_do | in_progress | done")
+    statut: StatutUS = Field(..., description="to_do | in_progress | ready_for_test | done")
 
 
 class AssignerDeveloppeurRequest(BaseModel):

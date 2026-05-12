@@ -227,6 +227,7 @@ export default function UserStoriesPage() {
     switch (status) {
       case "done": return "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-500/30";
       case "in_progress": return "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-500/30";
+      case "ready_for_test": return "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-500/30";
       case "to_do": return "bg-gray-200 dark:bg-gray-500/20 text-gray-700 dark:text-gray-400 border border-gray-300 dark:border-gray-500/30";
       default: return "bg-gray-200 dark:bg-gray-500/20 text-gray-700 dark:text-gray-400 border border-gray-300 dark:border-gray-500/30";
     }
@@ -238,7 +239,12 @@ export default function UserStoriesPage() {
   };
 
   const formatStatus = (status: StatutUS): string => {
-    const map: Record<StatutUS, string> = { to_do: "À faire", in_progress: "En cours", done: "Terminé" };
+    const map: Record<StatutUS, string> = {
+      to_do: "À faire",
+      in_progress: "En cours",
+      ready_for_test: "Pret pour test",
+      done: "Terminé",
+    };
     return map[status] || status;
   };
 
@@ -654,15 +660,7 @@ export default function UserStoriesPage() {
             <div className="sticky bottom-0 flex justify-end p-6 border-t border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80 gap-3">
                 {isStoryAssignedToMe(selectedStory) ? (
                   <>
-                    {selectedStory.statut !== "done" ? (
-                      <button
-                        onClick={() => handleChangeSelectedStoryStatus("done")}
-                        disabled={statusUpdating}
-                        className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white transition"
-                      >
-                        {statusUpdating ? "Mise à jour..." : "Marquer terminée"}
-                      </button>
-                    ) : (
+                    {selectedStory.statut === "done" ? (
                       <button
                         onClick={() => handleChangeSelectedStoryStatus("in_progress")}
                         disabled={statusUpdating}
@@ -670,6 +668,23 @@ export default function UserStoriesPage() {
                       >
                         {statusUpdating ? "Mise à jour..." : "Rouvrir"}
                       </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleChangeSelectedStoryStatus("ready_for_test")}
+                          disabled={statusUpdating || selectedStory.statut === "ready_for_test"}
+                          className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white transition"
+                        >
+                          {statusUpdating ? "Mise à jour..." : "Pret pour test"}
+                        </button>
+                        <button
+                          onClick={() => handleChangeSelectedStoryStatus("done")}
+                          disabled={statusUpdating}
+                          className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white transition"
+                        >
+                          {statusUpdating ? "Mise à jour..." : "Marquer terminée"}
+                        </button>
+                      </>
                     )}
                   </>
                 ) : (

@@ -56,6 +56,9 @@ const toTaskStatus = (value: string | undefined): TaskStatus => {
   if (value === "in_progress" || value === "done") {
     return value;
   }
+  if (value === "ready_for_test") {
+    return "in_progress";
+  }
   return "to_do";
 };
 

@@ -2,12 +2,13 @@
 
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { AttachmentList } from "@/components/AttachmentList";
 import { ROUTES } from "@/lib/constants";
-import { ProjectManagementModal, ModuleManagementModal, AssignMembersModal } from "@/components/product-owner";
+import { ProjectManagementModal, AssignMembersModal } from "@/components/product-owner";
 import {
   getMyProjects,
   createProject,
@@ -16,12 +17,8 @@ import {
   archiveProject,
   assignMembers,
 } from "@/features/projects/api";
-import {
-  getModules,
-  createModule,
-  updateModule,
-  deleteModule,
-} from "@/features/modules/api";
+import { getModules } from "@/features/modules/api";
+import { getEpics } from "@/features/epics/api";
 import {
   uploadProjectAttachment,
   downloadAttachment,
@@ -29,11 +26,9 @@ import {
 } from "@/features/attachments/api";
 import {
   Project,
-  Module,
+  Epic,
   CreateProjectPayload,
   UpdateProjectPayload,
-  CreateModulePayload,
-  UpdateModulePayload,
 } from "@/types";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialogProvider";
 
@@ -41,16 +36,13 @@ export default function ProjectsManagementPage() {
   const confirmDialog = useConfirmDialog();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [modules, setModules] = useState<Module[]>([]);
+  const [epics, setEpics] = useState<Array<{ epic: Epic; moduleName: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEpicsLoading, setIsEpicsLoading] = useState(false);
 
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [projectModalMode, setProjectModalMode] = useState<"create" | "edit">("create");
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-
-  const [moduleModalOpen, setModuleModalOpen] = useState(false);
-  const [moduleModalMode, setModuleModalMode] = useState<"create" | "edit">("create");
-  const [editingModule, setEditingModule] = useState<Module | null>(null);
 
   const [assignMembersModalOpen, setAssignMembersModalOpen] = useState(false);
   const [projectForAssignment, setProjectForAssignment] = useState<Project | null>(null);
@@ -76,9 +68,9 @@ export default function ProjectsManagementPage() {
 
   useEffect(() => {
     if (selectedProject) {
-      fetchModules(selectedProject.id);
+      fetchProjectEpics(selectedProject.id);
     } else {
-      setModules([]);
+      setEpics([]);
     }
   }, [selectedProject]);
 
@@ -94,12 +86,24 @@ export default function ProjectsManagementPage() {
     }
   };
 
-  const fetchModules = async (projectId: number) => {
+  const fetchProjectEpics = async (projectId: number) => {
+    setIsEpicsLoading(true);
     try {
-      const data = await getModules(projectId);
-      setModules(data);
+      const modulesData = await getModules(projectId);
+
+      const epicsByModule = await Promise.all(
+        modulesData.map(async (module) => {
+          const moduleEpics = await getEpics(projectId, module.id, undefined, true);
+          return moduleEpics.map((epic) => ({ epic, moduleName: module.nom }));
+        })
+      );
+
+      setEpics(epicsByModule.flat());
     } catch (err) {
       console.error(err);
+      setEpics([]);
+    } finally {
+      setIsEpicsLoading(false);
     }
   };
 
@@ -157,57 +161,6 @@ export default function ProjectsManagementPage() {
       if (selectedProject?.id === projectId) {
         setSelectedProject(null);
       }
-    } catch (err) {
-      alert("Erreur lors de la suppression");
-    }
-  };
-
-  const handleCreateModule = () => {
-    if (!selectedProject) {
-      alert("Veuillez sélectionner un projet");
-      return;
-    }
-    setModuleModalMode("create");
-    setEditingModule(null);
-    setModuleModalOpen(true);
-  };
-
-  const handleEditModule = (module: Module) => {
-    setModuleModalMode("edit");
-    setEditingModule(module);
-    setModuleModalOpen(true);
-  };
-
-  const handleModuleSubmit = async (
-    data: CreateModulePayload | UpdateModulePayload
-  ) => {
-    if (!selectedProject) return;
-
-    if (moduleModalMode === "create") {
-      await createModule(selectedProject.id, data as CreateModulePayload);
-    } else if (editingModule) {
-      await updateModule(selectedProject.id, editingModule.id, data as UpdateModulePayload);
-    }
-    await fetchModules(selectedProject.id);
-  };
-
-  const handleDeleteModule = async (moduleId: number) => {
-    if (!selectedProject) return;
-    const confirmed = await confirmDialog({
-      title: "Supprimer le module",
-      description: "Êtes-vous sûr de vouloir supprimer ce module ?",
-      confirmText: "Supprimer",
-      cancelText: "Annuler",
-      confirmVariant: "destructive",
-    });
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await deleteModule(selectedProject.id, moduleId);
-      await fetchModules(selectedProject.id);
     } catch (err) {
       alert("Erreur lors de la suppression");
     }
@@ -311,6 +264,28 @@ export default function ProjectsManagementPage() {
     }
   };
 
+  const getEpicStatusColor = (status: Epic["statut"]) => {
+    switch (status) {
+      case "done":
+        return "bg-green-500/20 text-green-400";
+      case "in_progress":
+        return "bg-primary/20 text-primary";
+      default:
+        return "bg-gray-500/20 text-gray-400";
+    }
+  };
+
+  const getEpicStatusLabel = (status: Epic["statut"]) => {
+    switch (status) {
+      case "done":
+        return "Terminée";
+      case "in_progress":
+        return "En cours";
+      default:
+        return "À faire";
+    }
+  };
+
   const headerActions = (
     <Button
       onClick={handleCreateProject}
@@ -334,7 +309,7 @@ export default function ProjectsManagementPage() {
       headerContent={
         <DashboardHeader
           title="Gestion des Projets"
-          subtitle="Créez et gérez vos projets et leurs modules"
+          subtitle="Créez et gérez vos projets et leurs epics"
           actions={headerActions}
         />
       }
@@ -392,7 +367,9 @@ export default function ProjectsManagementPage() {
                           )}
                           <h3 className="text-white font-bold">{project.nom}</h3>
                         </div>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(project.statut)}`}>
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(project.statut)}`}
+                        >
                           {project.statut}
                         </span>
                       </div>
@@ -468,76 +445,63 @@ export default function ProjectsManagementPage() {
             )}
           </div>
 
-          {/* Modules Section */}
+          {/* Epics Section */}
           <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-white text-lg font-bold">
-                {selectedProject ? `Modules: ${selectedProject.nom}` : "Modules"}
+                {selectedProject ? `Epics: ${selectedProject.nom}` : "Epics"}
               </h2>
               {selectedProject && (
-                <Button
-                  onClick={handleCreateModule}
-                  variant="outline"
-                  size="sm"
-                  className="gap-1 border-primary/40 text-primary hover:bg-primary/10 hover:text-primary"
-                >
-                  <span className="material-symbols-outlined text-[18px]">add</span>
-                  Créer
+                <Button asChild variant="outline" size="sm" className="gap-1 border-primary/40 text-primary hover:bg-primary/10 hover:text-primary">
+                  <Link href={`${ROUTES.PRODUCT_OWNER}/epics`}>
+                    <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                    Gérer
+                  </Link>
                 </Button>
               )}
             </div>
 
             {!selectedProject ? (
               <div className="text-center py-12 text-slate-500 dark:text-[#9dabb9]">
-                Sélectionnez un projet pour voir ses modules
+                Sélectionnez un projet pour voir ses epics
               </div>
-            ) : modules.length === 0 ? (
+            ) : isEpicsLoading ? (
+              <div className="text-center py-12 text-slate-500 dark:text-[#9dabb9]">
+                Chargement...
+              </div>
+            ) : epics.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-slate-500 dark:text-[#9dabb9] mb-4">Aucun module</p>
-                <Button
-                  onClick={handleCreateModule}
-                  className="h-9 px-4 text-sm font-medium"
-                >
-                  Créer le premier module
-                </Button>
+                <p className="text-slate-500 dark:text-[#9dabb9] mb-4">Aucun epic</p>
               </div>
             ) : (
               <div className="space-y-3 max-h-150 overflow-y-auto">
-                {modules.map((module) => (
+                {epics.map(({ epic, moduleName }) => (
                   <div
-                    key={module.id}
+                    key={`${epic.id}-${epic.module_id}`}
                     className="p-4 rounded-lg border border-slate-200 dark:border-[#3b4754] hover:border-primary/50 transition-all"
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex items-center gap-2 flex-1">
-                        <span className="material-symbols-outlined text-primary">folder</span>
-                        <h3 className="text-white font-bold">{module.nom}</h3>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          onClick={() => handleEditModule(module)}
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-slate-600 hover:bg-muted hover:text-foreground dark:text-[#9dabb9]"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">edit</span>
-                        </Button>
-                        <Button
-                          onClick={() => handleDeleteModule(module.id)}
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">delete</span>
-                        </Button>
+                        <span className="material-symbols-outlined text-primary">content_cut</span>
+                        <h3 className="text-white font-bold">{epic.titre}</h3>
                       </div>
                     </div>
                     <p className="text-sm text-slate-500 dark:text-[#9dabb9]">
-                      {module.description || "Aucune description"}
+                      {epic.description || "Aucune description"}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-[#9dabb9] mt-2">
-                      {module.epics?.length || 0} epic(s)
+                      Module: {moduleName}
                     </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getEpicStatusColor(epic.statut)}`}
+                      >
+                        {getEpicStatusLabel(epic.statut)}
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-[#9dabb9]">
+                        {epic.user_stories?.length || 0} user story(ies)
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -552,14 +516,6 @@ export default function ProjectsManagementPage() {
         onSubmit={handleProjectSubmit}
         project={editingProject}
         mode={projectModalMode}
-      />
-
-      <ModuleManagementModal
-        isOpen={moduleModalOpen}
-        onClose={() => setModuleModalOpen(false)}
-        onSubmit={handleModuleSubmit}
-        module={editingModule}
-        mode={moduleModalMode}
       />
 
       <AssignMembersModal

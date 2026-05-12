@@ -253,7 +253,7 @@ export default function UserStoriesPage() {
 
   const handleChangeStatus = async (
     usId: number,
-    newStatus: "to_do" | "in_progress" | "done",
+    newStatus: "to_do" | "in_progress" | "ready_for_test" | "done",
     epicId?: number
   ) => {
     if (!selectedProject) return;
@@ -469,6 +469,8 @@ export default function UserStoriesPage() {
         return "bg-[#0bda5b]/20 text-[#0bda5b]";
       case "in_progress":
         return "bg-primary/20 text-primary";
+      case "ready_for_test":
+        return "bg-amber-500/20 text-amber-400";
       case "to_do":
       default:
         return "bg-[#9dabb9]/20 text-[#9dabb9]";
@@ -481,6 +483,8 @@ export default function UserStoriesPage() {
         return "Terminée";
       case "in_progress":
         return "En cours";
+      case "ready_for_test":
+        return "Pret pour test";
       case "to_do":
       default:
         return "À faire";
@@ -619,6 +623,7 @@ export default function UserStoriesPage() {
                     <option value="">Tous</option>
                     <option value="to_do">À faire</option>
                     <option value="in_progress">En cours</option>
+                    <option value="ready_for_test">Pret pour test</option>
                     <option value="done">Terminées</option>
                   </select>
                 </div>
@@ -915,6 +920,17 @@ export default function UserStoriesPage() {
                     }`}
                   >
                     En cours
+                  </button>
+                  <button
+                    onClick={() => handleChangeStatus(us.id, "ready_for_test", us.epic_id)}
+                    disabled={actionLoading === us.id || us.statut === "ready_for_test"}
+                    className={`px-3 py-1 rounded text-xs font-bold transition-colors ${
+                      us.statut === "ready_for_test"
+                        ? "bg-amber-500/20 text-amber-400 cursor-not-allowed"
+                        : "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                    }`}
+                  >
+                    Pret pour test
                   </button>
                   <button
                     onClick={() => handleChangeStatus(us.id, "done", us.epic_id)}

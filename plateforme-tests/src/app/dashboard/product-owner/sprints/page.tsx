@@ -38,6 +38,17 @@ export default function SprintsPage() {
     if (selectedProject) {
       loadSprints(selectedProject);
     }
+    if (!selectedProject) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      loadSprints(selectedProject);
+    }, 15000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, [selectedProject]);
 
   const loadProjects = async () => {
@@ -111,19 +122,58 @@ export default function SprintsPage() {
     return Math.round((completed / sprint.userstories.length) * 100);
   };
 
+  const isSprintCompletedByProgress = (sprint: Sprint) => {
+    if (!sprint.userstories || sprint.userstories.length === 0) {
+      return false;
+    }
+
+    return sprint.userstories.every((us) => us.statut === "done");
+  };
+
+  const getComputedStatus = (sprint: Sprint) =>
+    isSprintCompletedByProgress(sprint) ? "termine" : sprint.statut;
+
+  const isSprintExpired = (sprint: Sprint) => {
+    if (!sprint.dateFin) {
+      return false;
+    }
+
+    if (getComputedStatus(sprint) === "termine") {
+      return false;
+    }
+
+    return new Date(sprint.dateFin) < new Date();
+  };
+
   const getProgressColor = (progress: number) => {
     if (progress >= 80) return "bg-green-500";
     if (progress >= 50) return "bg-blue-500";
     if (progress >= 25) return "bg-yellow-500";
     return "bg-red-500";
   };
+  const getOrderedSprints = (items: Sprint[]) =>
+    [...items].sort((a, b) => {
+      if (a.dateDebut && b.dateDebut) {
+        return new Date(a.dateDebut).getTime() - new Date(b.dateDebut).getTime();
+      }
+      if (a.dateDebut && !b.dateDebut) {
+        return -1;
+      }
+      if (!a.dateDebut && b.dateDebut) {
+        return 1;
+      }
+      return a.id - b.id;
+    });
 
+  const getSprintDisplayName = (sprint: Sprint, index: number) => {
+    return `Sprint ${index + 1}`;
+  };
   // Calculate sprint statistics
   const sprintStats = {
     total: sprints.length,
-    active: sprints.filter((s) => s.statut === "en_cours").length,
-    completed: sprints.filter((s) => s.statut === "termine").length,
-    planned: sprints.filter((s) => s.statut === "planifie").length,
+    active: sprints.filter((s) => getComputedStatus(s) === "en_cours").length,
+    completed: sprints.filter((s) => getComputedStatus(s) === "termine").length,
+    planned: sprints.filter((s) => getComputedStatus(s) === "planifie").length,
     avgVelocity: sprints.length > 0
       ? Math.round(sprints.reduce((sum, s) => sum + (s.velocite || 0), 0) / sprints.length)
       : 0,
@@ -245,9 +295,11 @@ export default function SprintsPage() {
         </div>
       ) : (
         <div className="grid gap-6">
-          {sprints.map((sprint) => {
+          {getOrderedSprints(sprints).map((sprint, index) => {
             const progress = calculateProgress(sprint);
-            const daysLeft = sprint.dateFin
+            const computedStatus = getComputedStatus(sprint);
+            const isExpired = isSprintExpired(sprint);
+            const daysLeft = sprint.dateFin && computedStatus === "en_cours" && !isExpired
               ? Math.ceil(
                   (new Date(sprint.dateFin).getTime() - new Date().getTime()) /
                     (1000 * 60 * 60 * 24)
@@ -270,14 +322,19 @@ export default function SprintsPage() {
                       <span className="material-symbols-outlined text-primary text-3xl">
                         sprint
                       </span>
-                      <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{sprint.nom}</h3>
+                      <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{getSprintDisplayName(sprint, index)}</h3>
                       <span
                         className={`px-4 py-1.5 text-xs font-bold rounded-full border-2 ${getStatusColor(
-                          sprint.statut
+                          computedStatus
                         )}`}
                       >
-                        {getStatusLabel(sprint.statut)}
+                        {getStatusLabel(computedStatus)}
                       </span>
+                      {isExpired && (
+                        <span className="px-3 py-1.5 text-xs font-bold rounded-full border-2 bg-red-500/20 text-red-400 border-red-500/30">
+                          Expiré
+                        </span>
+                      )}
                     </div>
                     {sprint.objectifSprint && (
                       <div className="flex items-start gap-2 bg-slate-50 dark:bg-[#1e293b] rounded-lg p-3 border border-slate-200 dark:border-[#3b4754]">
@@ -288,7 +345,7 @@ export default function SprintsPage() {
                       </div>
                     )}
                   </div>
-                  {sprint.statut === "en_cours" && daysLeft !== null && (
+                  {computedStatus === "en_cours" && daysLeft !== null && (
                     <div className="bg-blue-500/10 dark:bg-[#1e293b] border-2 border-blue-500/40 rounded-xl px-6 py-4 text-center ml-4">
                       <div className="text-4xl font-black text-blue-400">{daysLeft}</div>
                       <div className="text-xs text-slate-500 dark:text-[#9dabb9] font-semibold uppercase tracking-wide mt-1">jours restants</div>
@@ -316,9 +373,14 @@ export default function SprintsPage() {
                       </span>
                       <div className="text-xs text-slate-500 dark:text-[#9dabb9] font-semibold uppercase">Date Fin</div>
                     </div>
-                    <div className="text-base font-bold text-slate-900 dark:text-white">
+                    <div className={`text-base font-bold ${isExpired ? "text-red-400" : "text-slate-900 dark:text-white"}`}>
                       {formatDate(sprint.dateFin)}
                     </div>
+                    {isExpired && sprint.dateFin && (
+                      <div className="text-xs text-red-400 font-semibold mt-1">
+                        Date expirée le {formatDate(sprint.dateFin)}
+                      </div>
+                    )}
                   </div>
                   <div className="bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-[#3b4754] rounded-lg p-4 hover:border-primary/50 transition-all">
                     <div className="flex items-center gap-2 mb-2">
@@ -422,6 +484,8 @@ export default function SprintsPage() {
                                 ? "bg-green-500/20 border-2 border-green-500/50"
                                 : us.statut === "in_progress"
                                 ? "bg-blue-500/20 border-2 border-blue-500/50"
+                                : us.statut === "ready_for_test"
+                                ? "bg-amber-500/20 border-2 border-amber-500/50"
                                 : "bg-gray-500/20 border-2 border-gray-500/50"
                             }`}>
                               <span
@@ -430,6 +494,8 @@ export default function SprintsPage() {
                                     ? "text-green-400"
                                     : us.statut === "in_progress"
                                     ? "text-blue-400"
+                                    : us.statut === "ready_for_test"
+                                    ? "text-amber-400"
                                     : "text-gray-400"
                                 }`}
                               >
@@ -437,6 +503,8 @@ export default function SprintsPage() {
                                   ? "check_circle"
                                   : us.statut === "in_progress"
                                   ? "pending"
+                                  : us.statut === "ready_for_test"
+                                  ? "fact_check"
                                   : "radio_button_unchecked"}
                               </span>
                             </div>
@@ -459,9 +527,17 @@ export default function SprintsPage() {
                                     ? "bg-green-500/20 text-green-400"
                                     : us.statut === "in_progress"
                                     ? "bg-blue-500/20 text-blue-400"
+                                    : us.statut === "ready_for_test"
+                                    ? "bg-amber-500/20 text-amber-400"
                                     : "bg-gray-500/20 text-gray-400"
                                 }`}>
-                                  {us.statut === "done" ? "Terminée" : us.statut === "in_progress" ? "En cours" : "À faire"}
+                                  {us.statut === "done"
+                                    ? "Terminée"
+                                    : us.statut === "in_progress"
+                                    ? "En cours"
+                                    : us.statut === "ready_for_test"
+                                    ? "Pret pour test"
+                                    : "À faire"}
                                 </span>
                               </div>
                             </div>

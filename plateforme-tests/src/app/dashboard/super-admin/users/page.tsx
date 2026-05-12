@@ -195,8 +195,11 @@ export default function UsersPage() {
     return searchableValues.includes(normalizedSearchTerm);
   };
 
-  const activeUsers = users.filter((user) => user.actif);
-  const filteredPendingUsers = pendingUsers.filter(userMatchesSearch);
+  const isSuperAdminUser = (user: User) => user.role?.code === ROLES.SUPER_ADMIN;
+  const activeUsers = users.filter((user) => user.actif && !isSuperAdminUser(user));
+  const filteredPendingUsers = pendingUsers
+    .filter((user) => !isSuperAdminUser(user))
+    .filter(userMatchesSearch);
   const filteredActiveUsers = activeUsers.filter(userMatchesSearch);
 
   return (

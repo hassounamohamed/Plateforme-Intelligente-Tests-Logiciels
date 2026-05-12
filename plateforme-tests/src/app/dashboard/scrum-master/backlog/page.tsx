@@ -104,6 +104,8 @@ export default function BacklogPage() {
         return "bg-[#0bda5b]/20 text-[#0bda5b]";
       case "in_progress":
         return "bg-primary/20 text-primary";
+      case "ready_for_test":
+        return "bg-amber-500/20 text-amber-400";
       case "to_do":
       default:
         return "bg-[#9dabb9]/20 text-[#9dabb9]";
@@ -116,6 +118,8 @@ export default function BacklogPage() {
         return "Terminée";
       case "in_progress":
         return "En cours";
+      case "ready_for_test":
+        return "Pret pour test";
       case "to_do":
       default:
         return "À faire";
@@ -268,6 +272,7 @@ export default function BacklogPage() {
                 <option value="">Tous</option>
                 <option value="to_do">À faire</option>
                 <option value="in_progress">En cours</option>
+                <option value="ready_for_test">Pret pour test</option>
                 <option value="done">Terminées</option>
               </select>
             </div>

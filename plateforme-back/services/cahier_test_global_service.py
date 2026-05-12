@@ -270,12 +270,30 @@ class CahierTestGlobalService:
             return user_story.epic.module.projet_id
         return None
 
+    @staticmethod
+    def _parse_sprint_number(value: Optional[str]) -> int:
+        if not value:
+            return 10**9
+        match = re.search(r"(\d+)", value)
+        return int(match.group(1)) if match else 10**9
+
+    @staticmethod
+    def _parse_test_ref_number(value: Optional[str]) -> int:
+        if not value:
+            return 10**9
+        match = re.search(r"(\d+)", value)
+        return int(match.group(1)) if match else 10**9
+
     def _attach_user_story_display(
         self,
         cas: CasTest,
         number_map: Optional[dict[int, int]] = None,
     ) -> CasTest:
         user_story = getattr(cas, "user_story", None)
+        if user_story and user_story.sprints:
+            current_sprint_name = user_story.sprints[0].nom
+            if current_sprint_name:
+                cas.sprint = current_sprint_name
         if user_story and number_map is not None:
             numero = number_map.get(user_story.id)
             if numero:
@@ -291,11 +309,49 @@ class CahierTestGlobalService:
 
     def _attach_user_story_display_many(self, cases: List[CasTest]) -> List[CasTest]:
         number_map: Optional[dict[int, int]] = None
+        updated_any = False
         if cases:
             projet_id = self._resolve_projet_id_from_case(cases[0])
             if projet_id:
                 number_map = self._build_project_us_number_map(projet_id)
-        return [self._attach_user_story_display(cas, number_map) for cas in cases]
+        enriched = []
+        for cas in cases:
+            old_sprint = cas.sprint
+            enriched.append(self._attach_user_story_display(cas, number_map))
+            if cas.sprint != old_sprint:
+                updated_any = True
+        if updated_any:
+            self.db.commit()
+        return enriched
+
+    def _reorder_cas_tests(self, cahier_id: int):
+        cases = (
+            self.db.query(CasTest)
+            .options(joinedload(CasTest.user_story))
+            .filter(CasTest.cahier_id == cahier_id)
+            .all()
+        )
+        if not cases:
+            return
+
+        ordered = sorted(
+            cases,
+            key=lambda cas: (
+                self._parse_sprint_number(cas.sprint),
+                (cas.sprint or ""),
+                self._parse_test_ref_number(cas.test_ref),
+                cas.id,
+            ),
+        )
+
+        changed = False
+        for index, cas in enumerate(ordered, start=1):
+            if cas.ordre != index:
+                cas.ordre = index
+                changed = True
+
+        if changed:
+            self.db.commit()
 
     def _sync_existing_rapport_if_any(self, cahier_id: int, projet_id: int) -> None:
         """
@@ -439,6 +495,8 @@ class CahierTestGlobalService:
             ordre=next_order,
         )
 
+        self._reorder_cas_tests(cahier_id)
+
         if data.commentaire is not None:
             cas.commentaire = data.commentaire
             self.db.commit()
@@ -507,6 +565,24 @@ class CahierTestGlobalService:
         if not gen or gen.projet_id != projet_id or gen.type != "generate_tests":
             raise HTTPException(status_code=404, detail="Génération introuvable.")
         return gen
+
+    def cancel_generation(self, generation_id: int, projet_id: int) -> dict:
+        """Annule une génération pendante ou en cours."""
+        gen = self.ai_repo.get_by_id(generation_id)
+        if not gen or gen.projet_id != projet_id or gen.type != "generate_tests":
+            raise HTTPException(status_code=404, detail="Génération introuvable.")
+        
+        if gen.status == "completed":
+            return {"status": "completed", "message": "Génération déjà terminée"}
+        
+        if gen.status == "failed":
+            return {"status": "failed", "message": "Génération déjà échouée"}
+        
+        # Mark as cancelled
+        self.ai_repo.update_status(generation_id, "cancelled", gen.progress)
+        self.ai_repo.add_log(generation_id, "cancelled", "Génération annulée par l'utilisateur", gen.progress)
+        
+        return {"status": "cancelled", "message": "Génération annulée avec succès"}
 
     def list_generations(self, projet_id: int) -> List[AIGeneration]:
         return (
@@ -936,7 +1012,9 @@ class CahierTestGlobalService:
     def list_cas_tests(self, cahier_id: int, projet_id: int) -> list:
         self._verifier_appartenance(cahier_id, projet_id)
         cases = self.repo.list_cas_tests(cahier_id)
-        return self._attach_user_story_display_many(cases)
+        enriched = self._attach_user_story_display_many(cases)
+        self._reorder_cas_tests(cahier_id)
+        return enriched
 
     def list_user_stories_for_cahier(self, projet_id: int) -> list[dict]:
         user_stories = (
@@ -1297,6 +1375,10 @@ class CahierTestGlobalService:
                 f"US {user_story.id}: {len(us_cases)} cas générés.",
                 progress,
             )
+            
+            # Add small delay between sequential API calls to prevent connection drops
+            if us_index < len(user_stories):
+                time.sleep(2)
 
         self.ai_repo.update_progress(generation_id, 65)
         self.ai_repo.add_log(generation_id, "parsing",
@@ -1759,7 +1841,7 @@ class CahierTestGlobalService:
             .join(Epic, UserStory.epic_id == Epic.id)
             .join(Module, Epic.module_id == Module.id)
             .options(
-                joinedload(UserStory.sprint),
+                joinedload(UserStory.sprints),
                 joinedload(UserStory.epic).joinedload(Epic.module),
             )
             .filter(Module.projet_id == projet_id)
@@ -1779,7 +1861,7 @@ class CahierTestGlobalService:
         projet_description: str,
         user_story: UserStory,
     ) -> str:
-        sprint_nom = user_story.sprint.nom if user_story.sprint else "N/A"
+        sprint_nom = user_story.sprints[0].nom if user_story.sprints else "N/A"
         epic_nom = user_story.epic.titre if user_story.epic else "N/A"
         module_nom = user_story.epic.module.nom if (user_story.epic and user_story.epic.module) else "N/A"
         us_ref = user_story.reference or str(user_story.id)
@@ -1839,10 +1921,24 @@ class CahierTestGlobalService:
 
     @staticmethod
     def _appeler_openrouter(full_prompt: str, api_key: str, system_prompt: str = SYSTEM_PROMPT) -> str:
-        """Appel unique vers l'API OpenRouter (compatible OpenAI)."""
+        """Appel unique vers l'API OpenRouter (compatible OpenAI) avec retry strategy."""
         import requests
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
 
         clean_api_key = api_key.strip().strip('"').strip("'")
+
+        # Setup session with retry strategy for connection errors
+        session = requests.Session()
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["POST"]
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
 
         payload = {
             "model": AI_MODEL,
@@ -1857,7 +1953,11 @@ class CahierTestGlobalService:
             "Authorization": f"Bearer {clean_api_key}",
             "Content-Type":  "application/json",
         }
-        resp = requests.post(AI_API_URL, json=payload, headers=headers, timeout=120)
+        
+        try:
+            resp = session.post(AI_API_URL, json=payload, headers=headers, timeout=120)
+        finally:
+            session.close()
 
         if resp.status_code == 429:
             raise Exception(f"429 Quota dépassé : {resp.text}")

@@ -125,6 +125,14 @@ export default function GenerationProgress({
               {isCancelling ? "Annulation..." : "Annuler"}
             </button>
           )}
+          {(generation.status === "cancelled" || generation.status === "failed") && (
+            <button
+              onClick={onComplete}
+              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium text-sm transition-colors"
+            >
+              Fermer
+            </button>
+          )}
         </div>
       </div>
 

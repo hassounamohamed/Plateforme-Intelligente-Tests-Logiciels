@@ -2,6 +2,7 @@
 Service métier pour la gestion des sprints
 """
 from datetime import datetime
+import re
 from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -9,6 +10,7 @@ from sqlalchemy.orm import Session
 from repositories.sprint_repository import SprintRepository, STATUTS_VALIDES
 from repositories.projet_repository import ProjetRepository
 from models.scrum import UserStory, Epic, Module
+from models.cahier_test_global import CasTest
 from models.notification import TypeNotification
 from services.notification_service import NotificationService
 from schemas.sprint import (
@@ -82,6 +84,46 @@ class SprintService:
                     us.reference = f"{prefix}-{numero}"
         return sprints
 
+    def _renumber_sprints(self, projet_id: int):
+        sprints = self.repo.get_by_projet(projet_id)
+        if not sprints:
+            return
+
+        ordered = sorted(
+            sprints,
+            key=lambda sprint: (
+                sprint.dateDebut or datetime.max,
+                sprint.id,
+            ),
+        )
+
+        for index, sprint in enumerate(ordered, start=1):
+            new_name = f"Sprint {index}"
+            if sprint.nom == new_name:
+                # Still normalize objective/cas tests if needed
+                old_name = sprint.nom
+            else:
+                old_name = sprint.nom
+                sprint.nom = new_name
+
+            if sprint.objectifSprint:
+                if "Généré automatiquement par IA" in sprint.objectifSprint:
+                    sprint.objectifSprint = (
+                        f"{new_name} - Généré automatiquement par IA"
+                    )
+                else:
+                    normalized = re.sub(r"^Sprint\s+\d+", new_name, sprint.objectifSprint)
+                    sprint.objectifSprint = normalized
+
+            if old_name and old_name != new_name:
+                (
+                    self.repo.db.query(CasTest)
+                    .filter(CasTest.sprint == old_name)
+                    .update({"sprint": new_name})
+                )
+
+        self.repo.db.commit()
+
     # ── Helpers ────────────────────────────────────────────────────────────
 
     def _verifier_projet(self, projet_id: int):
@@ -143,13 +185,9 @@ class SprintService:
 
     def get_sprints(self, projet_id: int) -> List:
         self._verifier_projet(projet_id)
+        self._renumber_sprints(projet_id)
         sprints = self.repo.get_by_projet(projet_id)
-        unique_by_name = {}
-        for sprint in sprints:
-            if sprint.nom and sprint.nom not in unique_by_name:
-                unique_by_name[sprint.nom] = sprint
-        unique_sprints = list(unique_by_name.values())
-        return self._apply_reference_to_sprints(unique_sprints, projet_id)
+        return self._apply_reference_to_sprints(sprints, projet_id)
 
     def get_sprint(self, projet_id: int, sprint_id: int):
         self._verifier_projet(projet_id)
@@ -269,7 +307,7 @@ class SprintService:
 
     def demarrer_sprint(self, projet_id: int, sprint_id: int, current_user_id: int):
         sprint = self._get_sprint_ou_404(sprint_id, projet_id)
-        if sprint.statut != "planifie":
+        if str(sprint.statut).lower() not in {"planifie", "planned"}:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail=f"Seul un sprint 'planifie' peut être démarré (statut actuel: {sprint.statut}).")
         # Un seul sprint actif par projet
@@ -297,7 +335,7 @@ class SprintService:
         if not sprint:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail=f"Sprint {sprint_id} introuvable.")
-        if sprint.statut != "planifie":
+        if str(sprint.statut).lower() not in {"planifie", "planned"}:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail=f"Seul un sprint 'planifie' peut être démarré (statut actuel: {sprint.statut}).")
         # Utiliser le vrai projet_id du sprint pour vérifier
@@ -472,10 +510,11 @@ class SprintService:
 
     def supprimer_sprint(self, projet_id: int, sprint_id: int, current_user_id: int):
         sprint = self._get_sprint_ou_404(sprint_id, projet_id)
-        if sprint.statut != "planifie":
+        if sprint.statut == "termine":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
-                                detail="Seul un sprint 'planifie' peut être supprimé.")
+                                detail="Un sprint termine ne peut pas etre supprime.")
         self.repo.delete(sprint_id)
+        self._renumber_sprints(projet_id)
 
     def supprimer_sprint_flexible(self, projet_id: int, sprint_id: int, current_user_id: int):
         """Version flexible qui accepte n'importe quel projet_id"""
@@ -483,7 +522,8 @@ class SprintService:
         if not sprint:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail=f"Sprint {sprint_id} introuvable.")
-        if sprint.statut != "planifie":
+        if sprint.statut == "termine":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
-                                detail="Seul un sprint 'planifie' peut être supprimé.")
+                                detail="Un sprint termine ne peut pas etre supprime.")
         self.repo.delete(sprint_id)
+        self._renumber_sprints(sprint.projet_id)

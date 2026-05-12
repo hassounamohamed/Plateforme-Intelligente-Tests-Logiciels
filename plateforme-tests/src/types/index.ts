@@ -343,7 +343,7 @@ export interface SprintVelocite {
 // ─── User Stories ────────────────────────────────────────────────────────────
 
 export type PrioriteUS = "must_have" | "should_have" | "could_have" | "wont_have";
-export type StatutUS = "to_do" | "in_progress" | "done";
+export type StatutUS = "to_do" | "in_progress" | "ready_for_test" | "done";
 
 export interface UserStory {
   end_date?: string | number | Date;

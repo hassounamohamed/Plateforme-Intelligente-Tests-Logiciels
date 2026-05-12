@@ -305,6 +305,8 @@ export default function BacklogPage() {
         return "text-blue-400 bg-blue-500/10 border-blue-500/30";
       case "done":
         return "text-green-400 bg-green-500/10 border-green-500/30";
+      case "ready_for_test":
+        return "text-amber-400 bg-amber-500/10 border-amber-500/30";
       default:
         return "text-gray-400 bg-gray-500/10 border-gray-500/30";
     }
@@ -318,6 +320,8 @@ export default function BacklogPage() {
         return "En cours";
       case "done":
         return "Terminée";
+      case "ready_for_test":
+        return "Pret pour test";
       default:
         return statut;
     }
@@ -738,6 +742,7 @@ export default function BacklogPage() {
                 <option value="">Tous les statuts</option>
                 <option value="to_do">À faire</option>
                 <option value="in_progress">En cours</option>
+                <option value="ready_for_test">Pret pour test</option>
                 <option value="done">Terminées</option>
               </select>
             </div>
