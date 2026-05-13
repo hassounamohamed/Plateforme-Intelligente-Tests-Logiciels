@@ -345,6 +345,7 @@ export default function CahierTestsManager({
       alert("Rapport QA modifié avec succès.");
     } catch (err: any) {
       alert(err.response?.data?.detail || "Erreur lors de la modification du rapport QA.");
+      throw err;
     } finally {
       setUpdatingRapport(false);
     }
@@ -558,8 +559,11 @@ export default function CahierTestsManager({
               </span>
             </p>
             <div className="mt-3 flex items-center gap-3">
-              <label className="text-sm text-[#9dabb9]">Versions:</label>
+              <label htmlFor="cahier-tests-version-select" className="text-sm text-[#9dabb9]">
+                Versions:
+              </label>
               <select
+                id="cahier-tests-version-select"
                 value={selectedVersion}
                 onChange={(e) => {
                   setSelectedVersion(e.target.value);
@@ -592,10 +596,12 @@ export default function CahierTestsManager({
               <>
                 <input
                   ref={importInputRef}
+                  id="cahier-tests-import-excel"
                   type="file"
                   accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                   onChange={handleImportFile}
                   className="hidden"
+                  aria-label="Importer un fichier Excel .xlsx pour le cahier de tests"
                 />
                 <button
                   onClick={handleImportClick}

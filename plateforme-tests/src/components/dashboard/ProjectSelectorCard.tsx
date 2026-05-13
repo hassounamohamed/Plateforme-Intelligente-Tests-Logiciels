@@ -1,3 +1,16 @@
+"use client";
+
+import { useId } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const NO_PROJECT_VALUE = "__no_project__";
+
 type ProjectOption = {
   id: number;
   nom: string;
@@ -26,7 +39,14 @@ export function ProjectSelectorCard({
   placeholder = "-- Selectionnez un projet --",
   disabled = false,
 }: ProjectSelectorCardProps) {
+  const labelId = useId();
+  const triggerId = useId();
   const isDisabled = disabled || projects.length === 0;
+
+  const selectValue =
+    selectedProjectId != null && selectedProjectId > 0
+      ? String(selectedProjectId)
+      : NO_PROJECT_VALUE;
 
   return (
     <div className="relative mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-linear-to-br from-white via-slate-50 to-sky-50 p-5 shadow-[0_16px_45px_rgba(15,23,42,0.10)] dark:border-[#3b4754] dark:from-[#11161d] dark:via-[#151b23] dark:to-[#1b2430] dark:shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
@@ -53,30 +73,43 @@ export function ProjectSelectorCard({
         </div>
 
         <div className="w-full lg:max-w-md">
-          <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-white">Projet</label>
-          <div className="relative">
-            <select
-              value={selectedProjectId ?? ""}
-              onChange={(e) => {
-                const next = Number(e.target.value);
-                if (!Number.isNaN(next) && next > 0) {
-                  onSelectProject(next);
-                }
-              }}
-              disabled={isDisabled}
-              className="peer h-13 w-full appearance-none rounded-xl border border-slate-300 bg-white px-4 py-3 pr-12 text-base text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/30 disabled:opacity-60 dark:border-[#3b4754] dark:bg-[#0f141b] dark:text-white dark:placeholder:text-[#66758a]"
+          <label
+            id={labelId}
+            htmlFor={triggerId}
+            className="mb-2 block text-sm font-medium text-slate-700 dark:text-white"
+          >
+            Projet
+          </label>
+          <Select
+            value={selectValue}
+            onValueChange={(val) => {
+              if (val === NO_PROJECT_VALUE) return;
+              const next = Number(val);
+              if (!Number.isNaN(next) && next > 0) {
+                onSelectProject(next);
+              }
+            }}
+            disabled={isDisabled}
+          >
+            <SelectTrigger
+              id={triggerId}
+              aria-labelledby={labelId}
+              className="h-12 min-h-12 w-full min-w-0 justify-between rounded-xl border-slate-300 bg-white px-4 py-3 text-base text-slate-900 shadow-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60 data-[size=default]:h-12 dark:border-[#3b4754] dark:bg-[#0f141b] dark:text-white dark:hover:bg-[#0f141b]"
             >
-              <option value="">{placeholder}</option>
+              <SelectValue placeholder={placeholder} />
+            </SelectTrigger>
+            <SelectContent
+              position="popper"
+              className="min-w-(--radix-select-trigger-width)"
+            >
+              <SelectItem value={NO_PROJECT_VALUE}>{placeholder}</SelectItem>
               {projects.map((project) => (
-                <option key={project.id} value={project.id}>
+                <SelectItem key={project.id} value={String(project.id)}>
                   {project.nom}
-                </option>
+                </SelectItem>
               ))}
-            </select>
-            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 transition-colors peer-focus:text-slate-800 dark:text-[#9dabb9] dark:peer-focus:text-white">
-              <span className="material-symbols-outlined text-[20px]">expand_more</span>
-            </span>
-          </div>
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </div>

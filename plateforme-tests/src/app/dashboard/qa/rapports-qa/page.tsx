@@ -107,12 +107,12 @@ export default function QARapportsPage() {
           />
         }
       >
-        <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-8 text-center">
-          <div className="text-[#9dabb9] mb-4">
+        <div className="rounded-xl border border-border bg-surface-dark p-8 text-center">
+          <div className="mb-4 text-muted-foreground">
             <span className="material-symbols-outlined text-6xl">folder_open</span>
           </div>
-          <h3 className="text-white text-lg font-bold mb-2">Aucun projet assigne</h3>
-          <p className="text-[#9dabb9]">Vous n'etes membre d'aucun projet pour le moment.</p>
+          <h3 className="mb-2 text-lg font-bold text-foreground">Aucun projet assigne</h3>
+          <p className="text-muted-foreground">Vous n'etes membre d'aucun projet pour le moment.</p>
         </div>
       </DashboardLayout>
     );
@@ -153,13 +153,13 @@ export default function QARapportsPage() {
             rapportOnly
           />
         ) : (
-          <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-12">
-            <div className="max-w-md mx-auto text-center">
-              <div className="text-[#9dabb9] mb-6">
+          <div className="rounded-xl border border-border bg-surface-dark p-12">
+            <div className="mx-auto max-w-md text-center">
+              <div className="mb-6 text-muted-foreground">
                 <span className="material-symbols-outlined text-8xl">assessment</span>
               </div>
-              <h3 className="text-white text-2xl font-bold mb-3">Selectionnez un projet</h3>
-              <p className="text-[#9dabb9] text-base">
+              <h3 className="mb-3 text-2xl font-bold text-foreground">Selectionnez un projet</h3>
+              <p className="text-base text-muted-foreground">
                 Choisissez le projet pour lequel vous souhaitez consulter le rapport QA.
               </p>
             </div>

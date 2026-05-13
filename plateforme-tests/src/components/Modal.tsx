@@ -42,7 +42,7 @@ export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalPr
 
       {/* Modal Content */}
       <div
-        className={`relative bg-(--surface) border border-bordernded-xl shadow-2xl ${sizeClasses[size]} w-full max-h-[90vh] overflow-hidden flex flex-col`}
+        className={`relative bg-(--surface) border border-border rounded-xl shadow-2xl ${sizeClasses[size]} w-full max-h-[90vh] overflow-hidden flex flex-col`}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">

@@ -299,6 +299,7 @@ class RapportService:
         actor_user_id: int,
         titre: str,
         message: str,
+        exclude_user_id: int | None = None,
     ) -> None:
         recipients = self._get_rapport_notification_recipients(projet_id)
         if not recipients:
@@ -318,6 +319,7 @@ class RapportService:
             message=message,
             notification_type=TypeNotification.REPORT_GENERATED,
             priorite="moyenne",
+            exclude_user_id=exclude_user_id,
         )
 
     def _generer_rapport_qa_ia(self, cahier: CahierTestGlobal, stats: dict, user_id: Optional[int]) -> dict:
@@ -519,6 +521,7 @@ class RapportService:
 
     def update_rapport_qa(self, cahier_id: int, projet_id: int, user_id: int, payload: dict) -> RapportQA:
         rapport = self.get_rapport_qa(cahier_id, projet_id)
+        old_statut = (rapport.statut or "").strip().lower()
 
         if payload.get("statut") is not None:
             rapport.statut = payload["statut"]
@@ -531,12 +534,18 @@ class RapportService:
         self.db.commit()
         self.db.refresh(rapport)
 
-        self._notify_rapport_stakeholders(
-            projet_id=projet_id,
-            actor_user_id=user_id,
-            titre="Rapport QA modifie",
-            message=f"Le rapport QA v{rapport.version} a ete mis a jour.",
-        )
+        new_statut = (rapport.statut or "").strip().lower()
+        if new_statut == "valide" and old_statut != "valide":
+            self._notify_rapport_stakeholders(
+                projet_id=projet_id,
+                actor_user_id=user_id,
+                titre="Rapport QA valide et pret",
+                message=(
+                    f"Le rapport QA v{rapport.version} est valide par le testeur. "
+                    "Decision de release : GO. Consultez le rapport dans l'espace projet."
+                ),
+                exclude_user_id=user_id,
+            )
 
         return rapport
 
