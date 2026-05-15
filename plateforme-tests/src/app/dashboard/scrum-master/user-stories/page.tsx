@@ -9,7 +9,6 @@ import { ProjectSelectorCard } from "@/components/dashboard/ProjectSelectorCard"
 import { Modal } from "@/components/Modal";
 import { ROUTES } from "@/lib/constants";
 import { getMyProjectsAsMember } from "@/features/projects/api";
-import { getModules } from "@/features/modules/api";
 import { getEpics } from "@/features/epics/api";
 import {
   getUserStories,
@@ -22,13 +21,11 @@ import {
   removeAssignee,
 } from "@/features/userstories/api";
 import { getProjectById } from "@/features/projects/api";
-import { Project, Module, Epic, UserStory, MemberSimple, PrioriteUS } from "@/types";
+import { Project, Epic, UserStory, MemberSimple, PrioriteUS } from "@/types";
 
 export default function UserStoriesPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
-  const [modules, setModules] = useState<Module[]>([]);
-  const [selectedModule, setSelectedModule] = useState<number | null>(null);
   const [epics, setEpics] = useState<Epic[]>([]);
   const [allEpics, setAllEpics] = useState<Epic[]>([]);
   const [selectedEpic, setSelectedEpic] = useState<number | null>(null);
@@ -79,34 +76,21 @@ export default function UserStoriesPage() {
   useEffect(() => {
     if (selectedProject) {
       // Reset dependent selectors to avoid requests with stale IDs
-      setSelectedModule(null);
       setSelectedEpic(null);
-      setModules([]);
       setEpics([]);
       setAllEpics([]);
       setUserStories([]);
 
-      loadModules(selectedProject);
+      loadEpics(selectedProject);
       loadProjectMembers(selectedProject);
     }
   }, [selectedProject]);
 
   useEffect(() => {
     if (selectedProject) {
-      // Reset epic-dependent data when module changes
-      setSelectedEpic(null);
-      setEpics([]);
-      setUserStories([]);
-
-      loadEpics(selectedProject, selectedModule);
+      loadUserStories(selectedProject, selectedEpic);
     }
-  }, [selectedProject, selectedModule]);
-
-  useEffect(() => {
-    if (selectedProject) {
-      loadUserStories(selectedProject, selectedModule, selectedEpic);
-    }
-  }, [selectedProject, selectedModule, selectedEpic, filters]);
+  }, [selectedProject, selectedEpic, filters]);
 
   const loadProjectMembers = async (projectId: number) => {
     try {
@@ -138,52 +122,11 @@ export default function UserStoriesPage() {
     }
   };
 
-  const loadModules = async (projectId: number) => {
+  const loadEpics = async (projectId: number) => {
     try {
-      const modulesData = await getModules(projectId);
-      setModules(modulesData);
-      setSelectedModule(null);
-      setSelectedEpic(null);
-      if (modulesData.length === 0) {
-        setEpics([]);
-        setAllEpics([]);
-        setUserStories([]);
-      }
-    } catch (error: any) {
-      console.error("Erreur chargement modules:", error);
-      setModules([]);
-      setAllEpics([]);
-      setSelectedModule(null);
-      setSelectedEpic(null);
-      setEpics([]);
-      setUserStories([]);
-    }
-  };
-
-  const loadEpics = async (projectId: number, moduleId: number | null) => {
-    try {
-      if (!moduleId) {
-        const modulesData = modules.length > 0 ? modules : await getModules(projectId);
-        if (modulesData.length === 0) {
-          setEpics([]);
-          setAllEpics([]);
-          setSelectedEpic(null);
-          return;
-        }
-
-        const epicLists = await Promise.all(
-          modulesData.map((module) => getEpics(projectId, module.id, undefined, true).catch(() => []))
-        );
-        const epicsData = epicLists.flat();
-        setAllEpics(epicsData);
-        setEpics(epicsData);
-        setSelectedEpic(null);
-        return;
-      }
-
-      const epicsData = await getEpics(projectId, moduleId);
+      const epicsData = await getEpics(projectId);
+      setAllEpics(epicsData);
       setEpics(epicsData);
-      setAllEpics((prev) => (prev.length > 0 ? prev : epicsData));
       setSelectedEpic(null);
     } catch (error: any) {
       console.error("Erreur chargement epics:", error);
@@ -196,7 +139,6 @@ export default function UserStoriesPage() {
 
   const loadUserStories = async (
     projectId: number,
-    moduleId: number | null,
     epicId: number | null
   ) => {
     setIsLoading(true);
@@ -205,25 +147,13 @@ export default function UserStoriesPage() {
       const statut = filters.statut as any;
       let usData: UserStory[] = [];
 
-      if (moduleId && epicId) {
-        usData = await getUserStories(projectId, moduleId, epicId, statut);
-      } else if (moduleId && !epicId) {
-        const epicsData = epics.length > 0 ? epics : await getEpics(projectId, moduleId);
-        const results = await Promise.all(
-          epicsData.map((epic) =>
-            getUserStories(projectId, moduleId, epic.id, statut).catch(() => [])
-          )
-        );
-        usData = results.flat();
+      if (epicId) {
+        usData = await getUserStories(projectId, epicId, statut);
       } else {
-        const modulesData = modules.length > 0 ? modules : await getModules(projectId);
-        const epicLists = await Promise.all(
-          modulesData.map((module) => getEpics(projectId, module.id).catch(() => []))
-        );
-        const epicsData = epicLists.flat();
+        const epicsData = allEpics.length > 0 ? allEpics : await getEpics(projectId);
         const results = await Promise.all(
           epicsData.map((epic) =>
-            getUserStories(projectId, epic.module_id, epic.id, statut).catch(() => [])
+            getUserStories(projectId, epic.id, statut).catch(() => [])
           )
         );
         usData = results.flat();
@@ -251,6 +181,11 @@ export default function UserStoriesPage() {
     }
   };
 
+  const refreshUserStories = async () => {
+    if (!selectedProject) return;
+    await loadUserStories(selectedProject, selectedEpic);
+  };
+
   const handleChangeStatus = async (
     usId: number,
     newStatus: "to_do" | "in_progress" | "ready_for_test" | "done",
@@ -258,12 +193,11 @@ export default function UserStoriesPage() {
   ) => {
     if (!selectedProject) return;
     const resolvedEpicId = epicId ?? selectedEpic;
-    const resolvedModuleId = selectedModule ?? allEpics.find((epic) => epic.id === resolvedEpicId)?.module_id;
-    if (!resolvedModuleId || !resolvedEpicId) return;
+    if (!resolvedEpicId) return;
     setActionLoading(usId);
     try {
-      await changeUserStoryStatus(selectedProject, resolvedModuleId, resolvedEpicId, usId, { statut: newStatus });
-      await loadUserStories(selectedProject, selectedModule, selectedEpic);
+      await changeUserStoryStatus(selectedProject, resolvedEpicId, usId, { statut: newStatus });
+      await refreshUserStories();
     } catch (error: any) {
       alert("Erreur lors du changement de statut: " + (error.response?.data?.detail || error.message));
     } finally {
@@ -274,12 +208,11 @@ export default function UserStoriesPage() {
   const handleAssignAssignee = async (usId: number, memberId: number, epicId?: number) => {
     if (!selectedProject) return;
     const resolvedEpicId = epicId ?? selectedEpic;
-    const resolvedModuleId = selectedModule ?? allEpics.find((epic) => epic.id === resolvedEpicId)?.module_id;
-    if (!resolvedModuleId || !resolvedEpicId) return;
+    if (!resolvedEpicId) return;
     setAssigneeLoading(usId);
     try {
-      await assignAssignee(selectedProject, resolvedModuleId, resolvedEpicId, usId, { assignee_id: memberId });
-      await loadUserStories(selectedProject, selectedModule, selectedEpic);
+      await assignAssignee(selectedProject, resolvedEpicId, usId, { assignee_id: memberId });
+      await refreshUserStories();
     } catch (error: any) {
       alert("Erreur lors de l'assignation: " + (error.response?.data?.detail || error.message));
     } finally {
@@ -290,12 +223,11 @@ export default function UserStoriesPage() {
   const handleRemoveAssignee = async (usId: number, epicId?: number) => {
     if (!selectedProject) return;
     const resolvedEpicId = epicId ?? selectedEpic;
-    const resolvedModuleId = selectedModule ?? allEpics.find((epic) => epic.id === resolvedEpicId)?.module_id;
-    if (!resolvedModuleId || !resolvedEpicId) return;
+    if (!resolvedEpicId) return;
     setAssigneeLoading(usId);
     try {
-      await removeAssignee(selectedProject, resolvedModuleId, resolvedEpicId, usId);
-      await loadUserStories(selectedProject, selectedModule, selectedEpic);
+      await removeAssignee(selectedProject, resolvedEpicId, usId);
+      await refreshUserStories();
     } catch (error: any) {
       alert("Erreur lors du retrait de l'assignee: " + (error.response?.data?.detail || error.message));
     } finally {
@@ -306,12 +238,11 @@ export default function UserStoriesPage() {
   const handleAssignDeveloper = async (usId: number, memberId: number, epicId?: number) => {
     if (!selectedProject) return;
     const resolvedEpicId = epicId ?? selectedEpic;
-    const resolvedModuleId = selectedModule ?? allEpics.find((epic) => epic.id === resolvedEpicId)?.module_id;
-    if (!resolvedModuleId || !resolvedEpicId) return;
+    if (!resolvedEpicId) return;
     setDeveloperLoading(usId);
     try {
-      await assignDeveloper(selectedProject, resolvedModuleId, resolvedEpicId, usId, { developeur_id: memberId });
-      await loadUserStories(selectedProject, selectedModule, selectedEpic);
+      await assignDeveloper(selectedProject, resolvedEpicId, usId, { developeur_id: memberId });
+      await refreshUserStories();
     } catch (error: any) {
       alert("Erreur lors de l'assignation du développeur: " + (error.response?.data?.detail || error.message));
     } finally {
@@ -322,12 +253,11 @@ export default function UserStoriesPage() {
   const handleAssignTester = async (usId: number, memberId: number, epicId?: number) => {
     if (!selectedProject) return;
     const resolvedEpicId = epicId ?? selectedEpic;
-    const resolvedModuleId = selectedModule ?? allEpics.find((epic) => epic.id === resolvedEpicId)?.module_id;
-    if (!resolvedModuleId || !resolvedEpicId) return;
+    if (!resolvedEpicId) return;
     setTesterLoading(usId);
     try {
-      await assignTester(selectedProject, resolvedModuleId, resolvedEpicId, usId, { testeur_id: memberId });
-      await loadUserStories(selectedProject, selectedModule, selectedEpic);
+      await assignTester(selectedProject, resolvedEpicId, usId, { testeur_id: memberId });
+      await refreshUserStories();
     } catch (error: any) {
       alert("Erreur lors de l'assignation du testeur: " + (error.response?.data?.detail || error.message));
     } finally {
@@ -355,15 +285,14 @@ export default function UserStoriesPage() {
   const openDetailsModal = async (usId: number, epicId?: number) => {
     if (!selectedProject) return;
     const resolvedEpicId = epicId ?? selectedEpic;
-    const resolvedModuleId = selectedModule ?? allEpics.find((epic) => epic.id === resolvedEpicId)?.module_id;
-    if (!resolvedModuleId || !resolvedEpicId) return;
+    if (!resolvedEpicId) return;
 
     setDetailsError(null);
     setIsDetailsLoading(true);
     setDetailsUserStory(null);
 
     try {
-      const userStory = await getUserStoryById(selectedProject, resolvedModuleId, resolvedEpicId, usId);
+      const userStory = await getUserStoryById(selectedProject, resolvedEpicId, usId);
       setDetailsUserStory(userStory);
     } catch (error: any) {
       setDetailsError(error.response?.data?.detail || "Impossible de charger les détails de la user story");
@@ -381,15 +310,14 @@ export default function UserStoriesPage() {
   const openEditModal = async (usId: number, epicId?: number) => {
     if (!selectedProject) return;
     const resolvedEpicId = epicId ?? selectedEpic;
-    const resolvedModuleId = selectedModule ?? allEpics.find((epic) => epic.id === resolvedEpicId)?.module_id;
-    if (!resolvedModuleId || !resolvedEpicId) return;
+    if (!resolvedEpicId) return;
 
     setEditError(null);
     setIsEditLoading(true);
     setEditUserStory(null);
 
     try {
-      const userStory = await getUserStoryById(selectedProject, resolvedModuleId, resolvedEpicId, usId);
+      const userStory = await getUserStoryById(selectedProject, resolvedEpicId, usId);
       const parsed = parseDescriptionParts(userStory.description);
 
       setEditUserStory(userStory);
@@ -420,8 +348,7 @@ export default function UserStoriesPage() {
     e.preventDefault();
     if (!selectedProject || !editUserStory) return;
     const resolvedEpicId = selectedEpic ?? editUserStory.epic_id;
-    const resolvedModuleId = selectedModule ?? allEpics.find((epic) => epic.id === resolvedEpicId)?.module_id;
-    if (!resolvedModuleId || !resolvedEpicId) return;
+    if (!resolvedEpicId) return;
 
     if (!editTitre.trim() || !editRole.trim() || !editAction.trim()) {
       setEditError("Veuillez remplir tous les champs obligatoires");
@@ -432,7 +359,7 @@ export default function UserStoriesPage() {
     setEditError(null);
 
     try {
-      await updateUserStory(selectedProject, resolvedModuleId, resolvedEpicId, editUserStory.id, {
+      await updateUserStory(selectedProject, resolvedEpicId, editUserStory.id, {
         titre: editTitre.trim(),
         role: editRole.trim(),
         action: editAction.trim(),
@@ -443,7 +370,7 @@ export default function UserStoriesPage() {
         criteresAcceptation: editCriteresAcceptation.trim() || undefined,
       });
 
-      await loadUserStories(selectedProject, selectedModule, selectedEpic);
+      await loadUserStories(selectedProject, selectedEpic);
       closeEditModal();
     } catch (error: any) {
       setEditError(error.response?.data?.detail || "Erreur lors de la modification de la user story");
@@ -545,7 +472,7 @@ export default function UserStoriesPage() {
               selectedProjectId={selectedProject}
               selectedProjectName={selectedProjectData?.nom ?? null}
               onSelectProject={(projectId) => {
-                setSelectedModule(null);
+          
                 setSelectedEpic(null);
                 setUserStories([]);
                 setSelectedProject(projectId);
@@ -563,30 +490,6 @@ export default function UserStoriesPage() {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Module Selector */}
-            {modules.length > 0 && (
-              <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-4">
-                <label className="text-[#9dabb9] text-sm font-bold mb-2 block">Module</label>
-                <select
-                  value={selectedModule || ""}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    const moduleId = value ? Number(value) : null;
-                    setSelectedEpic(null);
-                    setSelectedModule(moduleId);
-                  }}
-                  className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary"
-                >
-                  <option value="">Tous les modules</option>
-                  {modules.map((module) => (
-                    <option key={module.id} value={module.id}>
-                      {module.nom}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
             {/* Epic Selector */}
             {epics.length > 0 && (
               <div className="bg-surface-dark border border-[#3b4754] rounded-xl p-4">
@@ -673,7 +576,7 @@ export default function UserStoriesPage() {
               Aucune user story ne correspond aux filtres ou à la sélection actuelle.
             </p>
             <Link
-              href={`${ROUTES.SCRUM_MASTER}/user-stories/new${selectedProject && selectedModule && selectedEpic ? `?project=${selectedProject}&module=${selectedModule}&epic=${selectedEpic}` : ''}`}
+              href={`${ROUTES.SCRUM_MASTER}/user-stories/new${selectedProject && selectedEpic ? `?project=${selectedProject}&epic=${selectedEpic}` : ''}`}
               className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors shadow-lg shadow-primary/20"
             >
               <span className="material-symbols-outlined text-[18px]">add</span>
@@ -687,7 +590,7 @@ export default function UserStoriesPage() {
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-white text-xl font-bold">User Stories ({userStories.length})</h2>
               <Link
-                href={`${ROUTES.SCRUM_MASTER}/user-stories/new${selectedProject && selectedModule && selectedEpic ? `?project=${selectedProject}&module=${selectedModule}&epic=${selectedEpic}` : ''}`}
+                 href={`${ROUTES.SCRUM_MASTER}/user-stories/new${selectedProject && selectedEpic ? `?project=${selectedProject}&epic=${selectedEpic}` : ''}`}
                 className="sm:hidden flex items-center gap-2 px-3 py-2 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg transition-colors"
               >
                 <span className="material-symbols-outlined text-[18px]">add</span>
@@ -755,6 +658,12 @@ export default function UserStoriesPage() {
                         <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-xs font-bold flex items-center gap-1">
                           <span className="material-symbols-outlined text-[14px]">bug_report</span>
                           {us.tester.nom}
+                        </span>
+                      )}
+                      {us.bug_ticket && us.statut === "a_corriger" && (
+                        <span className="px-2 py-1 bg-red-500/20 text-red-300 rounded text-xs font-bold flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">confirmation_number</span>
+                          {us.bug_ticket}
                         </span>
                       )}
                     </div>
@@ -1020,6 +929,16 @@ export default function UserStoriesPage() {
               <div className="bg-slate-50 dark:bg-[#283039] border border-slate-200 dark:border-[#3b4754] rounded-lg p-4">
                 <p className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold uppercase mb-2">Critères d'acceptation</p>
                 <p className="text-slate-800 dark:text-white text-sm whitespace-pre-wrap">{detailsUserStory.criteresAcceptation}</p>
+              </div>
+            )}
+
+            {detailsUserStory.bug_ticket && detailsUserStory.statut === "a_corriger" && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                <p className="text-red-300 text-xs font-bold uppercase mb-2">Ticket Bug</p>
+                <p className="text-white font-semibold">{detailsUserStory.bug_ticket}</p>
+                {detailsUserStory.bug_titre_correction && (
+                  <p className="text-red-200 text-sm mt-2">{detailsUserStory.bug_titre_correction}</p>
+                )}
               </div>
             )}
           </div>

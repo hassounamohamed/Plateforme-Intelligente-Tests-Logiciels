@@ -10,7 +10,7 @@ from core.rbac.decorators import require_role
 from core.rbac.dependencies import get_current_user_with_role
 from db.database import get_db
 from models.user import Utilisateur
-from models.scrum import Projet, Module, Epic, UserStory
+from models.scrum import Projet, Epic, UserStory, Module
 
 router = APIRouter(
     prefix="/dashboard/product-owner",

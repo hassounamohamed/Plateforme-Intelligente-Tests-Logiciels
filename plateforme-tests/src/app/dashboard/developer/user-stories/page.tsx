@@ -8,18 +8,17 @@ import { ProjectSelectorCard } from "@/components/dashboard/ProjectSelectorCard"
 import { ROUTES } from "@/lib/constants";
 import { useAuthStore } from "@/features/auth/store";
 import { getMyProjectsAsMember } from "@/features/projects/api";
-import { getModules } from "@/features/modules/api";
 import { getEpics } from "@/features/epics/api";
 import { changeUserStoryStatus, getUserStories } from "@/features/userstories/api";
-import { ArrowRight, FileText, Flag, LayoutDashboard, X } from "lucide-react";
-import { Project, Module, Epic, UserStory, PrioriteUS, StatutUS } from "@/types";
+import { ArrowRight, FileText, Flag, X } from "lucide-react";
+import { Project, Epic, UserStory, PrioriteUS, StatutUS } from "@/types";
 
 export default function UserStoriesPage() {
   const { user } = useAuthStore();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [modules, setModules] = useState<Module[]>([]);
-  const [selectedModules, setSelectedModules] = useState<number[]>([]);
+  
+  
   const [epics, setEpics] = useState<Epic[]>([]);
   const [selectedEpics, setSelectedEpics] = useState<number[]>([]);
   const [userStories, setUserStories] = useState<UserStory[]>([]);
@@ -37,36 +36,18 @@ export default function UserStoriesPage() {
 
   useEffect(() => {
     if (selectedProject) {
-      loadModules(selectedProject.id);
-      setSelectedModules([]);
-      setSelectedEpics([]);
-      setEpics([]);
-      setUserStories([]);
-      setAllUserStories([]);
+      loadEpics(selectedProject.id);
     }
   }, [selectedProject]);
 
   useEffect(() => {
-    if (selectedProject && selectedModules.length > 0) {
-      loadEpicsForModules(selectedProject.id, selectedModules);
-    } else if (selectedProject && selectedModules.length === 0) {
-      setEpics([]);
-      setSelectedEpics([]);
-      setUserStories([]);
-      setAllUserStories([]);
-    }
-  }, [selectedModules, selectedProject]);
-
-  useEffect(() => {
-    if (selectedProject && selectedModules.length > 0 && selectedEpics.length > 0) {
-      loadUserStoriesForFilters(selectedProject.id, selectedModules, selectedEpics);
-    } else if (selectedProject && selectedModules.length > 0 && selectedEpics.length === 0) {
-      loadUserStoriesForFilters(selectedProject.id, selectedModules, []);
+    if (selectedProject) {
+      loadUserStoriesForFilters(selectedProject.id, selectedEpics);
     } else {
       setUserStories([]);
       setAllUserStories([]);
     }
-  }, [selectedEpics, selectedProject, selectedModules]);
+  }, [selectedEpics, selectedProject]);
 
   useEffect(() => {
     filterUserStories();
@@ -89,74 +70,35 @@ export default function UserStoriesPage() {
     }
   };
 
-  const loadModules = async (projectId: number) => {
+  const loadEpics = async (projectId: number) => {
     try {
-      const data = await getModules(projectId);
-      setModules(data);
-    } catch (err) {
-      setError("Erreur lors du chargement des modules");
-      console.error("Erreur:", err);
-    }
-  };
-
-  const loadEpicsForModules = async (projectId: number, moduleIds: number[]) => {
-    try {
-      setEpics([]);
-      if (moduleIds.length === 0) return;
-      
-      // Charger les épics pour chaque module sélectionné
-      const allEpics: Epic[] = [];
-      for (const moduleId of moduleIds) {
-        const data = await getEpics(projectId, moduleId);
-        allEpics.push(...data);
-      }
-      
-      // Supprimer les doublons
-      const uniqueEpics = Array.from(new Map(allEpics.map(e => [e.id, e])).values());
-      setEpics(uniqueEpics);
+      const data = await getEpics(projectId);
+      setEpics(data);
     } catch (err) {
       setError("Erreur lors du chargement des épics");
       console.error("Erreur:", err);
     }
   };
 
-  const loadUserStoriesForFilters = async (projectId: number, moduleIds: number[], epicIds: number[]) => {
+  
+
+  const loadUserStoriesForFilters = async (projectId: number, epicIds: number[]) => {
     try {
       setAllUserStories([]);
-      if (moduleIds.length === 0) return;
-
       const allStories: UserStory[] = [];
       
       if (epicIds.length > 0) {
-        // Si des épics sont sélectionnés, charger les user stories pour chaque combinaison
-        for (const moduleId of moduleIds) {
-          for (const epicId of epicIds) {
-            const data = await getUserStories(projectId, moduleId, epicId);
-            allStories.push(...data);
-          }
+        for (const epicId of epicIds) {
+          const data = await getUserStories(projectId, epicId);
+          allStories.push(...data);
         }
       } else {
-        // Si aucun épic n'est sélectionné, charger de tous les épics disponibles
-        for (const moduleId of moduleIds) {
-          const moduleEpics = epics.filter(e => true); // Tous les épics disponibles
-          if (moduleEpics.length === 0) {
-            // Si pas d'épics, charger et essayer
-            const loadedEpics = await getEpics(projectId, moduleId);
-            for (const epic of loadedEpics) {
-              const data = await getUserStories(projectId, moduleId, epic.id);
-              allStories.push(...data);
-            }
-          } else {
-            // Charger les user stories de tous les épics disponibles
-            for (const epic of moduleEpics) {
-              const data = await getUserStories(projectId, moduleId, epic.id);
-              allStories.push(...data);
-            }
-          }
+        for (const epic of epics) {
+          const data = await getUserStories(projectId, epic.id);
+          allStories.push(...data);
         }
       }
 
-      // Supprimer les doublons par ID
       const uniqueStories = Array.from(new Map(allStories.map(s => [s.id, s])).values());
       setAllUserStories(uniqueStories);
       filterUserStories();
@@ -188,15 +130,7 @@ export default function UserStoriesPage() {
     setUserStories(filtered);
   };
 
-  const toggleModuleFilter = (moduleId: number) => {
-    setSelectedModules((prev) => {
-      const newSelection = prev.includes(moduleId)
-        ? prev.filter((id) => id !== moduleId)
-        : [...prev, moduleId];
-      setSelectedEpics([]);
-      return newSelection;
-    });
-  };
+  
 
   const toggleEpicFilter = (epicId: number) => {
     setSelectedEpics((prev) =>
@@ -243,14 +177,10 @@ export default function UserStoriesPage() {
       to_do: "À faire",
       in_progress: "En cours",
       ready_for_test: "Pret pour test",
+      a_corriger: "À corriger",
       done: "Terminé",
     };
     return map[status] || status;
-  };
-
-  const getStoryModuleId = (story: UserStory): number | null => {
-    const epic = epics.find((item) => item.id === story.epic_id);
-    return epic?.module_id ?? null;
   };
 
   const isStoryAssignedToMe = (story: UserStory | null): boolean => {
@@ -275,18 +205,11 @@ export default function UserStoriesPage() {
       return;
     }
 
-    const moduleId = getStoryModuleId(selectedStory);
-    if (!moduleId) {
-      setError("Impossible de résoudre le module de cette user story.");
-      return;
-    }
-
     setStatusUpdating(true);
     setError(null);
     try {
       const updated = await changeUserStoryStatus(
         selectedProject.id,
-        moduleId,
         selectedStory.epic_id,
         selectedStory.id,
         { statut: nextStatus }
@@ -356,46 +279,8 @@ export default function UserStoriesPage() {
 
         {selectedProject && (
           <div className="space-y-6">
-            {/* Filtres Modules */}
-            {modules.length > 0 && (
-              <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg border border-gray-300 dark:border-gray-700 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                    <LayoutDashboard className="h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-                    Modules
-                  </h3>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">{selectedModules.length} sélectionné(s)</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {modules.map((module) => (
-                    <label
-                      key={module.id}
-                      className={`p-4 rounded-lg border cursor-pointer transition ${
-                        selectedModules.includes(module.id)
-                          ? "bg-blue-100 dark:bg-blue-500/20 border-blue-400 dark:border-blue-500 text-blue-700 dark:text-blue-300"
-                          : "bg-gray-100 dark:bg-gray-800/30 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-600"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedModules.includes(module.id)}
-                          onChange={() => toggleModuleFilter(module.id)}
-                          className="mt-1 w-4 h-4 cursor-pointer"
-                        />
-                        <div>
-                          <div className="font-semibold">{module.nom}</div>
-                          {module.description && <div className="text-sm opacity-70 mt-1">{module.description}</div>}
-                        </div>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Filtres Épics */}
-            {selectedModules.length > 0 && epics.length > 0 && (
+            {epics.length > 0 && (
               <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg border border-gray-300 dark:border-gray-700 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
@@ -432,10 +317,8 @@ export default function UserStoriesPage() {
               </div>
             )}
 
-           
-
             {/* User Stories */}
-            {selectedModules.length > 0 && (
+            {epics.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -705,3 +588,4 @@ export default function UserStoriesPage() {
     </DashboardLayout>
   );
 }
+

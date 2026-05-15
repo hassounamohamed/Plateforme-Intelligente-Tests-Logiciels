@@ -283,7 +283,6 @@ export default function SprintDetailsPage() {
                 // Construire le lien avec query params pour projectId, moduleId et epicId
                 const queryParams = new URLSearchParams();
                 if (projectId) queryParams.set('projectId', projectId.toString());
-                if (us.module_id) queryParams.set('moduleId', us.module_id.toString());
                 if (us.epic_id) queryParams.set('epicId', us.epic_id.toString());
                 
                 const userStoryLink = `${ROUTES.SCRUM_MASTER}/user-stories/${us.id}?${queryParams.toString()}`;

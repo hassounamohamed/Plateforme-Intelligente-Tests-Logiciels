@@ -97,8 +97,8 @@ export default function EditCasTestModal({
 
     setFormData({
       sprint: casTest.sprint || "",
-      module: casTest.module || "",
-      sous_module: casTest.sous_module || "",
+      epic: casTest.module || "",
+      sous_epic: casTest.sous_module || "",
       test_case: casTest.test_case,
       test_purpose: casTest.test_purpose || "",
       type_utilisateur: casTest.type_utilisateur || "",

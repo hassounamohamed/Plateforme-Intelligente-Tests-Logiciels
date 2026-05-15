@@ -53,7 +53,6 @@ class UserStorySprint(BaseModel):
     priorite: Optional[str] = None
     developerId: Optional[int] = None
     epic_id: int
-    module_id: Optional[int] = None  # Calculé via @property dans le modèle
 
     class Config:
         from_attributes = True

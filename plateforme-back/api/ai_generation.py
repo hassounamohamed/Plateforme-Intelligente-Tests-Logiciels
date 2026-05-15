@@ -102,7 +102,7 @@ async def detail_generation(
 @router.get(
     "/generations/{generation_id}/items",
     response_model=List[AIGeneratedItemResponse],
-    summary="Items générés structurés en arbre (Modules → Epics → User Stories)",
+    summary="Items générés structurés en arbre (Epics → User Stories)",
 )
 async def items_hierarchiques(
     projet_id: int,
@@ -160,7 +160,7 @@ async def changer_statut_item(
 @router.post(
     "/generations/{generation_id}/apply",
     response_model=ApplyGenerationResponse,
-    summary="Créer les vrais modules/epics/user stories à partir des items approuvés",
+    summary="Créer les vrais epics/user stories à partir des items approuvés",
 )
 @require_role(ROLE_PRODUCT_OWNER)
 async def appliquer_generation(

@@ -95,6 +95,8 @@ export default function CahierTestsManager({
     "pdf" | "word" | null
   >(null);
   const [updatingRapport, setUpdatingRapport] = useState(false);
+  const [enableAutoRefresh, setEnableAutoRefresh] = useState(true);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState<number | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const getExportFileNameBase = () => {
@@ -263,6 +265,31 @@ export default function CahierTestsManager({
     historyTimeline.length,
     historyLoading,
   ]);
+
+  // Auto-refresh polling to keep UI in sync with backend changes
+  useEffect(() => {
+    if (!cahier || !enableAutoRefresh) {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        setAutoRefreshInterval(null);
+      }
+      return;
+    }
+
+    // Set up polling interval - refresh every 30 seconds if user story status might have changed
+    const interval = setInterval(() => {
+      // Only refresh if not currently generating or performing other operations
+      if (!generating && !creatingManual && !importing && !rapportLoading) {
+        loadCahier();
+      }
+    }, 30000); // 30 seconds
+
+    setAutoRefreshInterval(interval as any);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [cahier, enableAutoRefresh, generating, creatingManual, importing, rapportLoading]);
 
   const handleGenerate = async () => {
     setShowRegenerateMenu(false);

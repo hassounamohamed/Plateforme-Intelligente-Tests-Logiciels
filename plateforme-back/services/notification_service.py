@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from models.notification import TypeNotification
-from models.scrum import Epic, Module, Projet, Sprint, UserStory
+from models.scrum import Epic, Projet, Sprint, UserStory, Module
 from repositories.notification_repository import NotificationRepository
 
 

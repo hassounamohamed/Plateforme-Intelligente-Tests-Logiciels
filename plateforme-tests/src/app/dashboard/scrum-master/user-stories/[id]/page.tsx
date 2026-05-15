@@ -9,9 +9,8 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { ROUTES } from "@/lib/constants";
 import { getUserStoryById } from "@/features/userstories/api";
 import { getMyProjectsAsMember } from "@/features/projects/api";
-import { getModules } from "@/features/modules/api";
 import { getEpics } from "@/features/epics/api";
-import { UserStory, Module, Epic } from "@/types";
+import { UserStory, Epic } from "@/types";
 
 export default function UserStoryDetailsPage() {
   const params = useParams();
@@ -23,7 +22,6 @@ export default function UserStoryDetailsPage() {
   
   const [userStory, setUserStory] = useState<UserStory | null>(null);
   const [projectId, setProjectId] = useState<number | null>(null);
-  const [moduleId, setModuleId] = useState<number | null>(null);
   const [epicId, setEpicId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,20 +45,16 @@ export default function UserStoryDetailsPage() {
     try {
       // Essayer d'utiliser les query params s'ils existent
       const projectIdFromParams = searchParams?.get('projectId');
-      const moduleIdFromParams = searchParams?.get('moduleId');
       const epicIdFromParams = searchParams?.get('epicId');
 
-      if (projectIdFromParams && moduleIdFromParams && epicIdFromParams) {
-        // Utiliser les paramètres fournis pour charger directement
+      if (projectIdFromParams && epicIdFromParams) {
         const pid = Number(projectIdFromParams);
-        const mid = Number(moduleIdFromParams);
         const eid = Number(epicIdFromParams);
-        
+
         setProjectId(pid);
-        setModuleId(mid);
         setEpicId(eid);
 
-        const userStoryData = await getUserStoryById(pid, mid, eid, userStoryId);
+        const userStoryData = await getUserStoryById(pid, eid, userStoryId);
         setUserStory(userStoryData);
         return;
       }
@@ -75,33 +69,19 @@ export default function UserStoryDetailsPage() {
       // Chercher d'abord dans le premier projet, puis dans les autres si nécessaire
       for (const project of projectsData) {
         try {
-          const modules = await getModules(project.id);
-          
-          for (const module of modules) {
+          const epics = await getEpics(project.id);
+          for (const epic of epics) {
             try {
-              const epics = await getEpics(project.id, module.id);
-              
-              for (const epic of epics) {
-                try {
-                  const userStoryData = await getUserStoryById(project.id, module.id, epic.id, userStoryId);
-                  // If successful, we found the user story
-                  setUserStory(userStoryData);
-                  setProjectId(project.id);
-                  setModuleId(module.id);
-                  setEpicId(epic.id);
-                  return;
-                } catch (err) {
-                  // Continue searching in other epics
-                  continue;
-                }
-              }
+              const userStoryData = await getUserStoryById(project.id, epic.id, userStoryId);
+              setUserStory(userStoryData);
+              setProjectId(project.id);
+              setEpicId(epic.id);
+              return;
             } catch (err) {
-              // Continue searching in other modules
               continue;
             }
           }
         } catch (err) {
-          // Continue searching in other projects
           continue;
         }
       }
@@ -244,9 +224,9 @@ export default function UserStoryDetailsPage() {
           title={userStory.titre}
           subtitle="Détails de la User Story"
           actions={
-            projectId && moduleId && epicId && (
+            projectId && epicId && (
               <Link
-                href={`${ROUTES.SCRUM_MASTER}/user-stories/${userStoryId}/edit?project=${projectId}&module=${moduleId}&epic=${epicId}`}
+                href={`${ROUTES.SCRUM_MASTER}/user-stories/${userStoryId}/edit?projectId=${projectId}&epicId=${epicId}`}
                 className="hidden sm:flex h-10 px-4 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-lg items-center gap-2 transition-colors shadow-lg shadow-primary/20"
               >
                 <span className="material-symbols-outlined text-[18px]">edit</span>

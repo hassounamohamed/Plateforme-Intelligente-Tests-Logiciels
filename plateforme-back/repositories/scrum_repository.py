@@ -1,11 +1,11 @@
 """
-Repository pour la gestion des éléments Scrum (Projet, Module, Epic, Sprint, UserStory)
+Repository pour la gestion des éléments Scrum (Projet, Epic, Sprint, UserStory)
 """
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from models.scrum import Projet, Module, Epic, Sprint, UserStory
+from models.scrum import Projet, Epic, Sprint, UserStory, Module
 from repositories.base_repository import BaseRepository
 
 
@@ -28,35 +28,21 @@ class ProjetRepository(BaseRepository[Projet]):
         return self.db.query(Projet).filter(Projet.statut == "EN_COURS").all()
 
 
-class ModuleRepository(BaseRepository[Module]):
-    """Repository pour les modules"""
-    
-    def __init__(self, db: Session):
-        super().__init__(Module, db)
-    
-    def get_by_projet(self, projet_id: int) -> List[Module]:
-        """Récupérer tous les modules d'un projet"""
-        return self.db.query(Module).filter(Module.projet_id == projet_id).order_by(Module.ordre).all()
-    
-    def reorder_modules(self, projet_id: int, module_orders: dict) -> bool:
-        """Réorganiser l'ordre des modules"""
-        for module_id, order in module_orders.items():
-            module = self.get_by_id(module_id)
-            if module and module.projet_id == projet_id:
-                module.ordre = order
-        self.db.commit()
-        return True
-
-
 class EpicRepository(BaseRepository[Epic]):
     """Repository pour les epics"""
     
     def __init__(self, db: Session):
         super().__init__(Epic, db)
     
-    def get_by_module(self, module_id: int) -> List[Epic]:
-        """Récupérer tous les epics d'un module"""
-        return self.db.query(Epic).filter(Epic.module_id == module_id).order_by(Epic.priorite.desc()).all()
+    def get_by_projet(self, projet_id: int) -> List[Epic]:
+        """Récupérer tous les epics d'un projet"""
+        return (
+            self.db.query(Epic)
+            .join(Module, Epic.module_id == Module.id)
+            .filter(Module.projet_id == projet_id)
+            .order_by(Epic.priorite.desc())
+            .all()
+        )
     
     def get_by_product_owner(self, product_owner_id: int) -> List[Epic]:
         """Récupérer tous les epics d'un Product Owner"""

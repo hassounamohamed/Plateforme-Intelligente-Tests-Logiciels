@@ -14,7 +14,7 @@ from db.database import engine, get_db, Base, SessionLocal
 # Import all models to register them with SQLAlchemy
 from models import (
     Utilisateur, Role, Permission,
-    Projet, Module, Epic, UserStory, Sprint,
+    Projet, Epic, UserStory, Sprint,
     Attachment,
     CahierDeTests, Test, TestUnitaire, TestAutomatise, TestManuel, ScenarioTest, ValidationTest,
     ExecutionTest, ResultatTest,
@@ -33,7 +33,6 @@ from api.roles import router as roles_router
 from api.logs import router as logs_router
 from api.users import router as users_router
 from api.projets import router as projets_router
-from api.modules import router as modules_router
 from api.epics import router as epics_router
 from api.userstories import router as userstories_router
 from api.sprints import router as sprints_router
@@ -135,6 +134,7 @@ app.add_middleware(
         "http://127.0.0.1:8081",
         "http://127.0.0.1:19006",
     ],
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -206,7 +206,6 @@ app.include_router(roles_router)
 app.include_router(logs_router)
 app.include_router(users_router)
 app.include_router(projets_router)
-app.include_router(modules_router)
 app.include_router(epics_router)
 app.include_router(userstories_router)
 app.include_router(sprints_router)

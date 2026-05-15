@@ -16,12 +16,11 @@ import {
  */
 export const createUserStory = async (
   projectId: number,
-  moduleId: number,
   epicId: number,
   payload: CreateUserStoryPayload
 ): Promise<UserStory> => {
   const response = await axiosInstance.post<UserStory>(
-    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}/userstories`,
+    `/projets/${projectId}/epics/${epicId}/userstories`,
     payload
   );
   return response.data;
@@ -32,13 +31,12 @@ export const createUserStory = async (
  */
 export const getUserStories = async (
   projectId: number,
-  moduleId: number,
   epicId: number,
   statut?: StatutUS
 ): Promise<UserStory[]> => {
   const params = statut ? { statut } : {};
   const response = await axiosInstance.get<UserStory[]>(
-    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}/userstories`,
+    `/projets/${projectId}/epics/${epicId}/userstories`,
     { params }
   );
   return response.data;
@@ -49,11 +47,10 @@ export const getUserStories = async (
  */
 export const getUserStoriesBacklog = async (
   projectId: number,
-  moduleId: number,
   epicId: number
 ): Promise<UserStory[]> => {
   const response = await axiosInstance.get<UserStory[]>(
-    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}/userstories/backlog`
+    `/projets/${projectId}/epics/${epicId}/userstories/backlog`
   );
   return response.data;
 };
@@ -63,12 +60,11 @@ export const getUserStoriesBacklog = async (
  */
 export const getUserStoryById = async (
   projectId: number,
-  moduleId: number,
   epicId: number,
   userStoryId: number
 ): Promise<UserStory> => {
   const response = await axiosInstance.get<UserStory>(
-    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}/userstories/${userStoryId}`
+    `/projets/${projectId}/epics/${epicId}/userstories/${userStoryId}`
   );
   return response.data;
 };
@@ -78,13 +74,12 @@ export const getUserStoryById = async (
  */
 export const updateUserStory = async (
   projectId: number,
-  moduleId: number,
   epicId: number,
   userStoryId: number,
   payload: UpdateUserStoryPayload
 ): Promise<UserStory> => {
   const response = await axiosInstance.put<UserStory>(
-    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}/userstories/${userStoryId}`,
+    `/projets/${projectId}/epics/${epicId}/userstories/${userStoryId}`,
     payload
   );
   return response.data;
@@ -95,12 +90,11 @@ export const updateUserStory = async (
  */
 export const deleteUserStory = async (
   projectId: number,
-  moduleId: number,
   epicId: number,
   userStoryId: number
 ): Promise<{ message: string }> => {
   const response = await axiosInstance.delete<{ message: string }>(
-    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}/userstories/${userStoryId}`
+    `/projets/${projectId}/epics/${epicId}/userstories/${userStoryId}`
   );
   return response.data;
 };
@@ -110,13 +104,12 @@ export const deleteUserStory = async (
  */
 export const changeUserStoryStatus = async (
   projectId: number,
-  moduleId: number,
   epicId: number,
   userStoryId: number,
   payload: ChangerStatutUSPayload
 ): Promise<UserStory> => {
   const response = await axiosInstance.patch<UserStory>(
-    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}/userstories/${userStoryId}/statut`,
+    `/projets/${projectId}/epics/${epicId}/userstories/${userStoryId}/statut`,
     payload
   );
   return response.data;
@@ -127,13 +120,12 @@ export const changeUserStoryStatus = async (
  */
 export const assignDeveloper = async (
   projectId: number,
-  moduleId: number,
   epicId: number,
   userStoryId: number,
   payload: AssignerDeveloppeurPayload
 ): Promise<UserStory> => {
   const response = await axiosInstance.patch<UserStory>(
-    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}/userstories/${userStoryId}/assigner`,
+    `/projets/${projectId}/epics/${epicId}/userstories/${userStoryId}/assigner`,
     payload
   );
   return response.data;
@@ -144,13 +136,12 @@ export const assignDeveloper = async (
  */
 export const assignTester = async (
   projectId: number,
-  moduleId: number,
   epicId: number,
   userStoryId: number,
   payload: AssignerTesteurPayload
 ): Promise<UserStory> => {
   const response = await axiosInstance.patch<UserStory>(
-    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}/userstories/${userStoryId}/assigner-testeur`,
+    `/projets/${projectId}/epics/${epicId}/userstories/${userStoryId}/assigner-testeur`,
     payload
   );
   return response.data;
@@ -161,13 +152,12 @@ export const assignTester = async (
  */
 export const validateUserStory = async (
   projectId: number,
-  moduleId: number,
   epicId: number,
   userStoryId: number,
   payload: ValiderUserStoryPayload
 ): Promise<UserStory> => {
   const response = await axiosInstance.patch<UserStory>(
-    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}/userstories/${userStoryId}/valider`,
+    `/projets/${projectId}/epics/${epicId}/userstories/${userStoryId}/valider`,
     payload
   );
   return response.data;
@@ -178,13 +168,12 @@ export const validateUserStory = async (
  */
 export const assignAssignee = async (
   projectId: number,
-  moduleId: number,
   epicId: number,
   userStoryId: number,
   payload: AssignerAssigneePayload
 ): Promise<UserStory> => {
   const response = await axiosInstance.patch<UserStory>(
-    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}/userstories/${userStoryId}/assigner-assignee`,
+    `/projets/${projectId}/epics/${epicId}/userstories/${userStoryId}/assigner-assignee`,
     payload
   );
   return response.data;
@@ -195,12 +184,15 @@ export const assignAssignee = async (
  */
 export const removeAssignee = async (
   projectId: number,
-  moduleId: number,
   epicId: number,
   userStoryId: number
 ): Promise<UserStory> => {
   const response = await axiosInstance.delete<UserStory>(
-    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}/userstories/${userStoryId}/assigner-assignee`
+    `/projets/${projectId}/epics/${epicId}/userstories/${userStoryId}/assigner-assignee`
   );
   return response.data;
 };
+
+
+
+

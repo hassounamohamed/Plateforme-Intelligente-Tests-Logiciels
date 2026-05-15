@@ -17,7 +17,6 @@ import {
   archiveProject,
   assignMembers,
 } from "@/features/projects/api";
-import { getModules } from "@/features/modules/api";
 import { getEpics } from "@/features/epics/api";
 import {
   uploadProjectAttachment,
@@ -89,16 +88,8 @@ export default function ProjectsManagementPage() {
   const fetchProjectEpics = async (projectId: number) => {
     setIsEpicsLoading(true);
     try {
-      const modulesData = await getModules(projectId);
-
-      const epicsByModule = await Promise.all(
-        modulesData.map(async (module) => {
-          const moduleEpics = await getEpics(projectId, module.id, undefined, true);
-          return moduleEpics.map((epic) => ({ epic, moduleName: module.nom }));
-        })
-      );
-
-      setEpics(epicsByModule.flat());
+      const epicsList = await getEpics(projectId);
+      setEpics(epicsList.map((epic) => ({ epic, moduleName: "" })));
     } catch (err) {
       console.error(err);
       setEpics([]);
@@ -477,7 +468,7 @@ export default function ProjectsManagementPage() {
               <div className="space-y-3 max-h-150 overflow-y-auto">
                 {epics.map(({ epic, moduleName }) => (
                   <div
-                    key={`${epic.id}-${epic.module_id}`}
+                    key={epic.id}
                     className="p-4 rounded-lg border border-slate-200 dark:border-[#3b4754] hover:border-primary/50 transition-all"
                   >
                     <div className="flex justify-between items-start mb-2">
@@ -489,9 +480,7 @@ export default function ProjectsManagementPage() {
                     <p className="text-sm text-slate-500 dark:text-[#9dabb9]">
                       {epic.description || "Aucune description"}
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-[#9dabb9] mt-2">
-                      Module: {moduleName}
-                    </p>
+                    
                     <div className="flex items-center gap-2 mt-2">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getEpicStatusColor(epic.statut)}`}

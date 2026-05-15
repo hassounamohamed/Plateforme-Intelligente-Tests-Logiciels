@@ -202,27 +202,6 @@ export interface EpicSummary {
   priorite?: number;
 }
 
-export interface Module {
-  id: number;
-  nom: string;
-  description?: string;
-  ordre: number;
-  projet_id: number;
-  epics?: EpicSummary[];
-}
-
-export interface CreateModulePayload {
-  nom: string;
-  description?: string;
-  ordre?: number;
-}
-
-export interface UpdateModulePayload {
-  nom?: string;
-  description?: string;
-  ordre?: number;
-}
-
 // ─── Epics ───────────────────────────────────────────────────────────────────
 
 export type EpicStatus = "to_do" | "in_progress" | "done";
@@ -238,7 +217,6 @@ export interface UserStorySummary {
   developerId?: number;
   developerNom?: string;
   epic_id?: number;
-  module_id?: number;
   sprint?: {
     id: number;
     nom: string;
@@ -259,7 +237,6 @@ export interface Epic {
   priorite: number;
   businessValue?: string;
   statut: EpicStatus;
-  module_id: number;
   user_stories?: UserStorySummary[];
 }
 
@@ -343,7 +320,7 @@ export interface SprintVelocite {
 // ─── User Stories ────────────────────────────────────────────────────────────
 
 export type PrioriteUS = "must_have" | "should_have" | "could_have" | "wont_have";
-export type StatutUS = "to_do" | "in_progress" | "ready_for_test" | "done";
+export type StatutUS = "to_do" | "in_progress" | "ready_for_test" | "a_corriger" | "done";
 
 export interface UserStory {
   end_date?: string | number | Date;
@@ -378,6 +355,9 @@ export interface UserStory {
     nom: string;
     email: string;
   };
+  bug_titre_correction?: string;
+  bug_nom_tache?: string;
+  bug_ticket?: string;
   sprint?: {
     id: number;
     nom: string;
@@ -591,7 +571,7 @@ export type AIGenerationStatus =
   | "cancelled";
 
 export type AIItemStatus = "draft" | "approved" | "rejected" | "modified";
-export type AIItemType = "module" | "epic" | "user_story";
+export type AIItemType = "epic" | "user_story";
 export type AIPriority = "High" | "Medium" | "Low";
 
 export interface AILog {
@@ -637,7 +617,6 @@ export interface AIGenerationDetail extends AIGeneration {
 
 export interface ApplyGenerationResult {
   generation_id: number;
-  modules_created: number;
   epics_created: number;
   stories_created: number;
 }
@@ -818,8 +797,8 @@ export interface GenererCahierPayload {
 export interface CreateCasTestPayload {
   user_story_id?: number;
   sprint?: string;
-  module?: string;
-  sous_module?: string;
+  epic?: string;
+  sous_epic?: string;
   test_case: string;
   test_purpose?: string;
   type_utilisateur?: string;
@@ -832,8 +811,8 @@ export interface CreateCasTestPayload {
 
 export interface UpdateCasTestPayload {
   sprint?: string;
-  module?: string;
-  sous_module?: string;
+  epic?: string;
+  sous_epic?: string;
   test_case?: string;
   test_purpose?: string;
   type_utilisateur?: string;
@@ -855,7 +834,7 @@ export interface CahierUserStoryOption {
   reference?: string | null;
   titre: string;
   sprint_nom?: string | null;
-  module_nom?: string | null;
+  epic_nom?: string | null;
 }
 
 export interface ValiderCahierPayload {

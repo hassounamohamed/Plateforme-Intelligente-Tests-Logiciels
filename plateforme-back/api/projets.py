@@ -174,5 +174,5 @@ async def generer_statistiques(
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: ProjetService = Depends(get_projet_service),
 ):
-    """Statistiques d'un projet (sprints, modules, statut)."""
+    """Statistiques d'un projet (sprints, epics, statut)."""
     return svc.generer_statistiques(projet_id)

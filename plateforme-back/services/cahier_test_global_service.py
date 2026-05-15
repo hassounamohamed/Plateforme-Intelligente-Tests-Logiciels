@@ -28,7 +28,7 @@ from core.rbac.constants import ROLE_DEVELOPPEUR, ROLE_TESTEUR_QA
 from models.notification import TypeNotification
 from models.ai_generation import AIGeneration
 from models.rapports import RapportQA, IndicateurQualite, RecommandationQualite
-from models.scrum import Projet, Sprint, UserStory, Module, Epic
+from models.scrum import Projet, Sprint, UserStory, Epic, Module
 from models.cahier_test_global import CahierTestGlobal, CasTest
 from models.user import Utilisateur
 from repositories.ai_generation_repository import AIGenerationRepository
@@ -55,8 +55,8 @@ Règles strictes :
 2. Chaque cas de test doit contenir :
     - user_story_id   : identifiant numérique exact de la user story source (obligatoire)
    - sprint          : nom du sprint (ex: "Sprint 1")
-    - module          : nom du module lié à la user story (optionnel)
-    - sous_module     : sous-composant ou fonctionnalité précise (optionnel)
+    - epic            : nom de l'epic lié à la user story (optionnel)
+    - sous_epic       : sous-composant ou fonctionnalité précise (optionnel)
    - test_ref        : référence unique au format TC-XXX (ex: TC-001)
    - test_case       : titre court et descriptif du cas de test
    - test_purpose    : objectif du test en une phrase
@@ -75,8 +75,8 @@ Structure JSON attendue :
     {
             "user_story_id": 14,
       "sprint": "Sprint 1",
-      "module": "Authentification",
-      "sous_module": "Connexion",
+      "epic": "Authentification",
+      "sous_epic": "Connexion",
       "test_ref": "TC-001",
       "test_case": "Connexion avec identifiants valides",
       "test_purpose": "Vérifier que l'utilisateur peut se connecter avec des identifiants corrects",
@@ -115,7 +115,7 @@ Génère des cas de tests UNIQUEMENT pour cette user story :
 - description: {user_story_description}
 - criteres_acceptation: {user_story_criteres}
 - sprint: {sprint_nom}
-- module: {module_nom}
+- epic: {epic_nom}
 - epic: {epic_nom}
 
 Contraintes supplémentaires :
@@ -205,8 +205,8 @@ class CahierTestGlobalService:
         self,
         projet_id: int,
         user_story_id: Optional[int],
-        module: Optional[str] = None,
-        sous_module: Optional[str] = None,
+        epic: Optional[str] = None,
+        sous_epic: Optional[str] = None,
         test_case: Optional[str] = None,
     ) -> int:
         us_query = (
@@ -232,15 +232,15 @@ class CahierTestGlobalService:
                 detail="Aucune user story disponible dans ce projet pour lier le cas de test.",
             )
 
-        module_l = (module or "").strip().lower()
-        sous_module_l = (sous_module or "").strip().lower()
+        module_l = (epic or "").strip().lower()
+        sous_module_l = (sous_epic or "").strip().lower()
         test_case_l = (test_case or "").strip().lower()
         for us in user_stories:
             title_l = (us.titre or "").lower()
             desc_l = (us.description or "").lower()
-            module_name_l = ((us.epic.module.nom if us.epic and us.epic.module else "") or "").lower()
+            epic_name_l = ((us.epic.titre if us.epic else "") or "").lower()
 
-            if module_l and module_l in module_name_l:
+            if module_l and module_l in epic_name_l:
                 return us.id
             if sous_module_l and sous_module_l in title_l:
                 return us.id
@@ -266,8 +266,8 @@ class CahierTestGlobalService:
 
     def _resolve_projet_id_from_case(self, cas: CasTest) -> Optional[int]:
         user_story = getattr(cas, "user_story", None)
-        if user_story and user_story.epic and user_story.epic.module:
-            return user_story.epic.module.projet_id
+        if user_story and user_story.epic:
+            return user_story.epic.projet_id
         return None
 
     @staticmethod
@@ -474,8 +474,8 @@ class CahierTestGlobalService:
         resolved_user_story_id = self._resolve_user_story_id(
             projet_id=projet_id,
             user_story_id=data.user_story_id,
-            module=data.module,
-            sous_module=data.sous_module,
+            epic=data.epic,
+            sous_epic=data.sous_epic,
             test_case=data.test_case,
         )
 
@@ -483,8 +483,8 @@ class CahierTestGlobalService:
             cahier_id=cahier_id,
             user_story_id=resolved_user_story_id,
             sprint=data.sprint or "",
-            module=data.module or "",
-            sous_module=data.sous_module or "",
+            module=data.epic or "",
+            sous_module=data.sous_epic or "",
             test_ref=f"TC-{next_order:03d}",
             test_case=data.test_case,
             test_purpose=data.test_purpose or "",
@@ -687,22 +687,88 @@ class CahierTestGlobalService:
                 user_story.statut = "a_corriger"
                 self.db.commit()
                 self.db.refresh(user_story)
+            
+            # Notify developer about the failure
             if user_story.developerId:
                 self.notification_service.notify_user(
                     user_id=user_story.developerId,
-                    titre="User story a corriger",
+                    titre="Test echoue - Action requise",
                     message=(
-                        f"Un cas de test a echoue pour {self._us_ref(user_story)} "
-                        f"({user_story.titre}). La user story passe en a_corriger."
+                        f"Cas de test {updated.test_ref} a echoue pour {user_story.titre}. "
+                        f"Issue: {updated.bug_titre_correction or 'Non specifie'}. "
+                        f"La user story passe en a_corriger."
                     ),
-                    notification_type=TypeNotification.USER_STORY_NEEDS_FIX,
+                    notification_type=TypeNotification.TEST_FAILED,
                     priorite="haute",
                 )
+            
+            # Notify project members about test failure
+            self.notification_service.notify_user_story_project_users(
+                user_story_id=updated.user_story.id,
+                titre="Test echoue",
+                message=(
+                    f"Le cas de test {updated.test_ref} pour la user story {user_story.titre} "
+                    f"a echoue. Tache associee: {updated.bug_nom_tache or 'Non assignee'}"
+                ),
+                notification_type=TypeNotification.TEST_FAILED,
+                priorite="haute",
+                exclude_user_id=user_story.developerId,  # Don't duplicate the developer notification
+            )
+
+        # Notify when test passes
+        if (
+            before["statut_test"] != updated.statut_test
+            and updated.statut_test == "Réussi"
+            and updated.user_story
+        ):
+            user_story = updated.user_story
+            
+            # Notify developer about the pass
+            if user_story.developerId:
+                self.notification_service.notify_user(
+                    user_id=user_story.developerId,
+                    titre="Test reussi",
+                    message=(
+                        f"Cas de test {updated.test_ref} pour {user_story.titre} "
+                        f"a ete execute avec succes!"
+                    ),
+                    notification_type=TypeNotification.TEST_PASSED,
+                    priorite="moyenne",
+                )
+
+        if updated.user_story:
+            related_cases = (
+                self.db.query(CasTest)
+                .filter(CasTest.cahier_id == cahier_id, CasTest.user_story_id == updated.user_story.id)
+                .all()
+            )
+            if related_cases and all(case.statut_test == "Réussi" for case in related_cases):
+                if updated.user_story.statut != "done":
+                    updated.user_story.statut = "done"
+                    self.db.commit()
+                    self.db.refresh(updated.user_story)
+                    
+                    # Notify everyone that all tests passed and US is done
+                    user_story = updated.user_story
+                    self.notification_service.notify_user_story_project_users(
+                        user_story_id=user_story.id,
+                        titre="Tous les tests reussis - US completee",
+                        message=(
+                            f"Tous les cas de test de la user story '{user_story.titre}' "
+                            f"ont ete executes avec succes! La user story passe en DONE."
+                        ),
+                        notification_type=TypeNotification.TEST_PASSED,
+                        priorite="moyenne",
+                    )
 
         if data.statut_test is not None:
             self.repo.recalculer_stats(cahier_id)
             if sync_rapport:
                 self._sync_existing_rapport_if_any(cahier_id, projet_id)
+        
+        # Ensure cas object has latest user_story relationship loaded
+        self.db.refresh(updated, ["user_story"])
+        
         return self._attach_user_story_display(updated)
 
     def list_cas_test_history(self, cahier_id: int, cas_id: int, projet_id: int) -> list:
@@ -1057,8 +1123,8 @@ class CahierTestGlobalService:
         query = (
             self.db.query(UserStory)
             .join(Epic, UserStory.epic_id == Epic.id)
+            .options(joinedload(UserStory.sprints), joinedload(UserStory.epic))
             .join(Module, Epic.module_id == Module.id)
-            .options(joinedload(UserStory.sprints), joinedload(UserStory.epic).joinedload(Epic.module))
             .filter(Module.projet_id == projet_id)
         )
         if statut:
@@ -1073,7 +1139,7 @@ class CahierTestGlobalService:
                 "titre": us.titre,
                 "statut": us.statut,
                 "sprint_nom": us.sprints[0].nom if us.sprints else None,
-                "module_nom": us.epic.module.nom if (us.epic and us.epic.module) else None,
+                "epic_nom": us.epic.titre if us.epic else None,
             }
             for index, us in enumerate(user_stories, start=1)
         ]
@@ -1878,11 +1944,11 @@ class CahierTestGlobalService:
         user_stories = (
             self.db.query(UserStory)
             .join(Epic, UserStory.epic_id == Epic.id)
-            .join(Module, Epic.module_id == Module.id)
             .options(
                 joinedload(UserStory.sprints),
-                joinedload(UserStory.epic).joinedload(Epic.module),
+                joinedload(UserStory.epic),
             )
+            .join(Module, Epic.module_id == Module.id)
             .filter(Module.projet_id == projet_id)
             .order_by(UserStory.id.asc())
             .all()
@@ -1902,7 +1968,6 @@ class CahierTestGlobalService:
     ) -> str:
         sprint_nom = user_story.sprints[0].nom if user_story.sprints else "N/A"
         epic_nom = user_story.epic.titre if user_story.epic else "N/A"
-        module_nom = user_story.epic.module.nom if (user_story.epic and user_story.epic.module) else "N/A"
         us_ref = user_story.reference or str(user_story.id)
 
         return USER_PROMPT_SINGLE_US_TEMPLATE.format(
@@ -1914,7 +1979,6 @@ class CahierTestGlobalService:
             user_story_description=user_story.description or "",
             user_story_criteres=user_story.criteresAcceptation or "",
             sprint_nom=sprint_nom,
-            module_nom=module_nom,
             epic_nom=epic_nom,
         )
 

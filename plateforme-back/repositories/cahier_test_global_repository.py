@@ -182,7 +182,7 @@ class CahierTestGlobalRepository(BaseRepository[CahierTestGlobal]):
             if hasattr(cas, field) and value is not None:
                 setattr(cas, field, value)
         self.db.commit()
-        self.db.refresh(cas)
+        self.db.refresh(cas, ["user_story"])
         return cas
 
     def list_cas_tests(self, cahier_id: int) -> List[CasTest]:

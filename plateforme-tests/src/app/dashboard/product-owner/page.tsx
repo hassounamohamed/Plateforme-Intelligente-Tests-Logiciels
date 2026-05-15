@@ -8,7 +8,7 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout, StatCard } from "@/components/dashboard/DashboardLayout";
 import { ROUTES } from "@/lib/constants";
 import { getMyProjects } from "@/features/projects/api";
-import { getModules } from "@/features/modules/api";
+import { getEpics } from "@/features/epics/api";
 import { Project } from "@/types";
 import { getProductOwnerProgressApi, ProjectProgressPoint } from "@/features/dashboard/api";
 
@@ -25,7 +25,6 @@ export default function ProductOwnerDashboard() {
   const [stats, setStats] = useState({
     totalProjects: 0,
     activeProjects: 0,
-    totalModules: 0,
     totalEpics: 0,
   });
   const [progressRange, setProgressRange] = useState<ProgressRange>(30);
@@ -52,38 +51,28 @@ export default function ProductOwnerDashboard() {
       // Calculate stats
       const activeProjects = projectsData.filter((p) => p.statut === "actif").length;
       
-      // Calculate total modules and epics from all projects
-      let totalModules = 0;
+      // Calculate total epics from all projects
       let totalEpics = 0;
       
-      // Fetch modules for each project to count them and their epics
+      // Fetch epics for each project to count them
       for (const project of projectsData) {
         try {
-          const modulesData = await getModules(project.id);
-          totalModules += modulesData.length;
-          
-          // Count epics in each module
-          modulesData.forEach((module) => {
-            if (module.epics && Array.isArray(module.epics)) {
-              totalEpics += module.epics.length;
-            }
-          });
+          const epicsData = await getEpics(project.id);
+          totalEpics += epicsData.length;
         } catch (err) {
-          console.warn(`Impossible de charger les modules pour le projet ${project.id}:`, err);
+          console.warn(`Impossible de charger les epics pour le projet ${project.id}:`, err);
         }
       }
       
       setStats({
         totalProjects: projectsData.length,
         activeProjects,
-        totalModules: totalModules,
         totalEpics: totalEpics,
       });
       
       console.log("📊 Stats calculées:", {
         totalProjects: projectsData.length,
         activeProjects,
-        totalModules,
         totalEpics,
       });
     } catch (error: any) {
@@ -191,16 +180,6 @@ export default function ProductOwnerDashboard() {
               value: `${stats.activeProjects} actifs`,
               isPositive: true,
               label: "projets",
-            }}
-          />
-          <StatCard
-            title="Modules"
-            value={isLoading ? "..." : stats.totalModules.toString()}
-            icon="view_module"
-            trend={{
-              value: "Organisés",
-              isPositive: true,
-              label: "hiérarchie",
             }}
           />
           <StatCard

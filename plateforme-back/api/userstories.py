@@ -23,7 +23,7 @@ from schemas.userstory import (
 from services.userstory_service import UserStoryService
 
 router = APIRouter(
-    prefix="/projets/{projet_id}/modules/{module_id}/epics/{epic_id}/userstories",
+    prefix="/projets/{projet_id}/epics/{epic_id}/userstories",
     tags=["user stories"],
 )
 
@@ -38,7 +38,6 @@ def get_us_service(db: Session = Depends(get_db)) -> UserStoryService:
 @require_role(ROLE_SCRUM_MASTER, ROLE_PRODUCT_OWNER)
 async def creer_user_story(
     projet_id: int,
-    module_id: int,
     epic_id: int,
     data: CreateUserStoryRequest,
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
@@ -55,7 +54,7 @@ async def creer_user_story(
 
     Scrum Master ou Product Owner.
     """
-    return svc.creer_user_story(projet_id, module_id, epic_id, data, current_user.id)
+    return svc.creer_user_story(projet_id, epic_id, data, current_user.id)
 
 
 # ─── Lecture ──────────────────────────────────────────────────────────────────
@@ -63,7 +62,6 @@ async def creer_user_story(
 @router.get("", response_model=List[UserStoryResponse])
 async def get_user_stories(
     projet_id: int,
-    module_id: int,
     epic_id: int,
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: UserStoryService = Depends(get_us_service),
@@ -76,32 +74,30 @@ async def get_user_stories(
     Lister les user stories d'un epic, triées par priorité MoSCoW.
     Filtrage optionnel par statut.
     """
-    return svc.get_user_stories(projet_id, module_id, epic_id, statut)
+    return svc.get_user_stories(projet_id, epic_id, statut)
 
 
 @router.get("/backlog", response_model=List[UserStoryResponse])
 async def get_backlog(
     projet_id: int,
-    module_id: int,
     epic_id: int,
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: UserStoryService = Depends(get_us_service),
 ):
     """User stories non encore affectées à un sprint (backlog)."""
-    return svc.get_backlog(projet_id, module_id, epic_id)
+    return svc.get_backlog(projet_id, epic_id)
 
 
 @router.get("/{us_id}", response_model=UserStoryResponse)
 async def get_user_story(
     projet_id: int,
-    module_id: int,
     epic_id: int,
     us_id: int,
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: UserStoryService = Depends(get_us_service),
 ):
     """Récupérer une user story par son ID."""
-    return svc.get_user_story(projet_id, module_id, epic_id, us_id)
+    return svc.get_user_story(projet_id, epic_id, us_id)
 
 
 # ─── Modification ─────────────────────────────────────────────────────────────
@@ -110,7 +106,6 @@ async def get_user_story(
 @require_role(ROLE_SCRUM_MASTER)
 async def modifier_user_story(
     projet_id: int,
-    module_id: int,
     epic_id: int,
     us_id: int,
     data: UpdateUserStoryRequest,
@@ -118,7 +113,7 @@ async def modifier_user_story(
     svc: UserStoryService = Depends(get_us_service),
 ):
     """Modifier une user story — Scrum Master uniquement."""
-    return svc.modifier_user_story(projet_id, module_id, epic_id, us_id, data, current_user.id)
+    return svc.modifier_user_story(projet_id, epic_id, us_id, data, current_user.id)
 
 
 # ─── Statut ───────────────────────────────────────────────────────────────────
@@ -127,7 +122,6 @@ async def modifier_user_story(
 @require_role(ROLE_SCRUM_MASTER, ROLE_DEVELOPPEUR)
 async def changer_statut(
     projet_id: int,
-    module_id: int,
     epic_id: int,
     us_id: int,
     data: ChangerStatutUSRequest,
@@ -139,7 +133,7 @@ async def changer_statut(
     → **a_corriger** → **done**.
     Scrum Master uniquement.
     """
-    return svc.changer_statut(projet_id, module_id, epic_id, us_id, data, current_user.id)
+    return svc.changer_statut(projet_id, epic_id, us_id, data, current_user.id)
 
 
 # ─── Assigner développeur ─────────────────────────────────────────────────────
@@ -148,7 +142,6 @@ async def changer_statut(
 @require_role(ROLE_SCRUM_MASTER)
 async def assigner_developpeur(
     projet_id: int,
-    module_id: int,
     epic_id: int,
     us_id: int,
     data: AssignerDeveloppeurRequest,
@@ -156,7 +149,7 @@ async def assigner_developpeur(
     svc: UserStoryService = Depends(get_us_service),
 ):
     """Assigner un développeur à une user story — Scrum Master uniquement."""
-    return svc.assigner_developpeur(projet_id, module_id, epic_id, us_id, data, current_user.id)
+    return svc.assigner_developpeur(projet_id, epic_id, us_id, data, current_user.id)
 
 
 # ─── Assigner testeur ─────────────────────────────────────────────────────────
@@ -165,7 +158,6 @@ async def assigner_developpeur(
 @require_role(ROLE_SCRUM_MASTER)
 async def assigner_testeur(
     projet_id: int,
-    module_id: int,
     epic_id: int,
     us_id: int,
     data: AssignerTesteurRequest,
@@ -173,7 +165,7 @@ async def assigner_testeur(
     svc: UserStoryService = Depends(get_us_service),
 ):
     """Assigner un testeur QA à une user story — Scrum Master uniquement."""
-    return svc.assigner_testeur(projet_id, module_id, epic_id, us_id, data, current_user.id)
+    return svc.assigner_testeur(projet_id, epic_id, us_id, data, current_user.id)
 
 # ─── Assigner / retirer assignee ─────────────────────────────────────────────────────────────────
 
@@ -181,7 +173,6 @@ async def assigner_testeur(
 @require_role(ROLE_SCRUM_MASTER)
 async def assigner_assignee(
     projet_id: int,
-    module_id: int,
     epic_id: int,
     us_id: int,
     data: AssignerAssigneeRequest,
@@ -192,21 +183,20 @@ async def assigner_assignee(
     Désigner le responsable (**assignee**) d'une user story.
     L'assignee doit être un membre du projet. — Scrum Master uniquement.
     """
-    return svc.assigner_assignee(projet_id, module_id, epic_id, us_id, data, current_user.id)
+    return svc.assigner_assignee(projet_id, epic_id, us_id, data, current_user.id)
 
 
 @router.delete("/{us_id}/assigner-assignee", response_model=UserStoryResponse)
 @require_role(ROLE_SCRUM_MASTER)
 async def retirer_assignee(
     projet_id: int,
-    module_id: int,
     epic_id: int,
     us_id: int,
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: UserStoryService = Depends(get_us_service),
 ):
     """Retirer l'assignee d'une user story — Scrum Master uniquement."""
-    return svc.retirer_assignee(projet_id, module_id, epic_id, us_id, current_user.id)
+    return svc.retirer_assignee(projet_id, epic_id, us_id, current_user.id)
 
 # ─── Validation PO ────────────────────────────────────────────────────────────
 
@@ -214,7 +204,6 @@ async def retirer_assignee(
 @require_role(ROLE_PRODUCT_OWNER)
 async def valider_user_story(
     projet_id: int,
-    module_id: int,
     epic_id: int,
     us_id: int,
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
@@ -223,7 +212,7 @@ async def valider_user_story(
     """
     Valider une user story (passage forcé à **done**) — Product Owner uniquement.
     """
-    return svc.valider_user_story(projet_id, module_id, epic_id, us_id, current_user.id)
+    return svc.valider_user_story(projet_id, epic_id, us_id, current_user.id)
 
 
 # ─── Suppression ──────────────────────────────────────────────────────────────
@@ -232,11 +221,10 @@ async def valider_user_story(
 @require_role(ROLE_SCRUM_MASTER)
 async def supprimer_user_story(
     projet_id: int,
-    module_id: int,
     epic_id: int,
     us_id: int,
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: UserStoryService = Depends(get_us_service),
 ):
     """Supprimer une user story — Scrum Master uniquement."""
-    svc.supprimer_user_story(projet_id, module_id, epic_id, us_id, current_user.id)
+    svc.supprimer_user_story(projet_id, epic_id, us_id, current_user.id)

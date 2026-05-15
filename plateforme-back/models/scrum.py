@@ -24,6 +24,13 @@ class Projet(Base):
     product_owner = relationship("Utilisateur", back_populates="projets", foreign_keys=[productOwnerId])
     membres = relationship("Utilisateur", secondary=projet_membre, backref="projets_membres")
     modules = relationship("Module", back_populates="projet", cascade="all, delete-orphan")
+    epics = relationship(
+        "Epic",
+        secondary="module",
+        primaryjoin="Projet.id == Module.projet_id",
+        secondaryjoin="Module.id == Epic.module_id",
+        viewonly=True,
+    )
     sprints = relationship("Sprint", back_populates="projet", cascade="all, delete-orphan")
     attachments = relationship("Attachment", back_populates="projet", cascade="all, delete-orphan",
                                foreign_keys="Attachment.projet_id")
@@ -38,8 +45,7 @@ class Module(Base):
     ordre = Column(Integer, default=0)
 
     projet_id = Column(Integer, ForeignKey("projet.id"))
-    
-    # Relations
+
     projet = relationship("Projet", back_populates="modules")
     epics = relationship("Epic", back_populates="module", cascade="all, delete-orphan")
 
@@ -65,6 +71,10 @@ class Epic(Base):
     userstories = relationship("UserStory", back_populates="epic", cascade="all, delete-orphan")
     attachments = relationship("Attachment", back_populates="epic", cascade="all, delete-orphan",
                                foreign_keys="Attachment.epic_id")
+
+    @property
+    def projet_id(self):
+        return self.module.projet_id if self.module else None
 
 
 class UserStory(Base):
@@ -99,12 +109,6 @@ class UserStory(Base):
     attachments = relationship("Attachment", back_populates="userstory", cascade="all, delete-orphan",
                                foreign_keys="Attachment.userstory_id")
 
-    @property
-    def module_id(self) -> int | None:
-        """Retourne le module_id via la relation epic."""
-        if self.epic:
-            return self.epic.module_id
-        return None
 
 
 class Sprint(Base):

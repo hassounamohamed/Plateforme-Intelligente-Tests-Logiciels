@@ -56,7 +56,7 @@ class EpicResponse(BaseModel):
     businessValue: Optional[str] = None
     statut: str
     dateCreation: datetime
-    module_id: int
+    projet_id: int
     productOwnerId: int
 
 

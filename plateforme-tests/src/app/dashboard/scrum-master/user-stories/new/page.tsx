@@ -8,10 +8,9 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { ROUTES } from "@/lib/constants";
 import { getMyProjectsAsMember } from "@/features/projects/api";
-import { getModules } from "@/features/modules/api";
 import { getEpics } from "@/features/epics/api";
 import { createUserStory } from "@/features/userstories/api";
-import { Project, Module, Epic, PrioriteUS } from "@/types";
+import { Project, Epic, PrioriteUS } from "@/types";
 
 export default function NewUserStoryPage() {
   return (
@@ -25,16 +24,11 @@ function NewUserStoryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectIdParam = searchParams.get("project_id");
-  const moduleIdParam = searchParams.get("module_id");
   const epicIdParam = searchParams.get("epic_id");
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<number | null>(
     projectIdParam ? parseInt(projectIdParam) : null
-  );
-  const [modules, setModules] = useState<Module[]>([]);
-  const [selectedModule, setSelectedModule] = useState<number | null>(
-    moduleIdParam ? parseInt(moduleIdParam) : null
   );
   const [epics, setEpics] = useState<Epic[]>([]);
   const [selectedEpic, setSelectedEpic] = useState<number | null>(
@@ -68,15 +62,10 @@ function NewUserStoryContent() {
 
   useEffect(() => {
     if (selectedProject) {
-      loadModules(selectedProject);
+      loadEpics(selectedProject);
     }
   }, [selectedProject]);
 
-  useEffect(() => {
-    if (selectedProject && selectedModule) {
-      loadEpics(selectedProject, selectedModule);
-    }
-  }, [selectedProject, selectedModule]);
 
   const loadProjects = async () => {
     setIsLoading(true);
@@ -94,21 +83,10 @@ function NewUserStoryContent() {
     }
   };
 
-  const loadModules = async (projectId: number) => {
-    try {
-      const modulesData = await getModules(projectId);
-      setModules(modulesData);
-      if (!selectedModule && modulesData.length > 0) {
-        setSelectedModule(modulesData[0].id);
-      }
-    } catch (error: any) {
-      console.error("Erreur chargement modules:", error);
-    }
-  };
 
-  const loadEpics = async (projectId: number, moduleId: number) => {
+  const loadEpics = async (projectId: number) => {
     try {
-      const epicsData = await getEpics(projectId, moduleId);
+      const epicsData = await getEpics(projectId);
       setEpics(epicsData);
       if (!selectedEpic && epicsData.length > 0) {
         setSelectedEpic(epicsData[0].id);
@@ -121,8 +99,8 @@ function NewUserStoryContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedProject || !selectedModule || !selectedEpic) {
-      setError("Veuillez sélectionner un projet, module et epic");
+     if (!selectedProject || !selectedEpic) {
+       setError("Veuillez sélectionner un projet et un epic");
       return;
     }
 
@@ -142,7 +120,6 @@ function NewUserStoryContent() {
     try {
       await createUserStory(
         selectedProject,
-        selectedModule,
         selectedEpic,
         {
           titre: titre.trim(),
@@ -222,7 +199,6 @@ function NewUserStoryContent() {
                 value={selectedProject || ""}
                 onChange={(e) => {
                   setSelectedProject(Number(e.target.value));
-                  setSelectedModule(null);
                   setSelectedEpic(null);
                 }}
                 className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary"
@@ -237,30 +213,7 @@ function NewUserStoryContent() {
               </select>
             </div>
 
-            {/* Module Selector */}
-            {modules.length > 0 && (
-              <div>
-                <label className="text-[#9dabb9] text-sm font-bold mb-2 block">
-                  Module <span className="text-red-400">*</span>
-                </label>
-                <select
-                  value={selectedModule || ""}
-                  onChange={(e) => {
-                    setSelectedModule(Number(e.target.value));
-                    setSelectedEpic(null);
-                  }}
-                  className="w-full bg-[#283039] border border-[#3b4754] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary"
-                  required
-                >
-                  <option value="">Sélectionner un module</option>
-                  {modules.map((module) => (
-                    <option key={module.id} value={module.id}>
-                      {module.nom}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            
 
             {/* Epic Selector */}
             {epics.length > 0 && (

@@ -16,9 +16,8 @@ export default function EditUserStoryPage() {
   const searchParams = useSearchParams();
   
   const userStoryId = parseInt(params.id as string);
-  const projectId = parseInt(searchParams.get("project") || "0");
-  const moduleId = parseInt(searchParams.get("module") || "0");
-  const epicId = parseInt(searchParams.get("epic") || "0");
+  const projectId = parseInt(searchParams.get("projectId") || "0");
+  const epicId = parseInt(searchParams.get("epicId") || "0");
 
   const [titre, setTitre] = useState("");
   const [role, setRole] = useState("");
@@ -43,15 +42,15 @@ export default function EditUserStoryPage() {
   ];
 
   useEffect(() => {
-    if (projectId && moduleId && epicId && userStoryId) {
+    if (projectId && epicId && userStoryId) {
       loadUserStory();
     }
-  }, [projectId, moduleId, epicId, userStoryId]);
+  }, [projectId, epicId, userStoryId]);
 
   const loadUserStory = async () => {
     setIsLoading(true);
     try {
-      const us = await getUserStoryById(projectId, moduleId, epicId, userStoryId);
+      const us = await getUserStoryById(projectId, epicId, userStoryId);
       setTitre(us.titre);
       setReference(us.reference || "");
       
@@ -92,7 +91,6 @@ export default function EditUserStoryPage() {
     try {
       await updateUserStory(
         projectId,
-        moduleId,
         epicId,
         userStoryId,
         {

@@ -132,3 +132,6 @@ class UserStoryResponse(BaseModel):
     developer: Optional[DeveloperInfo] = None
     tester: Optional[TesterInfo] = None
     assignee: Optional[AssigneeInfo] = None
+    bug_titre_correction: Optional[str] = None
+    bug_nom_tache: Optional[str] = None
+    bug_ticket: Optional[str] = None

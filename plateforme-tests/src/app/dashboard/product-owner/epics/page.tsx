@@ -8,7 +8,6 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { ROUTES } from "@/lib/constants";
 import { EpicManagementModal } from "@/components/product-owner";
 import { getMyProjects } from "@/features/projects/api";
-import { getModules } from "@/features/modules/api";
 import {
   getEpics,
   createEpic,
@@ -18,7 +17,6 @@ import {
 } from "@/features/epics/api";
 import {
   Project,
-  Module,
   Epic,
   CreateEpicPayload,
   UpdateEpicPayload,
@@ -30,8 +28,6 @@ export default function EpicsManagementPage() {
   const confirmDialog = useConfirmDialog();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [modules, setModules] = useState<Module[]>([]);
-  const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [epics, setEpics] = useState<Epic[]>([]);
   const [filteredEpics, setFilteredEpics] = useState<Epic[]>([]);
   const [statusFilter, setStatusFilter] = useState<EpicStatus | "all">("all");
@@ -47,7 +43,7 @@ export default function EpicsManagementPage() {
     { href: `${ROUTES.PRODUCT_OWNER}/backlog`, icon: "list", label: "Backlog" },
     { href: `${ROUTES.PRODUCT_OWNER}/epics`, icon: "content_cut", label: "Epics" },
     { href: `${ROUTES.PRODUCT_OWNER}/sprints`, icon: "event", label: "Sprints" },
-        { href: `${ROUTES.PRODUCT_OWNER}/cahier-tests`, icon: "check_circle", label: "Cahier de Tests" },
+    { href: `${ROUTES.PRODUCT_OWNER}/cahier-tests`, icon: "check_circle", label: "Cahier de Tests" },
     { href: `${ROUTES.PRODUCT_OWNER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.PRODUCT_OWNER}/roadmap`, icon: "map", label: "Roadmap" },
     { href: `${ROUTES.PRODUCT_OWNER}/profile`, icon: "account_circle", label: "Mon Profil" },
@@ -59,21 +55,11 @@ export default function EpicsManagementPage() {
 
   useEffect(() => {
     if (selectedProject) {
-      loadModules(selectedProject.id);
+      loadEpics(selectedProject.id);
     } else {
-      setModules([]);
-      setSelectedModule(null);
       setEpics([]);
     }
   }, [selectedProject]);
-
-  useEffect(() => {
-    if (selectedProject && selectedModule) {
-      loadEpics(selectedProject.id, selectedModule.id);
-    } else {
-      setEpics([]);
-    }
-  }, [selectedModule]);
 
   useEffect(() => {
     if (statusFilter === "all") {
@@ -88,6 +74,7 @@ export default function EpicsManagementPage() {
       setIsLoading(true);
       const data = await getMyProjects();
       setProjects(data);
+      if (data.length > 0) setSelectedProject(data[0]);
     } catch (err) {
       console.error(err);
     } finally {
@@ -95,18 +82,9 @@ export default function EpicsManagementPage() {
     }
   };
 
-  const loadModules = async (projectId: number) => {
+  const loadEpics = async (projectId: number) => {
     try {
-      const data = await getModules(projectId);
-      setModules(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const loadEpics = async (projectId: number, moduleId: number) => {
-    try {
-      const data = await getEpics(projectId, moduleId);
+      const data = await getEpics(projectId);
       setEpics(data);
     } catch (err) {
       console.error(err);
@@ -114,8 +92,8 @@ export default function EpicsManagementPage() {
   };
 
   const handleCreateEpic = () => {
-    if (!selectedProject || !selectedModule) {
-      alert("Veuillez sélectionner un projet et un module");
+    if (!selectedProject) {
+      alert("Veuillez sélectionner un projet");
       return;
     }
     setEpicModalMode("create");
@@ -130,23 +108,22 @@ export default function EpicsManagementPage() {
   };
 
   const handleEpicSubmit = async (data: CreateEpicPayload | UpdateEpicPayload) => {
-    if (!selectedProject || !selectedModule) return;
+    if (!selectedProject) return;
 
     if (epicModalMode === "create") {
-      await createEpic(selectedProject.id, selectedModule.id, data as CreateEpicPayload);
+      await createEpic(selectedProject.id, data as CreateEpicPayload);
     } else if (editingEpic) {
       await updateEpic(
         selectedProject.id,
-        selectedModule.id,
         editingEpic.id,
         data as UpdateEpicPayload
       );
     }
-    await loadEpics(selectedProject.id, selectedModule.id);
+    await loadEpics(selectedProject.id);
   };
 
   const handleDeleteEpic = async (epicId: number) => {
-    if (!selectedProject || !selectedModule) return;
+    if (!selectedProject) return;
     const confirmed = await confirmDialog({
       title: "Supprimer l'epic",
       description: "Êtes-vous sûr de vouloir supprimer cet epic ?",
@@ -160,18 +137,18 @@ export default function EpicsManagementPage() {
     }
 
     try {
-      await deleteEpic(selectedProject.id, selectedModule.id, epicId);
-      await loadEpics(selectedProject.id, selectedModule.id);
+      await deleteEpic(selectedProject.id, epicId);
+      await loadEpics(selectedProject.id);
     } catch (err) {
       alert("Erreur lors de la suppression");
     }
   };
 
   const handleChangeEpicStatus = async (epicId: number, status: EpicStatus) => {
-    if (!selectedProject || !selectedModule) return;
+    if (!selectedProject) return;
     try {
-      await changeEpicStatus(selectedProject.id, selectedModule.id, epicId, { statut: status });
-      await loadEpics(selectedProject.id, selectedModule.id);
+      await changeEpicStatus(selectedProject.id, epicId, { statut: status });
+      await loadEpics(selectedProject.id);
     } catch (err) {
       alert("Erreur lors du changement de statut");
     }
@@ -206,7 +183,7 @@ export default function EpicsManagementPage() {
   const headerActions = (
     <Button
       onClick={handleCreateEpic}
-      disabled={!selectedProject || !selectedModule}
+      disabled={!selectedProject}
       className="h-10 px-4 text-sm font-bold gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       <span className="material-symbols-outlined text-[18px]">add</span>
@@ -256,31 +233,10 @@ export default function EpicsManagementPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-white mb-2">Module</label>
-              <select
-                value={selectedModule?.id || ""}
-                onChange={(e) => {
-                  const module = modules.find((m) => m.id === parseInt(e.target.value));
-                  setSelectedModule(module || null);
-                }}
-                disabled={!selectedProject}
-                className="w-full bg-[#1e293b] border border-slate-200 dark:border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-              >
-                <option value="">Sélectionner un module</option>
-                {modules.map((module) => (
-                  <option key={module.id} value={module.id}>
-                    {module.nom}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
               <label className="block text-sm font-medium text-white mb-2">Statut</label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as EpicStatus | "all")}
-                disabled={!selectedModule}
                 className="w-full bg-[#1e293b] border border-slate-200 dark:border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
               >
                 <option value="all">Tous les statuts</option>
@@ -298,9 +254,9 @@ export default function EpicsManagementPage() {
             <h2 className="text-white text-lg font-bold">Epics ({filteredEpics.length})</h2>
           </div>
 
-          {!selectedProject || !selectedModule ? (
+          {!selectedProject ? (
             <div className="text-center py-12 text-slate-500 dark:text-[#9dabb9]">
-              Sélectionnez un projet et un module pour voir les epics
+              Sélectionnez un projet pour voir les epics
             </div>
           ) : filteredEpics.length === 0 ? (
             <div className="text-center py-12">

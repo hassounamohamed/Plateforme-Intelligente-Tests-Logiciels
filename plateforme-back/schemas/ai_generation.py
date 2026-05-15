@@ -15,7 +15,7 @@ StatusGeneration = Literal["pending", "processing", "completed", "failed", "appr
 TypeGeneration   = Literal["generate_scrum", "generate_tests"]
 StatusItem       = Literal["draft", "approved", "rejected", "modified"]
 PriorityLevel    = Literal["High", "Medium", "Low"]
-ItemType         = Literal["module", "epic", "user_story"]
+ItemType         = Literal["epic", "user_story"]
 
 
 # ─── Requêtes ─────────────────────────────────────────────────────────────────
@@ -71,7 +71,7 @@ class AIGeneratedItemResponse(BaseModel):
     status:              str
     created_at:          datetime
 
-    # Enfants : epics → user stories ou modules → epics
+    # Enfants : epics → user stories
     children: List["AIGeneratedItemResponse"] = []
 
 
@@ -111,21 +111,14 @@ class AIEpic(BaseModel):
     user_stories: List[AIUserStory] = []
 
 
-class AIModule(BaseModel):
-    name:  str
-    description: Optional[str] = None
-    epics: List[AIEpic] = []
-
-
 class AIBacklogResponse(BaseModel):
     """Structure attendue dans la réponse JSON de l'IA."""
-    modules: List[AIModule] = []
+    epics: List[AIEpic] = []
 
 
 class ApplyGenerationResponse(BaseModel):
     """Résumé retourné après application d'une génération IA au backlog."""
     generation_id: int
-    modules_created: int
     epics_created: int
     stories_created: int
 

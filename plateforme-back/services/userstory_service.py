@@ -7,9 +7,9 @@ from sqlalchemy.orm import Session
 
 from repositories.scrum_repository import UserStoryRepository
 from repositories.epic_repository import EpicRepository
-from repositories.module_repository import ModuleRepository
 from repositories.projet_repository import ProjetRepository
 from models.scrum import UserStory, Epic, Module
+from models.cahier_test_global import CasTest, CahierTestGlobal
 from models.user import Utilisateur
 from core.rbac.constants import ROLE_DEVELOPPEUR
 from models.notification import TypeNotification
@@ -38,7 +38,6 @@ class UserStoryService:
         self.db = db
         self.repo = UserStoryRepository(db)
         self.epic_repo = EpicRepository(db)
-        self.module_repo = ModuleRepository(db)
         self.projet_repo = ProjetRepository(db)
         self.notification_service = NotificationService(db)
 
@@ -72,11 +71,31 @@ class UserStoryService:
             numero = mapping.get(us.id)
             if numero is not None:
                 us.reference = f"{prefix}-{numero}"
+            self._attach_bug_context(us, projet_id)
         return stories
 
+    def _attach_bug_context(self, us, projet_id: int):
+        cas = (
+            self.db.query(CasTest)
+            .join(CahierTestGlobal, CasTest.cahier_id == CahierTestGlobal.id)
+            .filter(
+                CasTest.user_story_id == us.id,
+                CahierTestGlobal.projet_id == projet_id,
+                CasTest.statut_test.in_(["Échoué", "Bloqué"]),
+            )
+            .order_by(CasTest.date_creation.desc(), CasTest.id.desc())
+            .first()
+        )
+        bug_titre = cas.bug_titre_correction if cas else None
+        bug_tache = cas.bug_nom_tache if cas else None
+        setattr(us, "bug_titre_correction", bug_titre)
+        setattr(us, "bug_nom_tache", bug_tache)
+        setattr(us, "bug_ticket", bug_tache or bug_titre)
+        return us
+
     def _get_projet_id_from_us(self, us) -> Optional[int]:
-        if us and getattr(us, "epic", None) and getattr(us.epic, "module", None):
-            return us.epic.module.projet_id
+        if us and getattr(us, "epic", None):
+            return us.epic.projet_id
         if not us:
             return None
         row = (
@@ -130,18 +149,11 @@ class UserStoryService:
                                 detail=f"Projet {projet_id} introuvable.")
         return projet
 
-    def _verifier_module(self, module_id: int, projet_id: int):
-        module = self.module_repo.get_by_id_in_projet(module_id, projet_id)
-        if not module:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail=f"Module {module_id} introuvable dans le projet {projet_id}.")
-        return module
-
-    def _verifier_epic(self, epic_id: int, module_id: int):
-        epic = self.epic_repo.get_by_id_in_module(epic_id, module_id)
+    def _verifier_epic(self, epic_id: int, projet_id: int):
+        epic = self.epic_repo.get_by_id_in_projet(epic_id, projet_id)
         if not epic:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail=f"Epic {epic_id} introuvable dans le module {module_id}.")
+                                detail=f"Epic {epic_id} introuvable dans le projet {projet_id}.")
         return epic
 
     def _verifier_membre_projet(self, projet_id: int, user_id: int):
@@ -196,15 +208,13 @@ class UserStoryService:
     def creer_user_story(
         self,
         projet_id: int,
-        module_id: int,
         epic_id: int,
         data: CreateUserStoryRequest,
         current_user_id: int,
     ):
         """Décomposer un epic en user story — Scrum Master ou Product Owner."""
         projet = self._verifier_projet(projet_id)
-        self._verifier_module(module_id, projet_id)
-        self._verifier_epic(epic_id, module_id)
+        self._verifier_epic(epic_id, projet_id)
         self._valider_points(data.points)
 
         description = _assembler_description(data.role, data.action, data.benefice)
@@ -245,12 +255,10 @@ class UserStoryService:
     def get_user_stories(
         self,
         projet_id: int,
-        module_id: int,
         epic_id: int,
         statut: Optional[str] = None,
     ) -> List:
-        self._verifier_module(module_id, projet_id)
-        self._verifier_epic(epic_id, module_id)
+        self._verifier_epic(epic_id, projet_id)
         stories = self.repo.get_by_epic(epic_id)
         if statut:
             stories = [us for us in stories if us.statut == statut]
@@ -260,17 +268,15 @@ class UserStoryService:
         stories.sort(key=lambda us: ordre.get(us.priorite, 99))
         return stories
 
-    def get_user_story(self, projet_id: int, module_id: int, epic_id: int, us_id: int):
-        self._verifier_module(module_id, projet_id)
-        self._verifier_epic(epic_id, module_id)
+    def get_user_story(self, projet_id: int, epic_id: int, us_id: int):
+        self._verifier_epic(epic_id, projet_id)
         story = self._get_us_ou_404(us_id, epic_id)
         self._apply_project_reference(projet_id, [story])
         return story
 
-    def get_backlog(self, projet_id: int, module_id: int, epic_id: int):
+    def get_backlog(self, projet_id: int, epic_id: int):
         """User stories non encore affectées à un sprint."""
-        self._verifier_module(module_id, projet_id)
-        self._verifier_epic(epic_id, module_id)
+        self._verifier_epic(epic_id, projet_id)
         stories = self.repo.get_backlog(epic_id)
         self._apply_project_reference(projet_id, stories)
         return stories
@@ -280,14 +286,12 @@ class UserStoryService:
     def modifier_user_story(
         self,
         projet_id: int,
-        module_id: int,
         epic_id: int,
         us_id: int,
         data: UpdateUserStoryRequest,
         current_user_id: int,
     ):
-        self._verifier_module(module_id, projet_id)
-        self._verifier_epic(epic_id, module_id)
+        self._verifier_epic(epic_id, projet_id)
         us = self._get_us_ou_404(us_id, epic_id)
         self._valider_points(data.points)
 
@@ -338,15 +342,13 @@ class UserStoryService:
     def assigner_assignee(
         self,
         projet_id: int,
-        module_id: int,
         epic_id: int,
         us_id: int,
         data: AssignerAssigneeRequest,
         current_user_id: int,
     ):
         """Désigner le responsable (assignee) d'une user story — doit être membre du projet."""
-        self._verifier_module(module_id, projet_id)
-        self._verifier_epic(epic_id, module_id)
+        self._verifier_epic(epic_id, projet_id)
         us = self._get_us_ou_404(us_id, epic_id)
         previous_assignee_id = us.assigneeId
         self._verifier_membre_projet(projet_id, data.assignee_id)
@@ -370,14 +372,12 @@ class UserStoryService:
     def retirer_assignee(
         self,
         projet_id: int,
-        module_id: int,
         epic_id: int,
         us_id: int,
         current_user_id: int,
     ):
         """Retirer l'assignee d'une user story."""
-        self._verifier_module(module_id, projet_id)
-        self._verifier_epic(epic_id, module_id)
+        self._verifier_epic(epic_id, projet_id)
         us = self._get_us_ou_404(us_id, epic_id)
         previous_assignee_id = us.assigneeId
         updated = self.repo.update(us_id, {"assigneeId": None})
@@ -409,14 +409,12 @@ class UserStoryService:
     def changer_statut(
         self,
         projet_id: int,
-        module_id: int,
         epic_id: int,
         us_id: int,
         data: ChangerStatutUSRequest,
         current_user_id: int,
     ):
-        self._verifier_module(module_id, projet_id)
-        self._verifier_epic(epic_id, module_id)
+        self._verifier_epic(epic_id, projet_id)
         us = self._get_us_ou_404(us_id, epic_id)
         current_user = self._get_current_user(current_user_id)
         if current_user.role and current_user.role.code == ROLE_DEVELOPPEUR and us.developerId != current_user_id:
@@ -481,15 +479,13 @@ class UserStoryService:
     def assigner_developpeur(
         self,
         projet_id: int,
-        module_id: int,
         epic_id: int,
         us_id: int,
         data: AssignerDeveloppeurRequest,
         current_user_id: int,
     ):
         """Assigner un développeur à une user story — Scrum Master uniquement."""
-        self._verifier_module(module_id, projet_id)
-        self._verifier_epic(epic_id, module_id)
+        self._verifier_epic(epic_id, projet_id)
         us = self._get_us_ou_404(us_id, epic_id)
         previous_developer_id = us.developerId
         updated = self.repo.update(us_id, {"developerId": data.developeur_id})
@@ -513,7 +509,6 @@ class UserStoryService:
     def assigner_testeur(
         self,
         projet_id: int,
-        module_id: int,
         epic_id: int,
         us_id: int,
         data: AssignerTesteurRequest,
@@ -522,8 +517,7 @@ class UserStoryService:
         """Assigner un testeur QA à une user story — Scrum Master uniquement."""
         from models.user import Utilisateur
         from core.rbac.constants import ROLE_TESTEUR_QA
-        self._verifier_module(module_id, projet_id)
-        self._verifier_epic(epic_id, module_id)
+        self._verifier_epic(epic_id, projet_id)
         us = self._get_us_ou_404(us_id, epic_id)
         # Vérifier que l'utilisateur assigné a bien le rôle TESTEUR_QA
         testeur = self.db.query(Utilisateur).filter(Utilisateur.id == data.testeur_id).first()
@@ -559,15 +553,13 @@ class UserStoryService:
     def valider_user_story(
         self,
         projet_id: int,
-        module_id: int,
         epic_id: int,
         us_id: int,
         current_user_id: int,
     ):
         """Marquer la user story comme 'done' — Product Owner uniquement."""
         self._verifier_po(projet_id, current_user_id)
-        self._verifier_module(module_id, projet_id)
-        self._verifier_epic(epic_id, module_id)
+        self._verifier_epic(epic_id, projet_id)
         us = self._get_us_ou_404(us_id, epic_id)
         updated = self.repo.update(us_id, {"statut": "done"})
         if updated:
@@ -591,13 +583,11 @@ class UserStoryService:
     def supprimer_user_story(
         self,
         projet_id: int,
-        module_id: int,
         epic_id: int,
         us_id: int,
         current_user_id: int,
     ):
-        self._verifier_module(module_id, projet_id)
-        self._verifier_epic(epic_id, module_id)
+        self._verifier_epic(epic_id, projet_id)
         us = self._get_us_ou_404(us_id, epic_id)
         self.repo.delete(us_id)
         self.notification_service.notify_project_users(

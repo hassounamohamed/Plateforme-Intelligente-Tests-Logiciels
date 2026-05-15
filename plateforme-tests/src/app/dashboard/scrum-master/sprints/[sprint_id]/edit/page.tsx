@@ -16,9 +16,8 @@ import {
   removeUserStoriesFromSprint 
 } from "@/features/sprints/api";
 import { getUserStories } from "@/features/userstories/api";
-import { getModules } from "@/features/modules/api";
 import { getEpics } from "@/features/epics/api";
-import { Project, Module, Epic, UserStory, Sprint } from "@/types";
+import { Project, Epic, UserStory, Sprint } from "@/types";
 
 export default function EditSprintPage() {
   const router = useRouter();
@@ -27,7 +26,6 @@ export default function EditSprintPage() {
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
-  const [modules, setModules] = useState<Module[]>([]);
   const [epics, setEpics] = useState<Epic[]>([]);
   const [availableStories, setAvailableStories] = useState<UserStory[]>([]);
   const [selectedStories, setSelectedStories] = useState<number[]>([]);
@@ -146,30 +144,20 @@ export default function EditSprintPage() {
 
   const loadProjectData = async (projectId: number) => {
     try {
-      // Load modules
-      const modulesData = await getModules(projectId);
-      setModules(modulesData);
-
-      // Load all epics from all modules
-      const allEpics: Epic[] = [];
+      // Load all epics for the project
+      const epicsData = await getEpics(projectId);
       const allStories: UserStory[] = [];
 
-      for (const module of modulesData) {
-        const epicsData = await getEpics(projectId, module.id);
-        allEpics.push(...epicsData);
-
-        // Load user stories from each epic
-        for (const epic of epicsData) {
-          try {
-            const storiesData = await getUserStories(projectId, module.id, epic.id);
-            allStories.push(...storiesData);
-          } catch (err) {
-            console.warn("Erreur chargement stories pour epic:", epic.id);
-          }
+      for (const epic of epicsData) {
+        try {
+          const storiesData = await getUserStories(projectId, epic.id);
+          allStories.push(...storiesData);
+        } catch (err) {
+          console.warn("Erreur chargement stories pour epic:", epic.id);
         }
       }
 
-      setEpics(allEpics);
+      setEpics(epicsData);
       setAvailableStories(allStories);
     } catch (error: any) {
       console.error("Erreur chargement données projet:", error);

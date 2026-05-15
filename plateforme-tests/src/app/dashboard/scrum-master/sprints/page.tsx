@@ -21,10 +21,9 @@ import {
   addUserStoriesToSprint,
   removeUserStoriesFromSprint,
 } from "@/features/sprints/api";
-import { getModules } from "@/features/modules/api";
 import { getEpics } from "@/features/epics/api";
 import { getUserStories } from "@/features/userstories/api";
-import { Project, Sprint, Module, Epic, UserStory, SprintVelocite } from "@/types";
+import { Project, Sprint, Epic, UserStory, SprintVelocite } from "@/types";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialogProvider";
 
 export default function SprintsPage() {
@@ -286,22 +285,23 @@ export default function SprintsPage() {
 
     setIsEditDataLoading(true);
     try {
-      const modulesData: Module[] = await getModules(selectedProject);
       const allEpics: Epic[] = [];
       const allStories: UserStory[] = [];
 
-      for (const module of modulesData) {
-        const epicsData = await getEpics(selectedProject, module.id);
+      try {
+        const epicsData = await getEpics(selectedProject);
         allEpics.push(...epicsData);
 
         for (const epic of epicsData) {
           try {
-            const storiesData = await getUserStories(selectedProject, module.id, epic.id);
+            const storiesData = await getUserStories(selectedProject, epic.id);
             allStories.push(...storiesData);
           } catch (err) {
             console.warn("Erreur chargement stories pour epic:", epic.id);
           }
         }
+      } catch (err) {
+        console.warn("Erreur chargement epics:", err);
       }
 
       const uniqueStories = Array.from(new Map(allStories.map((story) => [story.id, story])).values());
