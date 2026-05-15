@@ -16,7 +16,6 @@ jobs:
 
       - name: Archive repository
         run: |
-          git rev-parse --show-toplevel || true
           tar --exclude=.git --exclude=node_modules -czf app.tar.gz .
 
       - name: Copy archive to VPS
@@ -29,7 +28,7 @@ jobs:
           source: "app.tar.gz"
           target: "/home/${{ secrets.VPS_USER }}/deploy"
 
-      - name: Deploy on VPS (extract & launch)
+      - name: Deploy on VPS
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -38,15 +37,22 @@ jobs:
           port: 22
           script: |
             set -e
-            mkdir -p ~/deploy
-            tar -xzf ~/deploy/app.tar.gz -C ~/deploy/app || true
+
+            mkdir -p ~/deploy/app
+            rm -rf ~/deploy/app/*
+            tar -xzf ~/deploy/app.tar.gz -C ~/deploy/app
+
             cd ~/deploy/app
+
             if [ -f docker-compose.yml ]; then
-              docker-compose pull || true
-              docker-compose up -d --build
+              docker compose down || docker-compose down
+              docker compose up -d --build || docker-compose up -d --build
+
             elif command -v docker >/dev/null 2>&1 && [ -f plateforme-back/Dockerfile ]; then
               docker build -t plateforme-back ./plateforme-back
-              docker run -d --rm --name plateforme-back -p 8000:8000 plateforme-back
+              docker rm -f plateforme-back || true
+              docker run -d --name plateforme-back -p 8000:8000 plateforme-back
+
             else
-              echo "No docker-compose.yml or Dockerfile found; adjust deploy script on VPS"
+              echo "No docker setup found"
             fi
