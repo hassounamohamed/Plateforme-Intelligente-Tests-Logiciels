@@ -16,6 +16,7 @@ import {
   getCasTestCaptureUrl,
   suggestBugFields,
 } from "./api";
+import AnomalieCasTestPanel from "@/features/anomalies/AnomalieCasTestPanel";
 import axiosInstance from "@/lib/axios";
 import { AxiosError } from "axios";
 
@@ -57,6 +58,11 @@ export default function EditCasTestModal({
   });
   const [loading, setLoading] = useState(false);
   const [loadingBugSuggestion, setLoadingBugSuggestion] = useState(false);
+  const [anomalyRefreshKey, setAnomalyRefreshKey] = useState(0);
+  const [casPersistedBug, setCasPersistedBug] = useState(
+    () => casTest.statut_test === "Échoué" || casTest.statut_test === "Bloqué"
+  );
+  const [saveHint, setSaveHint] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -91,6 +97,12 @@ export default function EditCasTestModal({
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [projectId, cahierId, casTest.id, casTest.capture]);
+
+  useEffect(() => {
+    setCasPersistedBug(
+      casTest.statut_test === "Échoué" || casTest.statut_test === "Bloqué"
+    );
+  }, [casTest.statut_test, casTest.id]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -228,9 +240,23 @@ export default function EditCasTestModal({
       }
       if (assignOnly && formData.type_utilisateur?.trim()) {
         window.alert(`L'utilisateur ${formData.type_utilisateur} a été assigné correctement.`);
+        onSuccess();
+        onClose();
+        return;
       }
+
       onSuccess();
-      onClose();
+
+      if (isBugStatus) {
+        setCasPersistedBug(true);
+        setAnomalyRefreshKey((k) => k + 1);
+        setSaveHint(
+          "Cas enregistré en échec/blocage. Créez une anomalie ci-dessous pour tracer le défaut et l'assigner à un développeur."
+        );
+      } else {
+        setSaveHint(null);
+        onClose();
+      }
     } catch (err: unknown) {
       const apiError = err as AxiosError<{ detail?: string }>;
       setError(apiError.response?.data?.detail || "Erreur lors de la mise à jour");
@@ -302,8 +328,9 @@ export default function EditCasTestModal({
             )}
 
             <div>
-              <label className="block text-sm font-medium text-white mb-1">Membre assigné</label>
+              <label htmlFor="cas-assign-member-only" className="block text-sm font-medium text-white mb-1">Membre assigné</label>
               <select
+                id="cas-assign-member-only"
                 className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
                 value={formData.type_utilisateur || ""}
                 onChange={(e) => setFormData({ ...formData, type_utilisateur: e.target.value })}
@@ -552,11 +579,13 @@ export default function EditCasTestModal({
 
           {/* Test Case */}
           <div>
-            <label className="block text-sm font-medium text-white mb-1">
+            <label htmlFor="edit-cas-test-case" className="block text-sm font-medium text-white mb-1">
               Cas de Test
             </label>
             <input
+              id="edit-cas-test-case"
               type="text"
+              placeholder="Titre du cas de test"
               className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
               value={formData.test_case}
               onChange={(e) =>
@@ -567,11 +596,13 @@ export default function EditCasTestModal({
 
           {/* Scénario */}
           <div>
-            <label className="block text-sm font-medium text-white mb-1">
+            <label htmlFor="edit-cas-scenario" className="block text-sm font-medium text-white mb-1">
               Scénario de Test
             </label>
             <textarea
+              id="edit-cas-scenario"
               rows={4}
+              placeholder="Étapes du scénario de test"
               className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
               value={formData.scenario_test}
               onChange={(e) =>
@@ -583,10 +614,11 @@ export default function EditCasTestModal({
           {/* Membre assigné */}
           {canAssignMember && (
             <div>
-              <label className="block text-sm font-medium text-white mb-1">
+              <label htmlFor="edit-cas-assign-member" className="block text-sm font-medium text-white mb-1">
                 Membre assigné
               </label>
               <select
+                id="edit-cas-assign-member"
                 className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
                 value={formData.type_utilisateur || ""}
                 onChange={(e) =>
@@ -606,11 +638,13 @@ export default function EditCasTestModal({
 
           {/* Résultat Attendu */}
           <div>
-            <label className="block text-sm font-medium text-white mb-1">
+            <label htmlFor="edit-cas-resultat-attendu" className="block text-sm font-medium text-white mb-1">
               Résultat Attendu
             </label>
             <textarea
+              id="edit-cas-resultat-attendu"
               rows={3}
+              placeholder="Résultat attendu après exécution"
               className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
               value={formData.resultat_attendu}
               onChange={(e) =>
@@ -674,10 +708,11 @@ export default function EditCasTestModal({
           {/* Type & Statut */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-white mb-1">
+              <label htmlFor="edit-cas-type-test" className="block text-sm font-medium text-white mb-1">
                 Type de Test
               </label>
               <select
+                id="edit-cas-type-test"
                 className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
                 value={formData.type_test}
                 onChange={(e) =>
@@ -693,10 +728,11 @@ export default function EditCasTestModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-white mb-1">
+              <label htmlFor="edit-cas-statut-test" className="block text-sm font-medium text-white mb-1">
                 Statut
               </label>
               <select
+                id="edit-cas-statut-test"
                 className="w-full px-3 py-2 bg-[#283039] border border-[#3b4754] text-white rounded-md focus:ring-blue-500 focus:border-blue-500"
                 value={formData.statut_test}
                 onChange={(e) => handleStatusChange(e.target.value as StatutTest)}
@@ -745,6 +781,23 @@ export default function EditCasTestModal({
             </div>
           )}
 
+          {saveHint && (
+            <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+              {saveHint}
+            </div>
+          )}
+
+          {(isBugStatus || casPersistedBug) && (
+            <AnomalieCasTestPanel
+              projectId={projectId}
+              cahierId={cahierId}
+              casTest={casTest}
+              readOnly={readOnly}
+              canCreate={casPersistedBug}
+              refreshKey={anomalyRefreshKey}
+            />
+          )}
+
           {/* Commentaire */}
           <div>
             <label className="block text-sm font-medium text-white mb-1">
@@ -763,7 +816,7 @@ export default function EditCasTestModal({
 
           {/* Capture d'écran */}
           <div>
-            <label className="block text-sm font-medium text-white mb-1">
+            <label htmlFor="edit-cas-capture" className="block text-sm font-medium text-white mb-1">
               Capture d&apos;écran
             </label>
             {capturePreview && (
@@ -788,10 +841,12 @@ export default function EditCasTestModal({
               </div>
             )}
             <input
+              id="edit-cas-capture"
               ref={fileInputRef}
               type="file"
               accept="image/png,image/jpeg,image/gif,image/webp"
               onChange={handleCaptureChange}
+              aria-label="Importer une capture d'écran"
               className="block w-full text-sm text-[#9dabb9] file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
             />
             <p className="text-xs text-[#9dabb9] mt-1">PNG, JPG, GIF, WebP — max 10 MB</p>
@@ -817,6 +872,15 @@ export default function EditCasTestModal({
             >
               {loading ? "Enregistrement..." : "Enregistrer"}
             </button>
+            {saveHint && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-[#3b4754] rounded-md text-white hover:bg-[#283039]"
+              >
+                Terminer
+              </button>
+            )}
           </div>
         </form>
       </div>

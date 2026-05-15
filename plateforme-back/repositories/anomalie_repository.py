@@ -2,10 +2,11 @@
 Repository pour la gestion des anomalies
 """
 from typing import Optional, List
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 
 from models.anomalie import Anomalie
+from models.cahier_test_global import CasTest, CahierTestGlobal
 from repositories.base_repository import BaseRepository
 
 
@@ -18,6 +19,53 @@ class AnomalieRepository(BaseRepository[Anomalie]):
     def get_by_resultat(self, resultat_id: int) -> List[Anomalie]:
         """Récupérer toutes les anomalies d'un résultat de test"""
         return self.db.query(Anomalie).filter(Anomalie.resultat_id == resultat_id).all()
+
+    def get_by_cas_test(self, cas_test_id: int) -> List[Anomalie]:
+        return (
+            self.db.query(Anomalie)
+            .options(
+                joinedload(Anomalie.cas_test),
+                joinedload(Anomalie.reporter),
+                joinedload(Anomalie.assigned),
+            )
+            .filter(Anomalie.cas_test_id == cas_test_id)
+            .order_by(Anomalie.dateCreation.desc())
+            .all()
+        )
+
+    def get_by_projet(
+        self,
+        projet_id: int,
+        statut: Optional[str] = None,
+    ) -> List[Anomalie]:
+        query = (
+            self.db.query(Anomalie)
+            .join(CasTest, Anomalie.cas_test_id == CasTest.id)
+            .join(CahierTestGlobal, CasTest.cahier_id == CahierTestGlobal.id)
+            .options(
+                joinedload(Anomalie.cas_test),
+                joinedload(Anomalie.reporter),
+                joinedload(Anomalie.assigned),
+            )
+            .filter(CahierTestGlobal.projet_id == projet_id)
+        )
+        if statut:
+            query = query.filter(Anomalie.statut == statut)
+        return query.order_by(Anomalie.dateCreation.desc()).all()
+
+    def get_by_id_for_projet(self, anomalie_id: int, projet_id: int) -> Optional[Anomalie]:
+        return (
+            self.db.query(Anomalie)
+            .join(CasTest, Anomalie.cas_test_id == CasTest.id)
+            .join(CahierTestGlobal, CasTest.cahier_id == CahierTestGlobal.id)
+            .options(
+                joinedload(Anomalie.cas_test),
+                joinedload(Anomalie.reporter),
+                joinedload(Anomalie.assigned),
+            )
+            .filter(Anomalie.id == anomalie_id, CahierTestGlobal.projet_id == projet_id)
+            .first()
+        )
     
     def get_by_reporter(self, reporter_id: int) -> List[Anomalie]:
         """Récupérer toutes les anomalies rapportées par un utilisateur"""

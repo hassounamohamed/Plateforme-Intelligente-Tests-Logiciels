@@ -35,6 +35,7 @@ export default function ProfilePage() {
   const sidebarLinks = [
     { href: ROUTES.QA, icon: "dashboard", label: "Dashboard" },
     { href: `${ROUTES.QA}/cahier-tests`, icon: "science", label: "Cahier de Tests" },
+    { href: `${ROUTES.QA}/anomalies`, icon: "bug_report", label: "Anomalies" },
     { href: `${ROUTES.QA}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.QA}/sprints`, icon: "calendar_month", label: "Sprints" },
     { href: `${ROUTES.QA}/profile`, icon: "account_circle", label: "Mon Profil" },
@@ -180,11 +181,13 @@ export default function ProfilePage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-[#9dabb9] text-sm mb-2">
+                  <label htmlFor="qa-profile-nom" className="block text-[#9dabb9] text-sm mb-2">
                     Nom complet
                   </label>
                   <input
+                    id="qa-profile-nom"
                     type="text"
+                    placeholder="Votre nom complet"
                     value={formData.nom}
                     onChange={(e) =>
                       setFormData({ ...formData, nom: e.target.value })
@@ -195,10 +198,11 @@ export default function ProfilePage() {
                 </div>
 
                 <div>
-                  <label className="block text-[#9dabb9] text-sm mb-2">
+                  <label htmlFor="qa-profile-email" className="block text-[#9dabb9] text-sm mb-2">
                     Email
                   </label>
                   <input
+                    id="qa-profile-email"
                     type="email"
                     value={profile.email}
                     disabled
@@ -210,11 +214,13 @@ export default function ProfilePage() {
                 </div>
 
                 <div>
-                  <label className="block text-[#9dabb9] text-sm mb-2">
+                  <label htmlFor="qa-profile-telephone" className="block text-[#9dabb9] text-sm mb-2">
                     Téléphone
                   </label>
                   <input
+                    id="qa-profile-telephone"
                     type="tel"
+                    placeholder="Numéro de téléphone"
                     value={formData.telephone}
                     onChange={(e) =>
                       setFormData({ ...formData, telephone: e.target.value })
@@ -252,11 +258,13 @@ export default function ProfilePage() {
 
               <form onSubmit={handlePasswordChange} className="space-y-4">
                 <div>
-                  <label className="block text-[#9dabb9] text-sm mb-2">
+                  <label htmlFor="qa-profile-old-password" className="block text-[#9dabb9] text-sm mb-2">
                     Ancien mot de passe
                   </label>
                   <input
+                    id="qa-profile-old-password"
                     type="password"
+                    placeholder="Ancien mot de passe"
                     value={formData.ancienMotDePasse}
                     onChange={(e) =>
                       setFormData({
@@ -269,11 +277,13 @@ export default function ProfilePage() {
                 </div>
 
                 <div>
-                  <label className="block text-[#9dabb9] text-sm mb-2">
+                  <label htmlFor="qa-profile-new-password" className="block text-[#9dabb9] text-sm mb-2">
                     Nouveau mot de passe
                   </label>
                   <input
+                    id="qa-profile-new-password"
                     type="password"
+                    placeholder="Nouveau mot de passe"
                     value={formData.nouveauMotDePasse}
                     onChange={(e) =>
                       setFormData({
@@ -286,11 +296,13 @@ export default function ProfilePage() {
                 </div>
 
                 <div>
-                  <label className="block text-[#9dabb9] text-sm mb-2">
+                  <label htmlFor="qa-profile-confirm-password" className="block text-[#9dabb9] text-sm mb-2">
                     Confirmer le nouveau mot de passe
                   </label>
                   <input
+                    id="qa-profile-confirm-password"
                     type="password"
+                    placeholder="Confirmer le nouveau mot de passe"
                     value={formData.confirmerMotDePasse}
                     onChange={(e) =>
                       setFormData({

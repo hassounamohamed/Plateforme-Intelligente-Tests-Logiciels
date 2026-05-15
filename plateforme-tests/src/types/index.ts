@@ -848,3 +848,44 @@ export interface AIGenerationCahier extends AIGeneration {
 export interface AIGenerationCahierDetail extends AIGenerationDetail {
   // Hérite de AIGenerationDetail avec logs spécifiques au cahier
 }
+
+// ─── Anomalies QA ────────────────────────────────────────────────────────────
+
+export type AnomalieStatut = "NOUVEAU" | "EN_COURS" | "REOUVERT" | "RESOLU";
+export type AnomalieSeverite = "CRITIQUE" | "MAJEURE" | "MINEURE";
+export type AnomaliePriorite = "HAUTE" | "MOYENNE" | "BASSE";
+
+export interface Anomalie {
+  id: number;
+  titre: string;
+  description: string | null;
+  severite: AnomalieSeverite;
+  statut: AnomalieStatut;
+  priorite: AnomaliePriorite;
+  dateCreation: string;
+  dateResolution: string | null;
+  cas_test_id: number | null;
+  resultat_id: number | null;
+  reporterId: number | null;
+  assignedTo: number | null;
+  cas_test_ref?: string | null;
+  cas_test_titre?: string | null;
+  reporter_nom?: string | null;
+  assigned_nom?: string | null;
+}
+
+export interface CreateAnomaliePayload {
+  titre: string;
+  description?: string;
+  severite?: AnomalieSeverite;
+  priorite?: AnomaliePriorite;
+  assigned_to?: number;
+}
+
+export interface UpdateAnomaliePayload {
+  titre?: string;
+  description?: string;
+  severite?: AnomalieSeverite;
+  priorite?: AnomaliePriorite;
+  statut?: AnomalieStatut;
+}

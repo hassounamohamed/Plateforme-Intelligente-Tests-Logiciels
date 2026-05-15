@@ -9,9 +9,18 @@ import { ProjectSelectorCard } from "@/components/dashboard/ProjectSelectorCard"
 import { ROUTES } from "@/lib/constants";
 import { getMyProjectsAsMember } from "@/features/projects/api";
 import { Project } from "@/types";
-import CahierTestsManager from "@/features/cahier-tests/CahierTestsManager";
+import AnomaliesProjetPanel from "@/features/anomalies/AnomaliesProjetPanel";
 
-export default function QARapportsPage() {
+const sidebarLinks = [
+  { href: ROUTES.QA, icon: "dashboard", label: "Dashboard" },
+  { href: `${ROUTES.QA}/cahier-tests`, icon: "science", label: "Cahier de Tests" },
+  { href: `${ROUTES.QA}/anomalies`, icon: "bug_report", label: "Anomalies" },
+  { href: `${ROUTES.QA}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
+  { href: `${ROUTES.QA}/sprints`, icon: "calendar_month", label: "Sprints" },
+  { href: `${ROUTES.QA}/profile`, icon: "account_circle", label: "Mon Profil" },
+];
+
+export default function QAAnomaliesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -42,7 +51,7 @@ export default function QARapportsPage() {
   }, [projects, searchParams]);
 
   const navigateToProject = (projectName: string) => {
-    router.push(`${ROUTES.QA}/rapports-qa?project=${encodeURIComponent(projectName)}`);
+    router.push(`${ROUTES.QA}/anomalies?project=${encodeURIComponent(projectName)}`);
   };
 
   const loadProjects = async () => {
@@ -55,15 +64,6 @@ export default function QARapportsPage() {
       setLoading(false);
     }
   };
-
-  const sidebarLinks = [
-    { href: ROUTES.QA, icon: "dashboard", label: "Dashboard" },
-    { href: `${ROUTES.QA}/cahier-tests`, icon: "science", label: "Cahier de Tests" },
-    { href: `${ROUTES.QA}/anomalies`, icon: "bug_report", label: "Anomalies" },
-    { href: `${ROUTES.QA}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
-    { href: `${ROUTES.QA}/sprints`, icon: "calendar_month", label: "Sprints" },
-    { href: `${ROUTES.QA}/profile`, icon: "account_circle", label: "Mon Profil" },
-  ];
 
   if (loading) {
     return (
@@ -78,13 +78,13 @@ export default function QARapportsPage() {
         }
         headerContent={
           <DashboardHeader
-            title="Rapports QA"
-            subtitle="Generation, edition et export des rapports QA"
+            title="Anomalies"
+            subtitle="Suivi des défauts liés aux cas de test"
           />
         }
       >
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
         </div>
       </DashboardLayout>
     );
@@ -102,18 +102,14 @@ export default function QARapportsPage() {
           />
         }
         headerContent={
-          <DashboardHeader
-            title="Rapports QA"
-            subtitle="Generation, edition et export des rapports QA"
-          />
+          <DashboardHeader title="Anomalies" subtitle="Suivi des défauts" />
         }
       >
         <div className="rounded-xl border border-border bg-surface-dark p-8 text-center">
-          <div className="mb-4 text-muted-foreground">
-            <span className="material-symbols-outlined text-6xl">folder_open</span>
-          </div>
-          <h3 className="mb-2 text-lg font-bold text-foreground">Aucun projet assigne</h3>
-          <p className="text-muted-foreground">Vous n'etes membre d'aucun projet pour le moment.</p>
+          <h3 className="mb-2 text-lg font-bold text-foreground">Aucun projet assigné</h3>
+          <p className="text-muted-foreground">
+            Vous n&apos;êtes membre d&apos;aucun projet pour le moment.
+          </p>
         </div>
       </DashboardLayout>
     );
@@ -131,12 +127,12 @@ export default function QARapportsPage() {
       }
       headerContent={
         <DashboardHeader
-          title="Rapports QA"
-          subtitle={selectedProject?.nom || "Selectionnez un projet"}
+          title="Anomalies"
+          subtitle={selectedProject?.nom || "Sélectionnez un projet"}
         />
       }
     >
-      <div className="max-w-350 mx-auto">
+      <div className="max-w-350 mx-auto space-y-6">
         <ProjectSelectorCard
           projects={projects}
           selectedProjectId={selectedProject?.id ?? null}
@@ -148,20 +144,18 @@ export default function QARapportsPage() {
         />
 
         {selectedProject ? (
-          <CahierTestsManager
-            projectId={selectedProject.id}
-            projectName={selectedProject.nom}
-            rapportOnly
-          />
+          <AnomaliesProjetPanel projectId={selectedProject.id} />
         ) : (
           <div className="rounded-xl border border-border bg-surface-dark p-12">
             <div className="mx-auto max-w-md text-center">
               <div className="mb-6 text-muted-foreground">
-                <span className="material-symbols-outlined text-8xl">assessment</span>
+                <span className="material-symbols-outlined text-8xl">bug_report</span>
               </div>
-              <h3 className="mb-3 text-2xl font-bold text-foreground">Selectionnez un projet</h3>
+              <h3 className="mb-3 text-2xl font-bold text-foreground">
+                Sélectionnez un projet
+              </h3>
               <p className="text-base text-muted-foreground">
-                Choisissez le projet pour lequel vous souhaitez consulter le rapport QA.
+                Choisissez le projet pour consulter et gérer les anomalies QA.
               </p>
             </div>
           </div>

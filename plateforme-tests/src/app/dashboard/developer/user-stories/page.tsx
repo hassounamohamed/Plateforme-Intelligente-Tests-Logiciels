@@ -1,59 +1,44 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { ProjectSelectorCard } from "@/components/dashboard/ProjectSelectorCard";
+import { Modal } from "@/components/Modal";
 import { ROUTES } from "@/lib/constants";
 import { useAuthStore } from "@/features/auth/store";
 import { getMyProjectsAsMember } from "@/features/projects/api";
 import { getEpics } from "@/features/epics/api";
 import { changeUserStoryStatus, getUserStories } from "@/features/userstories/api";
-import { ArrowRight, FileText, Flag, X } from "lucide-react";
 import { Project, Epic, UserStory, PrioriteUS, StatutUS } from "@/types";
+
+const selectFieldClass =
+  "w-full rounded-lg border border-border bg-background px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-[#3b4754] dark:bg-[#283039]";
 
 export default function UserStoriesPage() {
   const { user } = useAuthStore();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  
-  
   const [epics, setEpics] = useState<Epic[]>([]);
-  const [selectedEpics, setSelectedEpics] = useState<number[]>([]);
+  const [selectedEpicId, setSelectedEpicId] = useState<number | null>(null);
   const [userStories, setUserStories] = useState<UserStory[]>([]);
-  const [allUserStories, setAllUserStories] = useState<UserStory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [storiesLoading, setStoriesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedStory, setSelectedStory] = useState<UserStory | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<StatutUS | "all">("all");
   const [statusUpdating, setStatusUpdating] = useState(false);
 
-  useEffect(() => {
-    loadProjects();
-  }, []);
+  const sidebarLinks = [
+    { href: ROUTES.DEVELOPER, icon: "dashboard", label: "Dashboard" },
+    { href: `${ROUTES.DEVELOPER}/sprints`, icon: "calendar_month", label: "Sprints" },
+    { href: `${ROUTES.DEVELOPER}/user-stories`, icon: "article", label: "User Stories" },
+    { href: `${ROUTES.DEVELOPER}/cahier-tests`, icon: "menu_book", label: "Cahier de Tests" },
+    { href: `${ROUTES.DEVELOPER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
+    { href: `${ROUTES.DEVELOPER}/profile`, icon: "account_circle", label: "Mon Profil" },
+  ];
 
-  useEffect(() => {
-    if (selectedProject) {
-      loadEpics(selectedProject.id);
-    }
-  }, [selectedProject]);
-
-  useEffect(() => {
-    if (selectedProject) {
-      loadUserStoriesForFilters(selectedProject.id, selectedEpics);
-    } else {
-      setUserStories([]);
-      setAllUserStories([]);
-    }
-  }, [selectedEpics, selectedProject]);
-
-  useEffect(() => {
-    filterUserStories();
-  }, [searchQuery, statusFilter, allUserStories]);
-
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -68,107 +53,108 @@ export default function UserStoriesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadEpics = async (projectId: number) => {
+  const loadEpics = useCallback(async (projectId: number) => {
     try {
       const data = await getEpics(projectId);
       setEpics(data);
+      setSelectedEpicId(null);
     } catch (err) {
-      setError("Erreur lors du chargement des épics");
+      setError("Erreur lors du chargement des epics");
       console.error("Erreur:", err);
+      setEpics([]);
+      setSelectedEpicId(null);
     }
-  };
+  }, []);
 
-  
-
-  const loadUserStoriesForFilters = async (projectId: number, epicIds: number[]) => {
-    try {
-      setAllUserStories([]);
-      const allStories: UserStory[] = [];
-      
-      if (epicIds.length > 0) {
-        for (const epicId of epicIds) {
-          const data = await getUserStories(projectId, epicId);
-          allStories.push(...data);
+  const loadUserStories = useCallback(
+    async (projectId: number, epicId: number | null, epicsList: Epic[]) => {
+      setStoriesLoading(true);
+      setError(null);
+      try {
+        let stories: UserStory[] = [];
+        if (epicId) {
+          stories = await getUserStories(projectId, epicId);
+        } else {
+          const results = await Promise.all(
+            epicsList.map((epic) => getUserStories(projectId, epic.id).catch(() => []))
+          );
+          stories = results.flat();
         }
-      } else {
-        for (const epic of epics) {
-          const data = await getUserStories(projectId, epic.id);
-          allStories.push(...data);
-        }
+        const unique = Array.from(new Map(stories.map((s) => [s.id, s])).values());
+        setUserStories(unique);
+      } catch (err) {
+        setError("Erreur lors du chargement des user stories");
+        console.error("Erreur:", err);
+        setUserStories([]);
+      } finally {
+        setStoriesLoading(false);
       }
+    },
+    []
+  );
 
-      const uniqueStories = Array.from(new Map(allStories.map(s => [s.id, s])).values());
-      setAllUserStories(uniqueStories);
-      filterUserStories();
-    } catch (err) {
-      setError("Erreur lors du chargement des user stories");
-      console.error("Erreur:", err);
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
+
+  useEffect(() => {
+    if (selectedProject) {
+      setUserStories([]);
+      loadEpics(selectedProject.id);
+    } else {
+      setEpics([]);
+      setSelectedEpicId(null);
+      setUserStories([]);
     }
-  };
+  }, [selectedProject, loadEpics]);
 
-  const filterUserStories = () => {
-    let filtered = allUserStories;
-
-    // Filtrer par search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (story) =>
-          story.titre.toLowerCase().includes(query) ||
-          story.reference?.toLowerCase().includes(query) ||
-          story.description?.toLowerCase().includes(query)
-      );
+  useEffect(() => {
+    if (!selectedProject || epics.length === 0) {
+      setUserStories([]);
+      return;
     }
+    loadUserStories(selectedProject.id, selectedEpicId, epics);
+  }, [selectedProject, selectedEpicId, epics, loadUserStories]);
 
-    // Filtrer par statut
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((story) => story.statut === statusFilter);
-    }
-
-    setUserStories(filtered);
-  };
-
-  
-
-  const toggleEpicFilter = (epicId: number) => {
-    setSelectedEpics((prev) =>
-      prev.includes(epicId) ? prev.filter((id) => id !== epicId) : [...prev, epicId]
-    );
-  };
-
-  const sidebarLinks = [
-    { href: ROUTES.DEVELOPER, icon: "dashboard", label: "Dashboard" },
-    { href: `${ROUTES.DEVELOPER}/sprints`, icon: "calendar_month", label: "Sprints" },
-    { href: `${ROUTES.DEVELOPER}/user-stories`, icon: "article", label: "User Stories" },
-    { href: `${ROUTES.DEVELOPER}/cahier-tests`, icon: "menu_book", label: "Cahier de Tests" },
-    { href: `${ROUTES.DEVELOPER}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
-    { href: `${ROUTES.DEVELOPER}/profile`, icon: "account_circle", label: "Mon Profil" },
-  ];
-
-  const getPriorityStyle = (priority: PrioriteUS): string => {
-    switch (priority) {
-      case "must_have": return "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 border border-red-300 dark:border-red-500/30";
-      case "should_have": return "bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400 border border-orange-300 dark:border-orange-500/30";
-      case "could_have": return "bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-500/30";
-      case "wont_have": return "bg-gray-200 dark:bg-gray-500/20 text-gray-700 dark:text-gray-400 border border-gray-300 dark:border-gray-500/30";
-      default: return "bg-gray-200 dark:bg-gray-500/20 text-gray-700 dark:text-gray-400 border border-gray-300 dark:border-gray-500/30";
-    }
-  };
-
-  const getStatusStyle = (status: StatutUS): string => {
+  const getStatusColor = (status: StatutUS): string => {
     switch (status) {
-      case "done": return "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-500/30";
-      case "in_progress": return "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-500/30";
-      case "ready_for_test": return "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-500/30";
-      case "to_do": return "bg-gray-200 dark:bg-gray-500/20 text-gray-700 dark:text-gray-400 border border-gray-300 dark:border-gray-500/30";
-      default: return "bg-gray-200 dark:bg-gray-500/20 text-gray-700 dark:text-gray-400 border border-gray-300 dark:border-gray-500/30";
+      case "done":
+        return "bg-green-500/15 text-green-700 dark:text-green-400";
+      case "in_progress":
+        return "bg-blue-500/15 text-blue-700 dark:text-blue-400";
+      case "ready_for_test":
+        return "bg-amber-500/15 text-amber-800 dark:text-amber-400";
+      case "a_corriger":
+        return "bg-red-500/15 text-red-700 dark:text-red-400";
+      case "to_do":
+      default:
+        return "bg-muted/30 text-muted-foreground";
+    }
+  };
+
+  const getPriorityColor = (priority: PrioriteUS): string => {
+    switch (priority) {
+      case "must_have":
+        return "text-red-600 dark:text-red-400";
+      case "should_have":
+        return "text-amber-700 dark:text-amber-400";
+      case "could_have":
+        return "text-primary";
+      case "wont_have":
+      default:
+        return "text-muted-foreground";
     }
   };
 
   const formatPriority = (priority: PrioriteUS): string => {
-    const map: Record<PrioriteUS, string> = { must_have: "Must Have", should_have: "Should Have", could_have: "Could Have", wont_have: "Won't Have" };
+    const map: Record<PrioriteUS, string> = {
+      must_have: "Must Have",
+      should_have: "Should Have",
+      could_have: "Could Have",
+      wont_have: "Won't Have",
+    };
     return map[priority] || priority;
   };
 
@@ -176,7 +162,7 @@ export default function UserStoriesPage() {
     const map: Record<StatutUS, string> = {
       to_do: "À faire",
       in_progress: "En cours",
-      ready_for_test: "Pret pour test",
+      ready_for_test: "Prêt pour test",
       a_corriger: "À corriger",
       done: "Terminé",
     };
@@ -188,11 +174,8 @@ export default function UserStoriesPage() {
     return story.developerId === user.id;
   };
 
-  const replaceStoryInLists = (updatedStory: UserStory) => {
+  const replaceStoryInList = (updatedStory: UserStory) => {
     setSelectedStory(updatedStory);
-    setAllUserStories((previous) =>
-      previous.map((story) => (story.id === updatedStory.id ? updatedStory : story))
-    );
     setUserStories((previous) =>
       previous.map((story) => (story.id === updatedStory.id ? updatedStory : story))
     );
@@ -214,7 +197,7 @@ export default function UserStoriesPage() {
         selectedStory.id,
         { statut: nextStatus }
       );
-      replaceStoryInLists(updated);
+      replaceStoryInList(updated);
     } catch (err) {
       console.error("Erreur lors du changement de statut:", err);
       setError("Erreur lors du changement de statut de la user story");
@@ -226,11 +209,15 @@ export default function UserStoriesPage() {
   if (loading && projects.length === 0) {
     return (
       <DashboardLayout
-        sidebarContent={<Sidebar title="Developer" subtitle="FlowPilot Platform" icon="code" links={sidebarLinks} />}
-        headerContent={<DashboardHeader title="User Stories" subtitle="Visualisation des user stories du projet" />}
+        sidebarContent={
+          <Sidebar title="Developer" subtitle="FlowPilot Platform" icon="code" links={sidebarLinks} />
+        }
+        headerContent={
+          <DashboardHeader title="User Stories" subtitle="Consultez les user stories par epic" />
+        }
       >
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="flex h-64 items-center justify-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary" />
         </div>
       </DashboardLayout>
     );
@@ -239,11 +226,16 @@ export default function UserStoriesPage() {
   if (projects.length === 0) {
     return (
       <DashboardLayout
-        sidebarContent={<Sidebar title="Developer" subtitle="FlowPilot Platform" icon="code" links={sidebarLinks} />}
-        headerContent={<DashboardHeader title="User Stories" subtitle="Visualisation des user stories du projet" />}
+        sidebarContent={
+          <Sidebar title="Developer" subtitle="FlowPilot Platform" icon="code" links={sidebarLinks} />
+        }
+        headerContent={
+          <DashboardHeader title="User Stories" subtitle="Consultez les user stories par epic" />
+        }
       >
-        <div className="flex items-center justify-center h-64 text-gray-400">
-          <p>Aucun projet disponible</p>
+        <div className="rounded-xl border border-border bg-surface-dark p-8 text-center">
+          <span className="material-symbols-outlined mb-3 text-5xl text-muted-foreground">folder_off</span>
+          <p className="text-muted-foreground">Aucun projet disponible</p>
         </div>
       </DashboardLayout>
     );
@@ -251,341 +243,306 @@ export default function UserStoriesPage() {
 
   return (
     <DashboardLayout
-      sidebarContent={<Sidebar title="Developer" subtitle="FlowPilot Platform" icon="code" links={sidebarLinks} />}
-      headerContent={<DashboardHeader title="User Stories" subtitle="Visualisation des user stories du projet" />}
+      sidebarContent={
+        <Sidebar title="Developer" subtitle="FlowPilot Platform" icon="code" links={sidebarLinks} />
+      }
+      headerContent={
+        <DashboardHeader title="User Stories" subtitle="Consultez les user stories par epic" />
+      }
     >
-      <div className="space-y-6">
+      <div className="mx-auto flex max-w-350 flex-col gap-6">
         {error && (
-          <div className="bg-red-500/10 dark:bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 px-4 py-3 rounded flex items-center justify-between">
-            <span>{error}</span>
-            <button onClick={() => setError(null)} className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">✕</button>
+          <div className="flex items-start gap-3 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3">
+            <span className="material-symbols-outlined text-xl text-red-600 dark:text-red-400">error</span>
+            <div className="flex-1">
+              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200"
+              aria-label="Fermer le message d'erreur"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
           </div>
         )}
 
-        {projects.length > 0 && (
-          <ProjectSelectorCard
-            projects={projects.map(p => ({ id: p.id, nom: p.nom }))}
-            selectedProjectId={selectedProject?.id ?? null}
-            selectedProjectName={selectedProject?.nom}
-            onSelectProject={(projectId) => {
-              const project = projects.find(p => p.id === projectId);
-              if (project) setSelectedProject(project);
-            }}
-            title="Projets"
-            description="Sélectionnez un projet pour visualiser ses user stories"
-            placeholder="-- Sélectionnez un projet --"
-          />
+        <ProjectSelectorCard
+          projects={projects.map((p) => ({ id: p.id, nom: p.nom }))}
+          selectedProjectId={selectedProject?.id ?? null}
+          selectedProjectName={selectedProject?.nom}
+          onSelectProject={(projectId) => {
+            const project = projects.find((p) => p.id === projectId);
+            if (project) setSelectedProject(project);
+          }}
+          badgeText="User stories developpeur"
+          title="Projet"
+          description="Selectionnez un projet, puis filtrez par epic."
+          placeholder="-- Selectionnez un projet --"
+        />
+
+        {selectedProject && epics.length > 0 && (
+          <div className="rounded-xl border border-border bg-surface-dark p-4">
+            <label htmlFor="dev-us-epic-filter" className="mb-2 block text-sm font-bold text-foreground">
+              Epic
+            </label>
+            <select
+              id="dev-us-epic-filter"
+              value={selectedEpicId ?? ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSelectedEpicId(value ? Number(value) : null);
+              }}
+              className={selectFieldClass}
+            >
+              <option value="">Tous les epics</option>
+              {epics.map((epic) => (
+                <option key={epic.id} value={epic.id}>
+                  {epic.titre}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {selectedEpicId
+                ? `Stories de l'epic « ${epics.find((e) => e.id === selectedEpicId)?.titre ?? ""} »`
+                : "Toutes les user stories du projet"}
+            </p>
+          </div>
         )}
 
-        {selectedProject && (
-          <div className="space-y-6">
-            {/* Filtres Épics */}
-            {epics.length > 0 && (
-              <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg border border-gray-300 dark:border-gray-700 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                    <Flag className="h-5 w-5 text-purple-600 dark:text-purple-400" aria-hidden="true" />
-                    Épics
-                  </h3>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">{selectedEpics.length} sélectionné(s)</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {epics.map((epic) => (
-                    <label
-                      key={epic.id}
-                      className={`p-4 rounded-lg border cursor-pointer transition ${
-                        selectedEpics.includes(epic.id)
-                          ? "bg-purple-100 dark:bg-purple-500/20 border-purple-400 dark:border-purple-500 text-purple-700 dark:text-purple-300"
-                          : "bg-gray-100 dark:bg-gray-800/30 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-600"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedEpics.includes(epic.id)}
-                          onChange={() => toggleEpicFilter(epic.id)}
-                          className="mt-1 w-4 h-4 cursor-pointer"
-                        />
-                        <div>
-                          <div className="font-semibold">{epic.titre}</div>
-                          {epic.description && <div className="text-sm opacity-70 mt-1 line-clamp-2">{epic.description}</div>}
-                        </div>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
+        {selectedProject && epics.length === 0 && !storiesLoading && (
+          <div className="rounded-xl border border-dashed border-border bg-surface-dark p-8 text-center">
+            <span className="material-symbols-outlined mb-3 text-5xl text-muted-foreground">flag</span>
+            <h3 className="text-lg font-bold text-foreground">Aucun epic</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Ce projet ne contient pas encore d'epic avec des user stories.
+            </p>
+          </div>
+        )}
 
-            {/* User Stories */}
-            {epics.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    User Stories ({userStories.length})
-                  </h3>
-                  {allUserStories.length > userStories.length && (
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {userStories.length} sur {allUserStories.length} affichées
-                    </span>
-                  )}
-                </div>
+        {storiesLoading && (
+          <div className="flex justify-center py-12">
+            <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary" />
+          </div>
+        )}
 
-                {userStories.length === 0 ? (
-                  <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-8 text-center text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-700">
-                    <FileText className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 opacity-50" aria-hidden="true" />
-                    <p className="mt-2">Aucune user story trouvée</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-4">
-                    {userStories.map((story) => (
-                      <div
-                        key={story.id}
-                        onClick={() => setSelectedStory(story)}
-                        className="bg-white dark:bg-gray-800/50 rounded-lg p-6 border border-gray-300 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 transition cursor-pointer group"
-                      >
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 flex-wrap">
-                              {story.reference && (
-                                <span className="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-gray-700 dark:text-gray-300">
-                                  {story.reference}
-                                </span>
-                              )}
-                              <h4 className="font-semibold text-gray-900 dark:text-white text-lg group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
-                                {story.titre}
-                              </h4>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusStyle(story.statut)}`}>
-                              {formatStatus(story.statut)}
-                            </span>
-                            <ArrowRight className="h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" aria-hidden="true" />
-                          </div>
-                        </div>
+        {!storiesLoading && selectedProject && epics.length > 0 && userStories.length === 0 && (
+          <div className="rounded-xl border border-border bg-surface-dark p-8 text-center">
+            <span className="material-symbols-outlined mb-3 text-5xl text-muted-foreground">description</span>
+            <h3 className="text-lg font-bold text-foreground">Aucune user story</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Aucune user story pour la selection actuelle.
+            </p>
+          </div>
+        )}
 
-                        {story.description && (
-                          <p className="text-gray-700 dark:text-gray-300 text-sm mb-3 line-clamp-2">{story.description}</p>
+        {!storiesLoading && userStories.length > 0 && (
+          <>
+            <h2 className="text-xl font-bold text-foreground">
+              User Stories ({userStories.length})
+            </h2>
+            <div className="space-y-4">
+              {userStories.map((story) => (
+                <button
+                  key={story.id}
+                  type="button"
+                  onClick={() => setSelectedStory(story)}
+                  className="w-full rounded-xl border border-border bg-surface-dark p-5 text-left transition-colors hover:border-primary/50 dark:border-[#3b4754]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        {story.reference && (
+                          <span className="rounded bg-primary/15 px-2 py-0.5 font-mono text-xs font-bold text-primary">
+                            {story.reference}
+                          </span>
                         )}
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          <div className="bg-gray-100 dark:bg-gray-900/50 rounded p-2">
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Priorité</p>
-                            <span className={`text-xs font-medium px-2 py-1 rounded inline-block mt-1 ${getPriorityStyle(story.priorite)}`}>
-                              {formatPriority(story.priorite)}
-                            </span>
-                          </div>
-                          {story.points && (
-                            <div className="bg-gray-100 dark:bg-gray-900/50 rounded p-2">
-                              <p className="text-xs text-gray-600 dark:text-gray-400">Points</p>
-                              <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1">{story.points}</p>
-                            </div>
-                          )}
-                          {story.duree_estimee && (
-                            <div className="bg-gray-100 dark:bg-gray-900/50 rounded p-2">
-                              <p className="text-xs text-gray-600 dark:text-gray-400">Durée</p>
-                              <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1">{story.duree_estimee}h</p>
-                            </div>
-                          )}
-                          {story.developer && (
-                            <div className="bg-gray-100 dark:bg-gray-900/50 rounded p-2">
-                              <p className="text-xs text-gray-600 dark:text-gray-400">Dev</p>
-                              <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mt-1">{story.developer.nom}</p>
-                            </div>
-                          )}
-                          {isStoryAssignedToMe(story) && (
-                            <div className="bg-green-100 dark:bg-green-500/20 rounded p-2 border border-green-300 dark:border-green-500/30">
-                              <p className="text-xs text-green-700 dark:text-green-300">Assignée à vous</p>
-                              <p className="text-sm font-semibold text-green-800 dark:text-green-200 mt-1">Action autorisée</p>
-                            </div>
-                          )}
-                        </div>
+                        <h3 className="text-lg font-bold text-foreground">{story.titre}</h3>
                       </div>
-                    ))}
+                      {story.description && (
+                        <p className="line-clamp-2 text-sm text-muted-foreground">{story.description}</p>
+                      )}
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${getStatusColor(story.statut)}`}
+                    >
+                      {formatStatus(story.statut)}
+                    </span>
                   </div>
-                )}
-              </div>
-            )}
-          </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <span className={`text-xs font-bold uppercase ${getPriorityColor(story.priorite)}`}>
+                      {formatPriority(story.priorite)}
+                    </span>
+                    {story.points != null && (
+                      <span className="flex items-center gap-1 rounded bg-(--surface-2) px-2 py-1 text-xs font-semibold text-foreground dark:bg-[#283039]">
+                        <span className="material-symbols-outlined text-[14px]">speed</span>
+                        {story.points} pts
+                      </span>
+                    )}
+                    {story.duree_estimee != null && (
+                      <span className="flex items-center gap-1 rounded bg-(--surface-2) px-2 py-1 text-xs font-semibold text-foreground dark:bg-[#283039]">
+                        <span className="material-symbols-outlined text-[14px]">schedule</span>
+                        {story.duree_estimee}h
+                      </span>
+                    )}
+                    {story.developer && (
+                      <span className="text-xs text-muted-foreground">
+                        Dev: <span className="font-medium text-foreground">{story.developer.nom}</span>
+                      </span>
+                    )}
+                    {isStoryAssignedToMe(story) && (
+                      <span className="rounded-full border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-xs font-semibold text-green-800 dark:text-green-300">
+                        Assignée à vous
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
-      {/* Modal Détails User Story */}
-      {selectedStory && (
-        <div
-          className="fixed inset-0 bg-black/70 dark:bg-black/70 z-50 flex items-center justify-center p-4"
-          onClick={() => setSelectedStory(null)}
-        >
-          <div
-            className="bg-white dark:bg-gray-900 rounded-lg border border-gray-300 dark:border-gray-700 max-w-4xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header Modal */}
-            <div className="sticky top-0 flex items-start justify-between p-6 border-b border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  {selectedStory.reference && (
-                    <span className="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-gray-700 dark:text-gray-300">
-                      {selectedStory.reference}
-                    </span>
-                  )}
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusStyle(selectedStory.statut)}`}>
-                    {formatStatus(selectedStory.statut)}
-                  </span>
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedStory.titre}</h2>
-              </div>
-              <button
-                onClick={() => setSelectedStory(null)}
-                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition"
-              >
-                <X className="h-5 w-5" aria-hidden="true" />
-              </button>
+      <Modal
+        isOpen={!!selectedStory}
+        onClose={() => setSelectedStory(null)}
+        title={selectedStory?.titre ?? "User story"}
+        size="lg"
+      >
+        {selectedStory && (
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedStory.reference && (
+                <span className="rounded bg-primary/15 px-2 py-0.5 font-mono text-xs font-bold text-primary">
+                  {selectedStory.reference}
+                </span>
+              )}
+              <span className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusColor(selectedStory.statut)}`}>
+                {formatStatus(selectedStory.statut)}
+              </span>
+              <span className={`text-xs font-bold uppercase ${getPriorityColor(selectedStory.priorite)}`}>
+                {formatPriority(selectedStory.priorite)}
+              </span>
             </div>
 
-            {/* Body Modal */}
-            <div className="p-6 space-y-6">
-              {/* Description */}
-              {selectedStory.description && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Description</h3>
-                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{selectedStory.description}</p>
-                </div>
-              )}
+            {selectedStory.description && (
+              <div>
+                <h4 className="mb-2 text-sm font-bold text-foreground">Description</h4>
+                <p className="whitespace-pre-wrap text-sm text-muted-foreground">{selectedStory.description}</p>
+              </div>
+            )}
 
-              {/* Critères d'acceptation */}
-              {selectedStory.criteresAcceptation && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Critères d'acceptation</h3>
-                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap bg-gray-100 dark:bg-gray-800/50 p-4 rounded border border-gray-300 dark:border-gray-700">
-                    {selectedStory.criteresAcceptation}
+            {selectedStory.criteresAcceptation && (
+              <div>
+                <h4 className="mb-2 text-sm font-bold text-foreground">Critères d'acceptation</h4>
+                <p className="whitespace-pre-wrap rounded-lg border border-border bg-(--surface-2) p-4 text-sm text-foreground dark:border-[#3b4754]">
+                  {selectedStory.criteresAcceptation}
+                </p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2 rounded-lg border border-border bg-(--surface-2) p-4 dark:border-[#3b4754]">
+                <h4 className="text-sm font-bold text-foreground">Informations</h4>
+                {selectedStory.points != null && (
+                  <p className="text-sm text-muted-foreground">
+                    Points: <span className="font-semibold text-foreground">{selectedStory.points}</span>
                   </p>
-                </div>
-              )}
+                )}
+                {selectedStory.duree_estimee != null && (
+                  <p className="text-sm text-muted-foreground">
+                    Durée:{" "}
+                    <span className="font-semibold text-foreground">{selectedStory.duree_estimee}h</span>
+                  </p>
+                )}
+                {selectedStory.start_date && (
+                  <p className="text-sm text-muted-foreground">
+                    Début:{" "}
+                    <span className="font-semibold text-foreground">
+                      {new Date(selectedStory.start_date).toLocaleDateString("fr-FR")}
+                    </span>
+                  </p>
+                )}
+                {selectedStory.end_date && (
+                  <p className="text-sm text-muted-foreground">
+                    Fin:{" "}
+                    <span className="font-semibold text-foreground">
+                      {new Date(selectedStory.end_date).toLocaleDateString("fr-FR")}
+                    </span>
+                  </p>
+                )}
+              </div>
 
-              {/* Informations */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Informations</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center p-3 bg-gray-100 dark:bg-gray-800/50 rounded">
-                      <span className="text-gray-600 dark:text-gray-400">Priorité</span>
-                      <span className={`font-medium px-2 py-1 rounded ${getPriorityStyle(selectedStory.priorite)}`}>
-                        {formatPriority(selectedStory.priorite)}
-                      </span>
-                    </div>
-                    {selectedStory.points && (
-                      <div className="flex justify-between items-center p-3 bg-gray-100 dark:bg-gray-800/50 rounded">
-                        <span className="text-gray-600 dark:text-gray-400">Points</span>
-                        <span className="text-gray-900 dark:text-white font-semibold">{selectedStory.points}</span>
-                      </div>
-                    )}
-                    {selectedStory.duree_estimee && (
-                      <div className="flex justify-between items-center p-3 bg-gray-100 dark:bg-gray-800/50 rounded">
-                        <span className="text-gray-600 dark:text-gray-400">Durée estimée</span>
-                        <span className="text-gray-900 dark:text-white font-semibold">{selectedStory.duree_estimee}h</span>
-                      </div>
-                    )}
-                    {selectedStory.start_date && (
-                      <div className="flex justify-between items-center p-3 bg-gray-100 dark:bg-gray-800/50 rounded">
-                        <span className="text-gray-600 dark:text-gray-400">Début</span>
-                        <span className="text-gray-900 dark:text-white font-semibold">
-                          {new Date(selectedStory.start_date).toLocaleDateString("fr-FR")}
-                        </span>
-                      </div>
-                    )}
-                    {selectedStory.end_date && (
-                      <div className="flex justify-between items-center p-3 bg-gray-100 dark:bg-gray-800/50 rounded">
-                        <span className="text-gray-600 dark:text-gray-400">Fin</span>
-                        <span className="text-gray-900 dark:text-white font-semibold">
-                          {new Date(selectedStory.end_date).toLocaleDateString("fr-FR")}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Assignés */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Équipe</h3>
-                  <div className="space-y-3">
-                    {selectedStory.developer && (
-                      <div className="p-4 bg-blue-100 dark:bg-blue-500/10 rounded border border-blue-300 dark:border-blue-500/30">
-                        <p className="text-xs text-blue-700 dark:text-blue-400 mb-2 font-semibold">Développeur</p>
-                        <p className="font-medium text-blue-900 dark:text-blue-300">{selectedStory.developer.nom}</p>
-                        <p className="text-xs text-blue-800 dark:text-blue-400">{selectedStory.developer.email}</p>
-                      </div>
-                    )}
-                    {selectedStory.tester && (
-                      <div className="p-4 bg-purple-100 dark:bg-purple-500/10 rounded border border-purple-300 dark:border-purple-500/30">
-                        <p className="text-xs text-purple-700 dark:text-purple-400 mb-2 font-semibold">Testeur</p>
-                        <p className="font-medium text-purple-900 dark:text-purple-300">{selectedStory.tester.nom}</p>
-                        <p className="text-xs text-purple-800 dark:text-purple-400">{selectedStory.tester.email}</p>
-                      </div>
-                    )}
-                    {selectedStory.assignee && (
-                      <div className="p-4 bg-green-100 dark:bg-green-500/10 rounded border border-green-300 dark:border-green-500/30">
-                        <p className="text-xs text-green-700 dark:text-green-400 mb-2 font-semibold">Responsable</p>
-                        <p className="font-medium text-green-900 dark:text-green-300">{selectedStory.assignee.nom}</p>
-                        <p className="text-xs text-green-800 dark:text-green-400">{selectedStory.assignee.email}</p>
-                      </div>
-                    )}
-                    {!selectedStory.developer && !selectedStory.tester && !selectedStory.assignee && (
-                      <p className="text-gray-500 dark:text-gray-400 text-center py-4">Aucune personne assignée</p>
-                    )}
-                  </div>
-                </div>
+              <div className="space-y-2 rounded-lg border border-border bg-(--surface-2) p-4 dark:border-[#3b4754]">
+                <h4 className="text-sm font-bold text-foreground">Équipe</h4>
+                {selectedStory.developer ? (
+                  <p className="text-sm text-muted-foreground">
+                    Développeur:{" "}
+                    <span className="font-medium text-foreground">{selectedStory.developer.nom}</span>
+                  </p>
+                ) : null}
+                {selectedStory.tester ? (
+                  <p className="text-sm text-muted-foreground">
+                    Testeur: <span className="font-medium text-foreground">{selectedStory.tester.nom}</span>
+                  </p>
+                ) : null}
+                {!selectedStory.developer && !selectedStory.tester && (
+                  <p className="text-sm text-muted-foreground">Aucune personne assignée</p>
+                )}
               </div>
             </div>
 
-            {/* Footer Modal */}
-            <div className="sticky bottom-0 flex justify-end p-6 border-t border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80 gap-3">
-                {isStoryAssignedToMe(selectedStory) ? (
-                  <>
-                    {selectedStory.statut === "done" ? (
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
+              {isStoryAssignedToMe(selectedStory) ? (
+                <>
+                  {selectedStory.statut === "done" ? (
+                    <button
+                      type="button"
+                      onClick={() => handleChangeSelectedStoryStatus("in_progress")}
+                      disabled={statusUpdating}
+                      className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-50"
+                    >
+                      {statusUpdating ? "Mise à jour..." : "Rouvrir"}
+                    </button>
+                  ) : (
+                    <>
                       <button
-                        onClick={() => handleChangeSelectedStoryStatus("in_progress")}
-                        disabled={statusUpdating}
-                        className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white transition"
+                        type="button"
+                        onClick={() => handleChangeSelectedStoryStatus("ready_for_test")}
+                        disabled={statusUpdating || selectedStory.statut === "ready_for_test"}
+                        className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-50"
                       >
-                        {statusUpdating ? "Mise à jour..." : "Rouvrir"}
+                        {statusUpdating ? "Mise à jour..." : "Prêt pour test"}
                       </button>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => handleChangeSelectedStoryStatus("ready_for_test")}
-                          disabled={statusUpdating || selectedStory.statut === "ready_for_test"}
-                          className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white transition"
-                        >
-                          {statusUpdating ? "Mise à jour..." : "Pret pour test"}
-                        </button>
-                        <button
-                          onClick={() => handleChangeSelectedStoryStatus("done")}
-                          disabled={statusUpdating}
-                          className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white transition"
-                        >
-                          {statusUpdating ? "Mise à jour..." : "Marquer terminée"}
-                        </button>
-                      </>
-                    )}
-                  </>
-                ) : (
-                  <div className="flex items-center px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-sm">
-                    Seules les user stories assignées à votre compte peuvent changer de statut.
-                  </div>
-                )}
+                      <button
+                        type="button"
+                        onClick={() => handleChangeSelectedStoryStatus("done")}
+                        disabled={statusUpdating}
+                        className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 disabled:opacity-50"
+                      >
+                        {statusUpdating ? "Mise à jour..." : "Marquer terminée"}
+                      </button>
+                    </>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Seules les user stories assignées à votre compte peuvent changer de statut.
+                </p>
+              )}
               <button
+                type="button"
                 onClick={() => setSelectedStory(null)}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg text-gray-900 dark:text-white transition"
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:bg-(--surface-2) dark:border-[#3b4754]"
               >
                 Fermer
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </DashboardLayout>
   );
 }
-
