@@ -123,7 +123,6 @@ class SprintService:
                 )
 
         self.repo.db.commit()
-
     def _normalize_existing_sprint_status(self, sprint) -> str:
         if not sprint or not sprint.statut:
             return ""
@@ -323,7 +322,7 @@ class SprintService:
     def demarrer_sprint(self, projet_id: int, sprint_id: int, current_user_id: int):
         sprint = self._get_sprint_ou_404(sprint_id, projet_id)
         current_status = self._normalize_existing_sprint_status(sprint) or sprint.statut
-        if current_status not in {"planifie", "planned"}:
+        if current_status != "planifie":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail=f"Seul un sprint 'planifie' peut être démarré (statut actuel: {sprint.statut}).")
         # Un seul sprint actif par projet
@@ -352,7 +351,7 @@ class SprintService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail=f"Sprint {sprint_id} introuvable.")
         current_status = self._normalize_existing_sprint_status(sprint) or sprint.statut
-        if current_status not in {"planifie", "planned"}:
+        if current_status != "planifie":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail=f"Seul un sprint 'planifie' peut être démarré (statut actuel: {sprint.statut}).")
         # Utiliser le vrai projet_id du sprint pour vérifier
