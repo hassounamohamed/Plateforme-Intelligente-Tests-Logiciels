@@ -16,7 +16,15 @@ jobs:
 
       - name: Archive repository
         run: |
-          tar --exclude=.git --exclude=node_modules -czf app.tar.gz .
+          tar \
+            --exclude=./app.tar.gz \
+            --exclude=./.git \
+            --exclude=./node_modules \
+            --exclude=./plateforme-tests/node_modules \
+            --exclude=./plateforme-back/.venv \
+            --exclude=./plateforme-back/__pycache__ \
+            --exclude=./.venv \
+            -czf app.tar.gz .
 
       - name: Copy archive to VPS
         uses: appleboy/scp-action@master

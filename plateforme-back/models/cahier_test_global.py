@@ -113,9 +113,10 @@ class CasTest(Base):
     anomalies = relationship(
         "Anomalie",
         back_populates="cas_test",
+        foreign_keys="[Anomalie.cas_test_id]",
         cascade="all, delete-orphan",
-        order_by="Anomalie.dateCreation.desc()",
     )
+
 
 
 class CasTestHistory(Base):

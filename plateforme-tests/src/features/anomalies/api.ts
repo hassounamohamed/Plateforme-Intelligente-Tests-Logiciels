@@ -45,7 +45,8 @@ export const createAnomalie = async (
 ): Promise<Anomalie> => {
   const response = await axiosInstance.post<Anomalie>(
     getCasAnomaliesBase(projectId, cahierId, casId),
-    payload
+    payload,
+    { suppressErrorLog: true }
   );
   return response.data;
 };

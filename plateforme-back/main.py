@@ -41,7 +41,11 @@ from api.attachments import router as attachments_router
 from api.ai_generation import router as ai_generation_router
 from api.cahier_test_global import router as cahier_test_global_router
 from api.rapport import router as rapport_router
-from api.anomalies import router as anomalies_router, cas_router as anomalies_cas_router
+from api.anomalies import (
+    router as anomalies_router,
+    cas_router as anomalies_cas_router,
+    legacy_cas_router as anomalies_legacy_cas_router,
+)
 from api.notifications import router as notifications_router
 from api.unit_tests import router as unit_tests_router
 from api.dashboard import router as dashboard_router
@@ -151,44 +155,6 @@ if ENVIRONMENT == "production":
     )
 
 
-def _ensure_anomalie_cas_test_id_column() -> None:
-    """Ajoute cas_test_id sur anomalie si la colonne manque (idempotent)."""
-    statements = [
-        "ALTER TABLE anomalie ADD COLUMN IF NOT EXISTS cas_test_id INTEGER",
-        """
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM pg_constraint WHERE conname = 'fk_anomalie_cas_test_id'
-            ) THEN
-                ALTER TABLE anomalie
-                ADD CONSTRAINT fk_anomalie_cas_test_id
-                FOREIGN KEY (cas_test_id) REFERENCES cas_test(id) ON DELETE CASCADE;
-            END IF;
-        END $$;
-        """,
-        "CREATE INDEX IF NOT EXISTS ix_anomalie_cas_test_id ON anomalie (cas_test_id)",
-    ]
-    try:
-        with engine.begin() as connection:
-            for stmt in statements:
-                connection.execute(text(stmt))
-        print("[OK] Colonne anomalie.cas_test_id verifiee.")
-    except Exception as exc:
-        err = str(exc).lower()
-        if "insufficientprivilege" in err or "must be owner" in err or "permission denied" in err:
-            print("[WARNING] Impossible d'alterer la table anomalie (droits insuffisants).")
-            print(
-                "[WARNING] Executez en tant que proprietaire PostgreSQL :\n"
-                "  ALTER TABLE anomalie ADD COLUMN IF NOT EXISTS cas_test_id INTEGER;\n"
-                "  ALTER TABLE anomalie ADD CONSTRAINT fk_anomalie_cas_test_id "
-                "FOREIGN KEY (cas_test_id) REFERENCES cas_test(id) ON DELETE CASCADE;\n"
-                "  CREATE INDEX IF NOT EXISTS ix_anomalie_cas_test_id ON anomalie (cas_test_id);"
-            )
-        else:
-            print(f"[WARNING] Schema anomalie non mis a jour : {exc}")
-
-
 # 🔹 Initialize database and create tables on startup
 @app.on_event("startup")
 def startup():
@@ -210,8 +176,6 @@ def startup():
                 print("[WARNING] Auto table creation skipped. Apply migration with a privileged DB user.")
             else:
                 raise
-
-        _ensure_anomalie_cas_test_id_column()
 
     except Exception as e:
         print(f"[ERROR] Database initialization failed: {e}")
@@ -257,6 +221,7 @@ app.include_router(cahier_test_global_router)
 app.include_router(rapport_router)
 app.include_router(anomalies_router)
 app.include_router(anomalies_cas_router)
+app.include_router(anomalies_legacy_cas_router)
 app.include_router(notifications_router)
 app.include_router(unit_tests_router)
 app.include_router(dashboard_router)

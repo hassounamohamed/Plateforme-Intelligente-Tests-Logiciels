@@ -36,11 +36,11 @@ class AnomalieService:
     def _to_response(self, anomalie: Anomalie) -> AnomalieResponse:
         reporter_nom = None
         if anomalie.reporter:
-            reporter_nom = f"{anomalie.reporter.prenom or ''} {anomalie.reporter.nom or ''}".strip() or anomalie.reporter.email
+            reporter_nom = anomalie.reporter.nom or anomalie.reporter.email
 
         assigned_nom = None
         if anomalie.assigned:
-            assigned_nom = f"{anomalie.assigned.prenom or ''} {anomalie.assigned.nom or ''}".strip() or anomalie.assigned.email
+            assigned_nom = anomalie.assigned.nom or anomalie.assigned.email
 
         cas_test_ref = None
         cas_test_titre = None
@@ -57,7 +57,6 @@ class AnomalieService:
             priorite=anomalie.priorite,
             dateCreation=anomalie.dateCreation,
             dateResolution=anomalie.dateResolution,
-            cas_test_id=anomalie.cas_test_id,
             resultat_id=anomalie.resultat_id,
             reporterId=anomalie.reporterId,
             assignedTo=anomalie.assignedTo,
@@ -143,61 +142,39 @@ class AnomalieService:
         reporter_id: int,
         payload: dict,
     ) -> AnomalieResponse:
-        _, cas = self._get_cas_in_projet(projet_id, cahier_id, cas_id)
+        cahier, cas = self._get_cas_in_projet(projet_id, cahier_id, cas_id)
+        _ = cahier
 
         if not _is_failed_or_blocked(cas.statut_test):
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Une anomalie ne peut etre creee que pour un cas de test echoue ou bloque.",
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Impossible de créer une anomalie : le cas de test doit être en statut Échoué ou Bloqué.",
             )
 
         assigned_to = payload.get("assigned_to")
-        initial_statut = "NOUVEAU"
         if assigned_to:
             self._validate_developer_assignee(projet_id, assigned_to)
-            initial_statut = "EN_COURS"
 
-        anomalie = Anomalie(
+        anomalie = self.repo.create_for_cas_test(
+            cas_test_id=cas_id,
+            reporter_id=reporter_id,
             titre=payload["titre"],
             description=payload.get("description"),
-            severite=payload.get("severite") or "MAJEURE",
-            priorite=payload.get("priorite") or "MOYENNE",
-            statut=initial_statut,
-            cas_test_id=cas_id,
-            reporterId=reporter_id,
-            assignedTo=assigned_to,
+            severite=payload.get("severite", "MAJEURE"),
+            priorite=payload.get("priorite", "MOYENNE"),
+            assigned_to=assigned_to or None,
         )
-        self.db.add(anomalie)
-        self.db.commit()
-        self.db.refresh(anomalie)
 
-        created = self.repo.get_by_id_for_projet(anomalie.id, projet_id)
-        if assigned_to and created:
+        if assigned_to:
             self._notify_assignee(
                 projet_id=projet_id,
                 assignee_id=assigned_to,
-                anomalie=created,
+                anomalie=anomalie,
                 cas_ref=cas.test_ref,
                 actor_id=reporter_id,
             )
-        titre_notif = f"Anomalie : {anomalie.titre}"
-        message = f"Anomalie enregistree sur le cas {cas.test_ref} ({cas.test_case[:80]})."
-        priorite = "haute" if anomalie.severite == "CRITIQUE" else "moyenne"
-        notif_type = (
-            TypeNotification.BUG_DETECTED
-            if anomalie.severite == "CRITIQUE"
-            else TypeNotification.ANOMALY_CREATED
-        )
-        self.notification_service.notify_project_users(
-            project_id=projet_id,
-            titre=titre_notif,
-            message=message,
-            notification_type=notif_type,
-            priorite=priorite,
-            exclude_user_id=reporter_id,
-        )
 
-        return self._to_response(created or anomalie)
+        return self._to_response(anomalie)
 
     def update(
         self,
@@ -236,7 +213,7 @@ class AnomalieService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Anomalie introuvable.")
         self._validate_developer_assignee(projet_id, user_id)
         assigned = self.repo.assign_anomalie(anomalie_id, user_id)
-        cas_ref = anomalie.cas_test.test_ref if anomalie.cas_test else "cas de test"
+        cas_ref = "cas de test"
         if assigned:
             self._notify_assignee(
                 projet_id=projet_id,

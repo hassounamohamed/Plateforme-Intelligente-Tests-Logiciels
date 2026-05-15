@@ -103,10 +103,6 @@ export default function AnomaliesProjetPanel({ projectId }: AnomaliesProjetPanel
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-foreground">Suivi des anomalies</h2>
-          <p className="text-sm text-muted-foreground">
-            {openCount} ouverte{openCount > 1 ? "s" : ""} sur {anomalies.length} — cycle : Nouveau →
-            En cours → Résolu
-          </p>
         </div>
         <div className="flex items-center gap-2">
           <label htmlFor="anomalies-statut-filter" className="text-sm text-muted-foreground">

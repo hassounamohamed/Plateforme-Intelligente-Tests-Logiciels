@@ -44,7 +44,6 @@ class AnomalieResponse(BaseModel):
     priorite: str
     dateCreation: datetime
     dateResolution: Optional[datetime] = None
-    cas_test_id: Optional[int] = None
     resultat_id: Optional[int] = None
     reporterId: Optional[int] = None
     assignedTo: Optional[int] = None
