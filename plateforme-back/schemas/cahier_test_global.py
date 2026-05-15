@@ -162,6 +162,8 @@ class CasTestHistoryResponse(BaseModel):
     cas_test_id: int
     cahier_id: int
     changed_by_id: Optional[int]
+    changed_by_nom: Optional[str] = None
+    changed_by_email: Optional[str] = None
     old_statut_test: Optional[str]
     new_statut_test: Optional[str]
     old_type_test: Optional[str]

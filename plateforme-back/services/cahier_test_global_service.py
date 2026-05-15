@@ -776,7 +776,31 @@ class CahierTestGlobalService:
         cas = self.repo.get_cas_test(cas_id, cahier_id)
         if not cas:
             raise HTTPException(status_code=404, detail="Cas de test introuvable.")
-        return self.repo.list_cas_test_history(cas_id, cahier_id)
+        entries = self.repo.list_cas_test_history(cas_id, cahier_id)
+        response = []
+        for entry in entries:
+            response.append(
+                {
+                    "id": entry.id,
+                    "cas_test_id": entry.cas_test_id,
+                    "cahier_id": entry.cahier_id,
+                    "changed_by_id": entry.changed_by_id,
+                    "changed_by_nom": entry.changed_by.nom if entry.changed_by else None,
+                    "changed_by_email": entry.changed_by.email if entry.changed_by else None,
+                    "old_statut_test": entry.old_statut_test,
+                    "new_statut_test": entry.new_statut_test,
+                    "old_type_test": entry.old_type_test,
+                    "new_type_test": entry.new_type_test,
+                    "old_commentaire": entry.old_commentaire,
+                    "new_commentaire": entry.new_commentaire,
+                    "old_bug_titre_correction": entry.old_bug_titre_correction,
+                    "new_bug_titre_correction": entry.new_bug_titre_correction,
+                    "old_bug_nom_tache": entry.old_bug_nom_tache,
+                    "new_bug_nom_tache": entry.new_bug_nom_tache,
+                    "changed_at": entry.changed_at,
+                }
+            )
+        return response
 
     def generer_suggestion_bug(
         self,

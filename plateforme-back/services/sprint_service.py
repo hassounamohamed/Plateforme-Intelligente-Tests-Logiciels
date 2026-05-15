@@ -124,6 +124,21 @@ class SprintService:
 
         self.repo.db.commit()
 
+    def _normalize_existing_sprint_status(self, sprint) -> str:
+        if not sprint or not sprint.statut:
+            return ""
+        raw = str(sprint.statut).strip().lower()
+        if raw == "planned":
+            sprint.statut = "planifie"
+        elif raw == "in_progress":
+            sprint.statut = "en_cours"
+        elif raw == "done":
+            sprint.statut = "termine"
+        if sprint.statut != raw and sprint.id:
+            self.repo.db.commit()
+            self.repo.db.refresh(sprint)
+        return sprint.statut
+
     # ── Helpers ────────────────────────────────────────────────────────────
 
     def _verifier_projet(self, projet_id: int):
@@ -307,7 +322,8 @@ class SprintService:
 
     def demarrer_sprint(self, projet_id: int, sprint_id: int, current_user_id: int):
         sprint = self._get_sprint_ou_404(sprint_id, projet_id)
-        if str(sprint.statut).lower() not in {"planifie", "planned"}:
+        current_status = self._normalize_existing_sprint_status(sprint) or sprint.statut
+        if current_status not in {"planifie", "planned"}:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail=f"Seul un sprint 'planifie' peut être démarré (statut actuel: {sprint.statut}).")
         # Un seul sprint actif par projet
@@ -335,7 +351,8 @@ class SprintService:
         if not sprint:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail=f"Sprint {sprint_id} introuvable.")
-        if str(sprint.statut).lower() not in {"planifie", "planned"}:
+        current_status = self._normalize_existing_sprint_status(sprint) or sprint.statut
+        if current_status not in {"planifie", "planned"}:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail=f"Seul un sprint 'planifie' peut être démarré (statut actuel: {sprint.statut}).")
         # Utiliser le vrai projet_id du sprint pour vérifier
@@ -359,7 +376,8 @@ class SprintService:
 
     def cloturer_sprint(self, projet_id: int, sprint_id: int, current_user_id: int):
         sprint = self._get_sprint_ou_404(sprint_id, projet_id)
-        if sprint.statut != "en_cours":
+        current_status = self._normalize_existing_sprint_status(sprint) or sprint.statut
+        if current_status != "en_cours":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail=f"Seul un sprint 'en_cours' peut être clôturé (statut actuel: {sprint.statut}).")
         updated = self.repo.cloturer(sprint_id)
@@ -383,7 +401,8 @@ class SprintService:
         if not sprint:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail=f"Sprint {sprint_id} introuvable.")
-        if sprint.statut != "en_cours":
+        current_status = self._normalize_existing_sprint_status(sprint) or sprint.statut
+        if current_status != "en_cours":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                                 detail=f"Seul un sprint 'en_cours' peut être clôturé (statut actuel: {sprint.statut}).")
         updated = self.repo.cloturer(sprint_id)
