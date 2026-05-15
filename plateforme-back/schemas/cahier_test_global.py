@@ -13,7 +13,15 @@ from pydantic import BaseModel, ConfigDict, Field
 
 StatutCahier  = Literal["brouillon", "valide"]
 TypeTest      = Literal["Manuel", "Automatisé"]
-StatutTest    = Literal["Non exécuté", "Réussi", "Échoué", "Bloqué"]
+StatutTest    = Literal[
+    "Non exécuté",
+    "En cours",
+    "Pret pour test",
+    "Terminé",
+    "Réussi",
+    "Échoué",
+    "Bloqué",
+]
 ModeGeneration = Literal["ai", "manuelle"]
 ModeGenerationRapport = Literal["ai", "manuelle"]
 
@@ -179,6 +187,7 @@ class CasTestResponse(BaseModel):
     user_story_id:    int
     user_story_reference: Optional[str] = None
     user_story_titre: Optional[str] = None
+    user_story_statut: Optional[str] = None
     sprint:           Optional[str]
     module:           Optional[str]
     sous_module:      Optional[str]
@@ -225,6 +234,7 @@ class UserStoryCahierResponse(BaseModel):
     id: int
     reference: Optional[str] = None
     titre: str
+    statut: Optional[str] = None
     sprint_nom: Optional[str] = None
     module_nom: Optional[str] = None
 

@@ -6,7 +6,7 @@ Flux :
   2. Lire le fichier du cahier des charges attaché au projet
   3. Envoyer au modèle via open router
   4. Analyser la réponse JSON
-  5. Sauvegarder les modules / epics / user stories dans ai_generated_items
+  5. Sauvegarder les epics / user stories dans ai_generated_items
   6. Passer le status en completed (ou failed)
 
 L'appel IA s'exécute dans une BackgroundTask FastAPI pour ne pas bloquer la réponse HTTP.
@@ -36,15 +36,13 @@ from schemas.ai_generation import AIBacklogResponse
 
 SYSTEM_PROMPT = """\
 Tu es un expert Agile/Scrum. Ton rôle est de transformer un cahier des charges  \
-en backlog Scrum complet structuré en Modules → Epics → User Stories.
+en backlog Scrum complet structuré en Epics → User Stories.
 
 Règles strictes :
 
-1. Identifie les modules principaux du système.
+1. Identifie les Epics principaux du système.
 
-2. Pour chaque module, identifie les Epics.
-
-3. Pour chaque Epic, génère les User Stories au format :
+2. Pour chaque Epic, génère les User Stories au format :
    "En tant que [rôle], je veux [objectif], afin de [bénéfice]."
 
 4. Chaque User Story doit obligatoirement contenir :
@@ -60,30 +58,25 @@ Règles strictes :
 Structure JSON attendue :
 
 {
-  "modules": [
-    {
-      "name": "Nom du module",
-      "epics": [
+    "epics": [
         {
-          "name": "Nom de l'epic",
-          "user_stories": [
-            {
-              "description": "En tant que ... je veux ... afin de ...",
-              "priority": "High",
-              "story_points": 5,
-              "sprint": 2,
-              "duration": "4h",
-              "acceptance_criteria": [
-                "critère 1",
-                "critère 2",
-                "critère 3"
-              ]
-            }
-          ]
+            "name": "Nom de l'epic",
+            "user_stories": [
+                {
+                    "description": "En tant que ... je veux ... afin de ...",
+                    "priority": "High",
+                    "story_points": 5,
+                    "sprint": 2,
+                    "duration": "4h",
+                    "acceptance_criteria": [
+                        "critère 1",
+                        "critère 2",
+                        "critère 3"
+                    ]
+                }
+            ]
         }
-      ]
-    }
-  ]
+    ]
 }
 """
 
@@ -96,6 +89,10 @@ Voici le cahier des charges du projet :
 
 Génère le backlog Scrum complet en JSON selon le schéma demandé.
 """
+
+
+class GenerationCancelled(Exception):
+    pass
 
 
 class AIGenerationService:
@@ -153,6 +150,8 @@ class AIGenerationService:
         """
         try:
             self._run(generation_id)
+        except GenerationCancelled:
+            return
         except Exception as exc:
             self.repo.update_status(generation_id, "failed", 0)
             self.repo.add_log(generation_id, "error", str(exc), 0)
@@ -162,11 +161,15 @@ class AIGenerationService:
     def _run(self, generation_id: int) -> None:
 
         # ── Étape 1 : Démarrage ────────────────────────────────────────────
+        self._ensure_generation_active(generation_id)
         self.repo.update_status(generation_id, "processing", 5)
         self.repo.add_log(generation_id, "reading_file",
                           "Recherche du cahier des charges…", 5)
 
+        self._ensure_generation_active(generation_id)
         gen = self.repo.get_by_id(generation_id)
+        if not gen:
+            raise GenerationCancelled()
         # Set the user_id for API key selection
         self.current_user_id = gen.user_id
 
@@ -178,16 +181,20 @@ class AIGenerationService:
                 "Veuillez d'abord l'uploader en pièce jointe du projet."
             )
 
+        self._ensure_generation_active(generation_id)
         self.repo.update_progress(generation_id, 20)
         self.repo.add_log(generation_id, "reading_file",
                           f"Fichier lu ({len(content)} caractères).", 20)
 
         # ── Étape 3 : Appel IA ─────────────────────────────────────────────
+        self._ensure_generation_active(generation_id)
         self.repo.add_log(generation_id, "sending_prompt",
                           "Envoi du prompt au modèle IA…", 30)
         self.repo.update_progress(generation_id, 30)
 
         raw_json = self._appeler_ia(content, generation_id)
+
+        self._ensure_generation_active(generation_id)
 
         self.repo.update_progress(generation_id, 60)
         self.repo.add_log(generation_id, "generating_epics",
@@ -196,55 +203,55 @@ class AIGenerationService:
         # ── Étape 4 : Validation JSON ──────────────────────────────────────
         backlog = self._parser_reponse(raw_json)
 
+        self._ensure_generation_active(generation_id)
         self.repo.update_progress(generation_id, 80)
         self.repo.add_log(generation_id, "generating_us",
-                          f"{len(backlog.modules)} module(s) détecté(s).", 80)
+                  f"{len(backlog.epics)} epic(s) détecté(s).", 80)
 
         # ── Étape 5 : Sauvegarde ───────────────────────────────────────────
+        self._ensure_generation_active(generation_id)
         self.repo.add_log(generation_id, "saving",
                           "Sauvegarde des éléments en base…", 85)
 
         nb_epics = 0
         nb_us    = 0
 
-        for module in backlog.modules:
-            module_item = self.repo.add_item(
+        for epic in backlog.epics:
+            self._ensure_generation_active(generation_id)
+            nb_epics += 1
+            epic_item = self.repo.add_item(
                 generation_id=generation_id,
-                type_="module",
-                title=module.name,
+                type_="epic",
+                title=epic.name,
             )
+            if not epic_item:
+                raise GenerationCancelled()
 
-            for epic in module.epics:
-                nb_epics += 1
-                epic_item = self.repo.add_item(
+            for us in epic.user_stories:
+                self._ensure_generation_active(generation_id)
+                nb_us += 1
+                criteres_json = json.dumps(us.acceptance_criteria, ensure_ascii=False)
+                item = self.repo.add_item(
                     generation_id=generation_id,
-                    type_="epic",
-                    title=epic.name,
-                    parent_id=module_item.id,
+                    type_="user_story",
+                    title=us.description,
+                    description=us.description,
+                    parent_id=epic_item.id,
+                    acceptance_criteria=criteres_json,
+                    priority=us.priority,
+                    story_points=us.story_points,
+                    sprint=us.sprint,
+                    duration=us.duration,
                 )
-
-                for us in epic.user_stories:
-                    nb_us += 1
-                    criteres_json = json.dumps(us.acceptance_criteria, ensure_ascii=False)
-                    self.repo.add_item(
-                        generation_id=generation_id,
-                        type_="user_story",
-                        title=us.description,
-                        description=us.description,
-                        parent_id=epic_item.id,
-                        acceptance_criteria=criteres_json,
-                        priority=us.priority,
-                        story_points=us.story_points,
-                        sprint=us.sprint,
-                        duration=us.duration,
-                    )
+                if not item:
+                    raise GenerationCancelled()
 
         # ── Étape 6 : Terminé ──────────────────────────────────────────────
+        self._ensure_generation_active(generation_id)
         self.repo.update_status(generation_id, "completed", 100)
         self.repo.add_log(
             generation_id, "done",
-            f"Génération terminée : {len(backlog.modules)} modules, "
-            f"{nb_epics} epics, {nb_us} user stories.",
+            f"Génération terminée : {nb_epics} epics, {nb_us} user stories.",
             100,
         )
 
@@ -436,12 +443,12 @@ class AIGenerationService:
 
     def appliquer_generation(self, generation_id: int, projet_id: int, user_id: int) -> dict:
         """
-        Crée les vraies entités (Module, Epic, UserStory, Sprint) à partir des items
+        Crée les vraies entités (Epic, UserStory, Sprint) à partir des items
         non-rejetés d'une génération IA complétée, puis marque la génération
         comme « approved ».
         """
         from datetime import timedelta
-        from models.scrum import Module, Epic, UserStory, Sprint
+        from models.scrum import Epic, UserStory, Sprint
         from repositories.projet_repository import ProjetRepository
 
         gen = self.repo.get_detail(generation_id)
@@ -461,30 +468,57 @@ class AIGenerationService:
         all_items = self.repo.get_items_by_generation(generation_id)
         active   = [i for i in all_items if i.status != "rejected"]
 
-        modules_created = 0
         epics_created   = 0
         stories_created = 0
         sprints_created = 0
 
-        module_id_map: dict[int, int] = {}   # ai_item.id → real Module.id
         epic_id_map:   dict[int, int] = {}   # ai_item.id → real Epic.id
         sprint_map:    dict[int, int] = {}   # sprint_number → Sprint.id
 
         # ── Sprints ───────────────────────────────────────────────────────
-        # Collecter tous les numéros de sprint uniques
+        # Collecter le nombre max de sprints demandé par l'IA (si fourni)
         sprint_numbers = set()
         for item in active:
             if item.type == "user_story" and item.sprint:
                 sprint_numbers.add(item.sprint)
 
-        # Créer les sprints (durée de 2 semaines par défaut)
-        for sprint_num in sorted(sprint_numbers):
-            # Calculer les dates : sprint 1 démarre maintenant, les autres suivent
-            start_date = datetime.now() + timedelta(weeks=(sprint_num - 1) * 2)
-            end_date = start_date + timedelta(weeks=2)
-            
+        max_ai_sprint = max(sprint_numbers) if sprint_numbers else 0
+
+        # Si le projet a des dates, répartir les sprints dans la fenêtre du projet.
+        if projet.dateDebut and projet.dateFin and projet.dateFin >= projet.dateDebut:
+            total_days = (projet.dateFin - projet.dateDebut).days + 1
+            sprint_length_days = 14
+            total_sprints = max(1, (total_days + sprint_length_days - 1) // sprint_length_days)
+        else:
+            total_sprints = max(1, max_ai_sprint or 1)
+
+        existing_sprints = (
+            self.db.query(Sprint)
+            .filter(Sprint.projet_id == projet_id)
+            .all()
+        )
+        existing_by_name = {s.nom: s for s in existing_sprints if s.nom}
+
+        # Créer des sprints consécutifs (1..total_sprints)
+        base_start = projet.dateDebut or datetime.now()
+        for sprint_num in range(1, total_sprints + 1):
+            start_date = base_start + timedelta(days=(sprint_num - 1) * 14)
+            end_date = start_date + timedelta(days=13)
+
+            if projet.dateFin and end_date > projet.dateFin:
+                end_date = projet.dateFin
+            sprint_name = f"Sprint {sprint_num}"
+            existing = existing_by_name.get(sprint_name)
+
+            if existing:
+                if existing.objectifSprint and "Généré automatiquement par IA" in existing.objectifSprint:
+                    existing.dateDebut = start_date
+                    existing.dateFin = end_date
+                sprint_map[sprint_num] = existing.id
+                continue
+
             sprint = Sprint(
-                nom=f"Sprint {sprint_num}",
+                nom=sprint_name,
                 dateDebut=start_date,
                 dateFin=end_date,
                 objectifSprint=f"Sprint {sprint_num} - Généré automatiquement par IA",
@@ -499,25 +533,9 @@ class AIGenerationService:
             sprint_map[sprint_num] = sprint.id
             sprints_created += 1
 
-        # ── Modules ──────────────────────────────────────────────────────
-        for idx, item in enumerate(i for i in active if i.type == "module" and i.parent_id is None):
-            m = Module(
-                nom=item.title[:200],
-                description=item.description,
-                ordre=idx,
-                projet_id=projet_id,
-            )
-            self.db.add(m)
-            self.db.flush()
-            module_id_map[item.id] = m.id
-            modules_created += 1
-
         # ── Epics ─────────────────────────────────────────────────────────
         epic_idx = 0
         for item in (i for i in active if i.type == "epic"):
-            parent_module_id = module_id_map.get(item.parent_id)
-            if parent_module_id is None:
-                continue
             numero    = projet_repo.next_issue_number(projet_id)
             reference = f"{projet.key}-{numero}"
             e = Epic(
@@ -526,7 +544,7 @@ class AIGenerationService:
                 description=item.description,
                 priorite=epic_idx,
                 statut="to_do",
-                module_id=parent_module_id,
+                projet_id=projet_id,
                 productOwnerId=user_id,
             )
             self.db.add(e)
@@ -563,8 +581,9 @@ class AIGenerationService:
             self.db.flush()
             
             # Lier la user story au sprint si un numéro de sprint existe
-            if item.sprint and item.sprint in sprint_map:
-                sprint_id = sprint_map[item.sprint]
+            if item.sprint:
+                sprint_number = min(item.sprint, max(sprint_map.keys() or [1]))
+                sprint_id = sprint_map.get(sprint_number)
                 sprint = self.db.query(Sprint).get(sprint_id)
                 if sprint:
                     us.sprints.append(sprint)
@@ -577,7 +596,6 @@ class AIGenerationService:
         return {
             "generation_id": generation_id,
             "sprints_created": sprints_created,
-            "modules_created": modules_created,
             "epics_created": epics_created,
             "stories_created": stories_created,
         }
@@ -606,7 +624,7 @@ class AIGenerationService:
         return self.repo.get_by_projet(projet_id)
 
     def obtenir_items_hierarchiques(self, generation_id: int):
-        """Retourne les items structurés en arbre (modules → epics → user stories)."""
+        """Retourne les items structurés en arbre (epics → user stories)."""
         items = self.repo.get_items_by_generation(generation_id)
         # Construction de la hiérarchie en mémoire
         item_map = {item.id: item for item in items}
@@ -639,3 +657,31 @@ class AIGenerationService:
             "generation_id": generation_id,
             "status": "rejected",
         }
+
+    def annuler_generation(self, generation_id: int) -> dict:
+        """
+        Annule une génération en cours ou en attente.
+        Les items et logs générés sont supprimés pour éviter toute trace partielle.
+        """
+        gen = self.repo.get_detail(generation_id)
+        if not gen:
+            raise HTTPException(status_code=404, detail="Génération introuvable.")
+        
+        if gen.status not in ("pending", "processing"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"La génération ne peut être annulée que si elle est en attente ou en cours (statut: {gen.status}).",
+            )
+
+        self.repo.update_status(generation_id, "cancelled", gen.progress or 0)
+        self.repo.cleanup_generation_data(generation_id)
+        return {
+            "generation_id": generation_id,
+            "status": "cancelled",
+        }
+
+    def _ensure_generation_active(self, generation_id: int) -> None:
+        gen = self.repo.get_by_id(generation_id)
+        if not gen or gen.status == "cancelled":
+            self.repo.cleanup_generation_data(generation_id)
+            raise GenerationCancelled()

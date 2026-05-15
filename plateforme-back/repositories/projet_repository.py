@@ -63,7 +63,7 @@ class ProjetRepository(BaseRepository[Projet]):
             "projet_id": projet.id,
             "nom": projet.nom,
             "nb_sprints": len(projet.sprints),
-            "nb_modules": len(projet.modules),
+            "nb_epics": len(projet.epics),
             "statut": projet.statut,
         }
 

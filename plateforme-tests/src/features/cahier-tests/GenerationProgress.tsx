@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { AIGenerationDetail } from "@/types";
-import { getGeneration } from "./api";
+import { getGeneration, cancelGeneration } from "./api";
 
 interface GenerationProgressProps {
   projectId: number;
@@ -17,9 +17,24 @@ export default function GenerationProgress({
 }: GenerationProgressProps) {
   const [generation, setGeneration] = useState<AIGenerationDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const handleCancel = async () => {
+    setIsCancelling(true);
+    try {
+      await cancelGeneration(projectId, generationId);
+      // Refresh to show cancelled status
+      const data = await getGeneration(projectId, generationId);
+      setGeneration(data);
+      setIsCancelling(false);
+    } catch (error) {
+      console.error("Erreur lors de l'annulation:", error);
+      setIsCancelling(false);
+    }
+  };
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: NodeJS.Timeout | undefined;
 
     const fetchProgress = async () => {
       try {
@@ -27,12 +42,13 @@ export default function GenerationProgress({
         setGeneration(data);
         setLoading(false);
 
-        // Si terminé ou échoué, arrêter le polling
+        // Si terminé, échoué ou annulé, arrêter le polling
         if (data.status === "completed") {
           if (interval) clearInterval(interval);
           setTimeout(onComplete, 1000); // Délai pour laisser voir 100%
-        } else if (data.status === "failed") {
+        } else if (data.status === "failed" || data.status === "cancelled") {
           if (interval) clearInterval(interval);
+          setIsCancelling(false);
         }
       } catch (error) {
         console.error("Erreur lors de la récupération de la progression:", error);
@@ -66,6 +82,8 @@ export default function GenerationProgress({
         return "text-green-600";
       case "failed":
         return "text-red-600";
+      case "cancelled":
+        return "text-orange-600";
       case "processing":
         return "text-blue-600";
       default:
@@ -83,6 +101,8 @@ export default function GenerationProgress({
         return "✓ Génération terminée !";
       case "failed":
         return "✗ Échec de la génération";
+      case "cancelled":
+        return "⊘ Génération annulée";
       default:
         return generation.status;
     }
@@ -92,9 +112,28 @@ export default function GenerationProgress({
     <div className="bg-surface-dark rounded-lg border border-[#3b4754] p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-white">Génération du Cahier de Tests</h3>
-        <span className={`font-medium ${getStatusColor()}`}>
-          {getStatusText()}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className={`font-medium ${getStatusColor()}`}>
+            {getStatusText()}
+          </span>
+          {(generation.status === "pending" || generation.status === "processing") && (
+            <button
+              onClick={handleCancel}
+              disabled={isCancelling}
+              className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-500 text-white rounded-lg font-medium text-sm transition-colors"
+            >
+              {isCancelling ? "Annulation..." : "Annuler"}
+            </button>
+          )}
+          {(generation.status === "cancelled" || generation.status === "failed") && (
+            <button
+              onClick={onComplete}
+              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium text-sm transition-colors"
+            >
+              Fermer
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Barre de progression */}
@@ -108,6 +147,8 @@ export default function GenerationProgress({
             className={`h-full transition-all duration-500 ${
               generation.status === "failed"
                 ? "bg-red-500"
+                : generation.status === "cancelled"
+                ? "bg-orange-500"
                 : generation.status === "completed"
                 ? "bg-green-500"
                 : "bg-blue-500"
@@ -146,11 +187,18 @@ export default function GenerationProgress({
         </div>
       </div>
 
-      {/* Message d'erreur */}
+      {/* Message d'erreur ou d'annulation */}
       {generation.status === "failed" && (
         <div className="mt-4 p-3 bg-red-50 border-l-4 border-red-500 rounded">
           <p className="text-sm text-red-700">
             La génération a échoué. Consultez les logs ci-dessus pour plus de détails.
+          </p>
+        </div>
+      )}
+      {generation.status === "cancelled" && (
+        <div className="mt-4 p-3 bg-orange-50 border-l-4 border-orange-500 rounded">
+          <p className="text-sm text-orange-700">
+            ✓ Génération annulée. Les éléments du backlog existants sont saufs et inchangés. Les items générés avant l'annulation sont conservés.
           </p>
         </div>
       )}

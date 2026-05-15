@@ -96,7 +96,6 @@ class BacklogService:
     def get_backlog(
         self,
         projet_id: int,
-        module_id: Optional[int],
         epic_id: Optional[int],
         statut: Optional[str],
         priorite: Optional[str],
@@ -123,7 +122,6 @@ class BacklogService:
 
         stories = self.repo.get_backlog(
             projet_id=projet_id,
-            module_id=module_id,
             epic_id=epic_id,
             statut=statut,
             priorite=priorite,

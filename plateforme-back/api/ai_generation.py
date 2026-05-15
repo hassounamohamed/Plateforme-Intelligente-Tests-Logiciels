@@ -102,7 +102,7 @@ async def detail_generation(
 @router.get(
     "/generations/{generation_id}/items",
     response_model=List[AIGeneratedItemResponse],
-    summary="Items générés structurés en arbre (Modules → Epics → User Stories)",
+    summary="Items générés structurés en arbre (Epics → User Stories)",
 )
 async def items_hierarchiques(
     projet_id: int,
@@ -160,7 +160,7 @@ async def changer_statut_item(
 @router.post(
     "/generations/{generation_id}/apply",
     response_model=ApplyGenerationResponse,
-    summary="Créer les vrais modules/epics/user stories à partir des items approuvés",
+    summary="Créer les vrais epics/user stories à partir des items approuvés",
 )
 @require_role(ROLE_PRODUCT_OWNER)
 async def appliquer_generation(
@@ -184,3 +184,21 @@ async def rejeter_generation(
     svc: AIGenerationService = Depends(get_ai_service),
 ):
     return svc.rejeter_generation(generation_id, projet_id, current_user.id)
+
+
+@router.post(
+    "/generations/{generation_id}/cancel",
+    summary="Annuler une génération IA en cours ou en attente",
+)
+@require_role(ROLE_PRODUCT_OWNER)
+async def annuler_generation(
+    projet_id: int,
+    generation_id: int,
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: AIGenerationService = Depends(get_ai_service),
+):
+    """
+    Annule une génération IA qui est en cours ou en attente.
+    Les items générés sont conservés mais marqués comme annulés.
+    """
+    return svc.annuler_generation(generation_id)

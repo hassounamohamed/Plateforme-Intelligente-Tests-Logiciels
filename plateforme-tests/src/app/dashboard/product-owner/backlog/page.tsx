@@ -12,14 +12,12 @@ import { ROUTES } from "@/lib/constants";
 import { getMyProjects } from "@/features/projects/api";
 import { getBacklog, getBacklogIndicateurs } from "@/features/backlog/api";
 import { getEpics } from "@/features/epics/api";
-import { getModules } from "@/features/modules/api";
 import { startGeneration, getGenerationDetail } from "@/features/ai-generation/api";
 import {
   Project,
   BacklogItem,
   BacklogIndicateurs,
   Epic,
-  Module,
   AIGenerationDetail,
   AILog,
 } from "@/types";
@@ -32,7 +30,6 @@ export default function BacklogPage() {
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
   const [activePanel, setActivePanel] = useState<"backlog" | "ai">("backlog");
 
-  const [modules, setModules] = useState<Module[]>([]);
   const [epics, setEpics] = useState<Epic[]>([]);
   const [backlogItems, setBacklogItems] = useState<BacklogItem[]>([]);
   const [indicateurs, setIndicateurs] = useState<BacklogIndicateurs | null>(null);
@@ -40,7 +37,6 @@ export default function BacklogPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [filters, setFilters] = useState({
-    module_id: "",
     epic_id: "",
     statut: "",
     priorite: "",
@@ -92,7 +88,8 @@ export default function BacklogPage() {
         if (
           detail.status === "completed" ||
           detail.status === "failed" ||
-          detail.status === "approved"
+          detail.status === "approved" ||
+          detail.status === "cancelled"
         ) {
           if (pollRef.current) clearInterval(pollRef.current);
         }
@@ -215,21 +212,9 @@ export default function BacklogPage() {
 
   const loadProjectData = async (projectId: number) => {
     try {
-      // Load modules
-      const modulesData = await getModules(projectId);
-      setModules(modulesData);
-
-      // Load all epics from all modules
-      const allEpics: Epic[] = [];
-      for (const module of modulesData) {
-        try {
-          const epicsData = await getEpics(projectId, module.id);
-          allEpics.push(...epicsData);
-        } catch (err) {
-          console.warn("Erreur chargement epics pour module:", module.id);
-        }
-      }
-      setEpics(allEpics);
+      // Load all epics for the project
+      const epicsData = await getEpics(projectId);
+      setEpics(epicsData);
 
       // Load indicateurs
       try {
@@ -248,7 +233,7 @@ export default function BacklogPage() {
     setError(null);
     try {
       const params: any = {};
-      if (filters.module_id) params.module_id = Number(filters.module_id);
+      
       if (filters.epic_id) params.epic_id = Number(filters.epic_id);
       if (filters.statut) params.statut = filters.statut;
       if (filters.priorite) params.priorite = filters.priorite;
@@ -304,6 +289,8 @@ export default function BacklogPage() {
         return "text-blue-400 bg-blue-500/10 border-blue-500/30";
       case "done":
         return "text-green-400 bg-green-500/10 border-green-500/30";
+      case "ready_for_test":
+        return "text-amber-400 bg-amber-500/10 border-amber-500/30";
       default:
         return "text-gray-400 bg-gray-500/10 border-gray-500/30";
     }
@@ -317,6 +304,8 @@ export default function BacklogPage() {
         return "En cours";
       case "done":
         return "Terminée";
+      case "ready_for_test":
+        return "Pret pour test";
       default:
         return statut;
     }
@@ -393,9 +382,7 @@ export default function BacklogPage() {
     </div>
   );
 
-  const filteredEpics = filters.module_id
-    ? epics.filter((epic) => String(epic.module_id) === filters.module_id)
-    : epics;
+  const filteredEpics = epics;
 
   return (
     <DashboardLayout
@@ -689,27 +676,7 @@ export default function BacklogPage() {
         <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-4">
           <h3 className="text-white text-sm font-bold mb-3">Filtres</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
-            <div>
-              <label className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold mb-1 block">Module</label>
-              <select
-                value={filters.module_id}
-                onChange={(e) =>
-                  setFilters({
-                    ...filters,
-                    module_id: e.target.value,
-                    epic_id: "",
-                  })
-                }
-                className="w-full bg-slate-100 dark:bg-[#283039] border border-slate-200 dark:border-[#3b4754] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary"
-              >
-                <option value="">Tous les modules</option>
-                {modules.map((module) => (
-                  <option key={module.id} value={module.id}>
-                    {module.nom}
-                  </option>
-                ))}
-              </select>
-            </div>
+            
 
             <div>
               <label className="text-slate-500 dark:text-[#9dabb9] text-xs font-bold mb-1 block">Epic</label>
@@ -737,6 +704,7 @@ export default function BacklogPage() {
                 <option value="">Tous les statuts</option>
                 <option value="to_do">À faire</option>
                 <option value="in_progress">En cours</option>
+                <option value="ready_for_test">Pret pour test</option>
                 <option value="done">Terminées</option>
               </select>
             </div>
@@ -870,3 +838,4 @@ export default function BacklogPage() {
     </DashboardLayout>
   );
 }
+

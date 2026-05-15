@@ -211,6 +211,24 @@ class ProjetService:
         projets = self.repo.get_projets_by_membre(user_id)
         return [self._ensure_product_owner_in_members(projet) for projet in projets]
 
+    def get_projets_utilisateur(self, user_id: int):
+        """Récupérer tous les projets associés à un utilisateur donné.
+
+        Inclut les projets dont il est Product Owner et ceux où il est membre.
+        Les doublons sont supprimés par identifiant.
+        """
+        projets = [
+            *self.get_mes_projets(user_id),
+            *self.get_projets_membre(user_id),
+        ]
+
+        deduplicated: dict[int, object] = {}
+        for projet in projets:
+            if projet and getattr(projet, "id", None) is not None:
+                deduplicated[projet.id] = projet
+
+        return list(deduplicated.values())
+
     def get_all_projets(self):
         return self.repo.get_all()
 

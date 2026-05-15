@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from models.notification import TypeNotification
-from models.scrum import Epic, Module, Projet, Sprint, UserStory
+from models.scrum import Epic, Projet, Sprint, UserStory, Module
 from repositories.notification_repository import NotificationRepository
 
 
@@ -144,6 +144,22 @@ NOTIFICATION_CATALOG = [
         "domain": "backlog_user_stories",
         "priorite": "moyenne",
         "message": "La user story a ete validee.",
+    },
+    {
+        "type": TypeNotification.USER_STORY_READY_FOR_TEST,
+        "title": "User story prete pour test",
+        "severity": "info",
+        "domain": "backlog_user_stories",
+        "priorite": "moyenne",
+        "message": "Une user story est prete pour les tests.",
+    },
+    {
+        "type": TypeNotification.USER_STORY_NEEDS_FIX,
+        "title": "User story a corriger",
+        "severity": "warning",
+        "domain": "backlog_user_stories",
+        "priorite": "haute",
+        "message": "Une user story doit etre corrigee suite aux tests.",
     },
     {
         "type": TypeNotification.USER_STORY_ASSIGNED_TO_ME,

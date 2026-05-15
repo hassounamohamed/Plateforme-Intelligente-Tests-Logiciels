@@ -22,7 +22,6 @@ export interface BacklogAISuggestionResponse {
 export const getBacklog = async (
   projectId: number,
   params?: {
-    module_id?: number;
     epic_id?: number;
     statut?: string;
     priorite?: string;

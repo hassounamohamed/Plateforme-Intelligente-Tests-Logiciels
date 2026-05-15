@@ -45,6 +45,15 @@ async def creer_projet(
 
 # ─── Lecture ──────────────────────────────────────────────────────────────────
 
+@router.get("", response_model=List[ProjetResponse])
+@require_role(ROLE_SUPER_ADMIN)
+async def get_all_projets(
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: ProjetService = Depends(get_projet_service),
+):
+    """Récupérer tous les projets — Super Admin uniquement."""
+    return svc.get_all_projets()
+
 @router.get("/mes-projets", response_model=List[ProjetResponse])
 async def get_mes_projets(
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
@@ -61,6 +70,17 @@ async def get_mes_projets_membre(
 ):
     """Projets dont l'utilisateur connecté est membre (via table association projet_membre)."""
     return svc.get_projets_membre(current_user.id)
+
+
+@router.get("/utilisateurs/{user_id}", response_model=List[ProjetResponse])
+@require_role(ROLE_SUPER_ADMIN)
+async def get_projets_utilisateur(
+    user_id: int,
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: ProjetService = Depends(get_projet_service),
+):
+    """Récupérer les projets associés à un utilisateur — Super Admin uniquement."""
+    return svc.get_projets_utilisateur(user_id)
 
 
 
@@ -154,5 +174,5 @@ async def generer_statistiques(
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: ProjetService = Depends(get_projet_service),
 ):
-    """Statistiques d'un projet (sprints, modules, statut)."""
+    """Statistiques d'un projet (sprints, epics, statut)."""
     return svc.generer_statistiques(projet_id)

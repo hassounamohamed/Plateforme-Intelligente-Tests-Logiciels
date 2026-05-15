@@ -95,6 +95,8 @@ export default function CahierTestsManager({
     "pdf" | "word" | null
   >(null);
   const [updatingRapport, setUpdatingRapport] = useState(false);
+  const [enableAutoRefresh, setEnableAutoRefresh] = useState(true);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState<number | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const getExportFileNameBase = () => {
@@ -264,6 +266,31 @@ export default function CahierTestsManager({
     historyLoading,
   ]);
 
+  // Auto-refresh polling to keep UI in sync with backend changes
+  useEffect(() => {
+    if (!cahier || !enableAutoRefresh) {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        setAutoRefreshInterval(null);
+      }
+      return;
+    }
+
+    // Set up polling interval - refresh every 30 seconds if user story status might have changed
+    const interval = setInterval(() => {
+      // Only refresh if not currently generating or performing other operations
+      if (!generating && !creatingManual && !importing && !rapportLoading) {
+        loadCahier();
+      }
+    }, 30000); // 30 seconds
+
+    setAutoRefreshInterval(interval as any);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [cahier, enableAutoRefresh, generating, creatingManual, importing, rapportLoading]);
+
   const handleGenerate = async () => {
     setShowRegenerateMenu(false);
     setGenerating(true);
@@ -345,6 +372,7 @@ export default function CahierTestsManager({
       alert("Rapport QA modifié avec succès.");
     } catch (err: any) {
       alert(err.response?.data?.detail || "Erreur lors de la modification du rapport QA.");
+      throw err;
     } finally {
       setUpdatingRapport(false);
     }
@@ -558,8 +586,11 @@ export default function CahierTestsManager({
               </span>
             </p>
             <div className="mt-3 flex items-center gap-3">
-              <label className="text-sm text-[#9dabb9]">Versions:</label>
+              <label htmlFor="cahier-tests-version-select" className="text-sm text-[#9dabb9]">
+                Versions:
+              </label>
               <select
+                id="cahier-tests-version-select"
                 value={selectedVersion}
                 onChange={(e) => {
                   setSelectedVersion(e.target.value);
@@ -592,10 +623,12 @@ export default function CahierTestsManager({
               <>
                 <input
                   ref={importInputRef}
+                  id="cahier-tests-import-excel"
                   type="file"
                   accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                   onChange={handleImportFile}
                   className="hidden"
+                  aria-label="Importer un fichier Excel .xlsx pour le cahier de tests"
                 />
                 <button
                   onClick={handleImportClick}

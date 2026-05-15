@@ -5,7 +5,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_
 
-from models.scrum import UserStory, Epic, Module, Sprint
+from models.scrum import UserStory, Epic, Sprint, Module
 from db.associations import sprint_userstory
 from repositories.base_repository import BaseRepository
 
@@ -20,7 +20,7 @@ class BacklogRepository:
     # ── Requête de base ──────────────────────────────────────────────────────
 
     def _query_projet(self, projet_id: int):
-        """Toutes les user stories appartenant à un projet via Module→Epic."""
+        """Toutes les user stories appartenant à un projet via Epic."""
         return (
             self.db.query(UserStory)
             .join(Epic, UserStory.epic_id == Epic.id)
@@ -33,7 +33,6 @@ class BacklogRepository:
     def get_backlog(
         self,
         projet_id: int,
-        module_id: Optional[int] = None,
         epic_id: Optional[int] = None,
         statut: Optional[str] = None,
         priorite: Optional[str] = None,
@@ -43,7 +42,6 @@ class BacklogRepository:
         """
         Retourne les user stories du projet avec filtres optionnels.
 
-        - module_id      : filtrer par module
         - epic_id        : filtrer par epic
         - statut         : to_do | in_progress | done
         - priorite       : must_have | should_have | could_have | wont_have
@@ -52,8 +50,6 @@ class BacklogRepository:
         """
         q = self._query_projet(projet_id)
 
-        if module_id:
-            q = q.filter(Epic.module_id == module_id)
         if epic_id:
             q = q.filter(UserStory.epic_id == epic_id)
         if statut:

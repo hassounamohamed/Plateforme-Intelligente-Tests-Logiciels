@@ -9,17 +9,16 @@ import {
 } from "@/types";
 
 /**
- * Get all epics for a module
+ * Get all epics for a project
  */
 export const getEpics = async (
   projectId: number,
-  moduleId: number,
   status?: EpicStatus,
   suppressErrorLog?: boolean
 ): Promise<Epic[]> => {
   const params = status ? { statut: status } : {};
   const response = await axiosInstance.get<Epic[]>(
-    `/projets/${projectId}/modules/${moduleId}/epics`,
+    `/projets/${projectId}/epics`,
     { params, suppressErrorLog }
   );
   return response.data;
@@ -30,25 +29,23 @@ export const getEpics = async (
  */
 export const getEpicById = async (
   projectId: number,
-  moduleId: number,
   epicId: number
 ): Promise<Epic> => {
   const response = await axiosInstance.get<Epic>(
-    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}`
+    `/projets/${projectId}/epics/${epicId}`
   );
   return response.data;
 };
 
 /**
- * Create a new epic in a module
+ * Create a new epic in a project
  */
 export const createEpic = async (
   projectId: number,
-  moduleId: number,
   payload: CreateEpicPayload
 ): Promise<Epic> => {
   const response = await axiosInstance.post<Epic>(
-    `/projets/${projectId}/modules/${moduleId}/epics`,
+    `/projets/${projectId}/epics`,
     payload
   );
   return response.data;
@@ -59,12 +56,11 @@ export const createEpic = async (
  */
 export const updateEpic = async (
   projectId: number,
-  moduleId: number,
   epicId: number,
   payload: UpdateEpicPayload
 ): Promise<Epic> => {
   const response = await axiosInstance.put<Epic>(
-    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}`,
+    `/projets/${projectId}/epics/${epicId}`,
     payload
   );
   return response.data;
@@ -75,12 +71,11 @@ export const updateEpic = async (
  */
 export const changeEpicStatus = async (
   projectId: number,
-  moduleId: number,
   epicId: number,
   payload: ChangeStatusPayload
 ): Promise<Epic> => {
   const response = await axiosInstance.patch<Epic>(
-    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}/statut`,
+    `/projets/${projectId}/epics/${epicId}/statut`,
     payload
   );
   return response.data;
@@ -91,12 +86,11 @@ export const changeEpicStatus = async (
  */
 export const changeEpicPriority = async (
   projectId: number,
-  moduleId: number,
   epicId: number,
   payload: ChangePriorityPayload
 ): Promise<Epic> => {
   const response = await axiosInstance.patch<Epic>(
-    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}/priorite`,
+    `/projets/${projectId}/epics/${epicId}/priorite`,
     payload
   );
   return response.data;
@@ -107,10 +101,9 @@ export const changeEpicPriority = async (
  */
 export const deleteEpic = async (
   projectId: number,
-  moduleId: number,
   epicId: number
 ): Promise<void> => {
   await axiosInstance.delete(
-    `/projets/${projectId}/modules/${moduleId}/epics/${epicId}`
+    `/projets/${projectId}/epics/${epicId}`
   );
 };

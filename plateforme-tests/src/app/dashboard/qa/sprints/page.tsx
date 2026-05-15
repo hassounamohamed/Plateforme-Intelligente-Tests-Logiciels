@@ -25,6 +25,17 @@ export default function SprintsPage() {
     if (selectedProject) {
       loadSprints(selectedProject.id);
     }
+    if (!selectedProject) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      loadSprints(selectedProject.id);
+    }, 15000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, [selectedProject]);
 
   const loadProjects = async () => {
@@ -50,9 +61,63 @@ export default function SprintsPage() {
     }
   };
 
+  const isSprintCompletedByProgress = (sprint: Sprint) => {
+    if (!sprint.userstories || sprint.userstories.length === 0) {
+      return false;
+    }
+
+    return sprint.userstories.every((us) => us.statut === "done");
+  };
+
+  const getComputedStatus = (sprint: Sprint) =>
+    isSprintCompletedByProgress(sprint) ? "termine" : sprint.statut;
+
+  const isSprintExpired = (sprint: Sprint) => {
+    if (!sprint.dateFin) {
+      return false;
+    }
+
+    if (getComputedStatus(sprint) === "termine") {
+      return false;
+    }
+
+    return new Date(sprint.dateFin) < new Date();
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "en_cours":
+        return "En cours";
+      case "termine":
+        return "Terminé";
+      case "planifie":
+      default:
+        return "Planifié";
+    }
+  };
+
+  const getOrderedSprints = (items: Sprint[]) =>
+    [...items].sort((a, b) => {
+      if (a.dateDebut && b.dateDebut) {
+        return new Date(a.dateDebut).getTime() - new Date(b.dateDebut).getTime();
+      }
+      if (a.dateDebut && !b.dateDebut) {
+        return -1;
+      }
+      if (!a.dateDebut && b.dateDebut) {
+        return 1;
+      }
+      return a.id - b.id;
+    });
+
+  const getSprintDisplayName = (sprint: Sprint, index: number) => {
+    return `Sprint ${index + 1}`;
+  };
+
   const sidebarLinks = [
     { href: ROUTES.QA, icon: "dashboard", label: "Dashboard" },
     { href: `${ROUTES.QA}/cahier-tests`, icon: "science", label: "Cahier de Tests" },
+    { href: `${ROUTES.QA}/anomalies`, icon: "bug_report", label: "Anomalies" },
     { href: `${ROUTES.QA}/rapports-qa`, icon: "assessment", label: "Rapports QA" },
     { href: `${ROUTES.QA}/sprints`, icon: "calendar_month", label: "Sprints" },
     { href: `${ROUTES.QA}/profile`, icon: "account_circle", label: "Mon Profil" },
@@ -162,7 +227,7 @@ export default function SprintsPage() {
             </div>
           ) : (
             <div className="divide-y divide-[#3b4754]">
-              {sprints.map((sprint) => (
+              {getOrderedSprints(sprints).map((sprint, index) => (
                 <div key={sprint.id} className="transition-colors">
                   <div 
                     className="p-6 hover:bg-[#283039] cursor-pointer"
@@ -174,18 +239,23 @@ export default function SprintsPage() {
                           <span className="material-symbols-outlined text-[#9dabb9]">
                             {expandedSprintId === sprint.id ? "expand_more" : "chevron_right"}
                           </span>
-                          <h4 className="text-white font-bold">{sprint.nom}</h4>
+                          <h4 className="text-white font-bold">{getSprintDisplayName(sprint, index)}</h4>
                           <span
                             className={`px-2 py-1 rounded text-xs font-medium ${
-                              sprint.statut === "en_cours"
+                              getComputedStatus(sprint) === "en_cours"
                                 ? "bg-green-500/20 text-green-400"
-                                : sprint.statut === "termine"
+                                : getComputedStatus(sprint) === "termine"
                                 ? "bg-gray-500/20 text-gray-400"
                                 : "bg-blue-500/20 text-blue-400"
                             }`}
                           >
-                            {sprint.statut}
+                            {getStatusLabel(getComputedStatus(sprint))}
                           </span>
+                          {isSprintExpired(sprint) && (
+                            <span className="px-2 py-1 rounded text-xs font-medium bg-red-500/20 text-red-400">
+                              Expiré
+                            </span>
+                          )}
                         </div>
 
                         {sprint.objectifSprint && (
@@ -200,7 +270,7 @@ export default function SprintsPage() {
                               <span className="material-symbols-outlined text-[16px]">
                                 calendar_today
                               </span>
-                              <span>
+                              <span className={isSprintExpired(sprint) ? "text-red-400 font-semibold" : undefined}>
                                 {new Date(sprint.dateDebut).toLocaleDateString()} →{" "}
                                 {new Date(sprint.dateFin).toLocaleDateString()}
                               </span>
@@ -221,6 +291,11 @@ export default function SprintsPage() {
                             </div>
                           )}
                         </div>
+                        {isSprintExpired(sprint) && sprint.dateFin && (
+                          <p className="text-red-400 text-xs font-semibold mt-2 ml-9">
+                            Date expirée le {new Date(sprint.dateFin).toLocaleDateString()}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -250,10 +325,18 @@ export default function SprintsPage() {
                                         ? "bg-green-500/20 text-green-400"
                                         : userStory.statut === "in_progress"
                                         ? "bg-blue-500/20 text-blue-400"
+                                        : userStory.statut === "ready_for_test"
+                                        ? "bg-amber-500/20 text-amber-400"
                                         : "bg-gray-500/20 text-gray-400"
                                     }`}
                                   >
-                                    {userStory.statut}
+                                    {userStory.statut === "done"
+                                      ? "Terminée"
+                                      : userStory.statut === "in_progress"
+                                      ? "En cours"
+                                      : userStory.statut === "ready_for_test"
+                                      ? "Pret pour test"
+                                      : "À faire"}
                                   </span>
                                   {userStory.priorite && (
                                     <span

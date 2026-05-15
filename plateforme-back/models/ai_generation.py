@@ -75,7 +75,7 @@ class AIGeneratedItem(Base):
 
     generation_id = Column(Integer, ForeignKey("ai_generations.id", ondelete="CASCADE"), nullable=False)
 
-    # Type de l'élément : module | epic | user_story
+    # Type de l'élément : epic | user_story
     type = Column(String(30), nullable=False)
 
     # Pour les user stories : id de l'AIGeneratedItem parent (epic)

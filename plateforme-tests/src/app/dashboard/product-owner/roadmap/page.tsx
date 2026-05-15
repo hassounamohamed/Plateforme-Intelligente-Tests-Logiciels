@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Epic, Module, Project, Sprint, UserStorySummary } from "@/types";
+import { Epic, Project, Sprint, UserStorySummary } from "@/types";
 import { getMyProjects } from "@/features/projects/api";
-import { getModules } from "@/features/modules/api";
 import { getEpics } from "@/features/epics/api";
 import { getSprints } from "@/features/sprints/api";
 import { Sidebar } from "@/components/dashboard/Sidebar";
@@ -17,8 +16,7 @@ type EpicWithModule = Epic & { moduleName: string };
 export default function RoadmapPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
-  const [modules, setModules] = useState<Module[]>([]);
-  const [epicsByModule, setEpicsByModule] = useState<Record<number, Epic[]>>({});
+  const [epics, setEpics] = useState<Epic[]>([]);
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [isLoadingRoadmap, setIsLoadingRoadmap] = useState(false);
@@ -64,31 +62,17 @@ export default function RoadmapPage() {
     setIsLoadingRoadmap(true);
     setError(null);
     try {
-      const [modulesData, sprintsData] = await Promise.all([
-        getModules(projectId),
+      const [epicsData, sprintsData] = await Promise.all([
+        getEpics(projectId),
         getSprints(projectId),
       ]);
 
-      const epicsEntries = await Promise.all(
-        modulesData.map(async (moduleItem) => {
-          try {
-            const moduleEpics = await getEpics(projectId, moduleItem.id);
-            return [moduleItem.id, moduleEpics] as const;
-          } catch (moduleError) {
-            console.error(`Erreur chargement epics module ${moduleItem.id}:`, moduleError);
-            return [moduleItem.id, []] as const;
-          }
-        })
-      );
-
-      setModules(modulesData);
+      setEpics(epicsData);
       setSprints(sprintsData);
-      setEpicsByModule(Object.fromEntries(epicsEntries));
     } catch (err) {
       console.error("Erreur chargement roadmap:", err);
-      setModules([]);
+      setEpics([]);
       setSprints([]);
-      setEpicsByModule({});
       setError("Impossible de charger la roadmap pour ce projet.");
     } finally {
       setIsLoadingRoadmap(false);
@@ -101,11 +85,8 @@ export default function RoadmapPage() {
   );
 
   const allEpics = useMemo<EpicWithModule[]>(() => {
-    return modules.flatMap((moduleItem) => {
-      const moduleEpics = epicsByModule[moduleItem.id] ?? [];
-      return moduleEpics.map((epic) => ({ ...epic, moduleName: moduleItem.nom }));
-    });
-  }, [modules, epicsByModule]);
+    return epics.map((epic) => ({ ...epic, moduleName: "" }));
+  }, [epics]);
 
   const allStories = useMemo<UserStorySummary[]>(() => {
     return allEpics.flatMap((epic) => epic.user_stories ?? []);
@@ -119,7 +100,7 @@ export default function RoadmapPage() {
     const activeSprints = sprints.filter((s) => s.statut === "en_cours").length;
 
     return {
-      modules: modules.length,
+      modules: 0,
       epics: allEpics.length,
       stories: totalStories,
       doneStories,
@@ -127,7 +108,7 @@ export default function RoadmapPage() {
       completion,
       activeSprints,
     };
-  }, [modules.length, allEpics.length, allStories, sprints]);
+  }, [allEpics.length, allStories, sprints]);
 
   const sprintsTimeline = useMemo(() => {
     const sortByDate = (a: Sprint, b: Sprint) => {
@@ -307,58 +288,33 @@ export default function RoadmapPage() {
             </div>
 
             <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Vision strategique par module</h3>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Vision strategique</h3>
 
-              {modules.length === 0 ? (
-                <p className="text-slate-500 dark:text-[#9dabb9] text-sm">Aucun module defini pour ce projet.</p>
+              {epics.length === 0 ? (
+                <p className="text-slate-500 dark:text-[#9dabb9] text-sm">Aucun epic defini pour ce projet.</p>
               ) : (
-                <div className="space-y-5">
-                  {modules.map((moduleItem) => {
-                    const moduleEpics = epicsByModule[moduleItem.id] ?? [];
+                <div className="grid gap-3">
+                  {epics.map((epic) => {
+                    const stories = epic.user_stories ?? [];
+                    const done = stories.filter((story) => story.statut === "done").length;
+                    const progress = stories.length > 0 ? Math.round((done / stories.length) * 100) : 0;
                     return (
-                      <div key={moduleItem.id} className="border border-slate-200 dark:border-[#3b4754] rounded-xl p-4">
-                        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-3">
+                      <div key={epic.id} className="bg-slate-50 dark:bg-[#1f2937] border border-slate-200 dark:border-[#3b4754] rounded-lg p-3">
+                        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                           <div>
-                            <h4 className="font-semibold text-slate-900 dark:text-white">{moduleItem.nom}</h4>
-                            {moduleItem.description && (
-                              <p className="text-sm text-slate-500 dark:text-[#9dabb9] mt-1">{moduleItem.description}</p>
-                            )}
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white">{epic.titre}</p>
+                            <p className="text-xs text-slate-500 dark:text-[#9dabb9]">{stories.length} user story(s)</p>
                           </div>
-                          <span className="text-xs px-2 py-1 rounded-full border border-violet-500/30 text-violet-400 bg-violet-500/10">
-                            {moduleEpics.length} epic(s)
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs px-2 py-1 rounded-full border ${statusPill(epic.statut)}`}>
+                              {statusLabel(epic.statut)}
+                            </span>
+                            <span className="text-xs text-slate-600 dark:text-[#c7ced8] font-semibold">{progress}%</span>
+                          </div>
                         </div>
-
-                        {moduleEpics.length === 0 ? (
-                          <p className="text-sm text-slate-500 dark:text-[#9dabb9]">Aucun epic pour ce module.</p>
-                        ) : (
-                          <div className="grid gap-3">
-                            {moduleEpics.map((epic) => {
-                              const stories = epic.user_stories ?? [];
-                              const done = stories.filter((story) => story.statut === "done").length;
-                              const progress = stories.length > 0 ? Math.round((done / stories.length) * 100) : 0;
-                              return (
-                                <div key={epic.id} className="bg-slate-50 dark:bg-[#1f2937] border border-slate-200 dark:border-[#3b4754] rounded-lg p-3">
-                                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                                    <div>
-                                      <p className="text-sm font-semibold text-slate-900 dark:text-white">{epic.titre}</p>
-                                      <p className="text-xs text-slate-500 dark:text-[#9dabb9]">{stories.length} user story(s)</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className={`text-xs px-2 py-1 rounded-full border ${statusPill(epic.statut)}`}>
-                                        {statusLabel(epic.statut)}
-                                      </span>
-                                      <span className="text-xs text-slate-600 dark:text-[#c7ced8] font-semibold">{progress}%</span>
-                                    </div>
-                                  </div>
-                                  <div className="w-full h-1.5 bg-slate-200 dark:bg-[#283039] rounded-full mt-2">
-                                    <div className={`h-1.5 rounded-full ${progressColor(progress)}`} style={{ width: `${progress}%` }}></div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
+                        <div className="w-full h-1.5 bg-slate-200 dark:bg-[#283039] rounded-full mt-2">
+                          <div className={`h-1.5 rounded-full ${progressColor(progress)}`} style={{ width: `${progress}%` }}></div>
+                        </div>
                       </div>
                     );
                   })}

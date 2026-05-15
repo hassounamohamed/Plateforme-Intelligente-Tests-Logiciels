@@ -49,10 +49,12 @@ class AIGenerationRepository(BaseRepository[AIGeneration]):
     def update_status(self, generation_id: int, status: str, progress: int = None) -> Optional[AIGeneration]:
         gen = self.get_by_id(generation_id)
         if gen:
+            if gen.status == "cancelled" and status != "cancelled":
+                return gen
             gen.status = status
             if progress is not None:
                 gen.progress = progress
-            if status in ("completed", "failed", "rejected"):
+            if status in ("completed", "failed", "rejected", "cancelled"):
                 gen.completed_at = datetime.utcnow()
             self.db.commit()
             self.db.refresh(gen)
@@ -60,7 +62,7 @@ class AIGenerationRepository(BaseRepository[AIGeneration]):
 
     def update_progress(self, generation_id: int, progress: int) -> Optional[AIGeneration]:
         gen = self.get_by_id(generation_id)
-        if gen:
+        if gen and gen.status != "cancelled":
             gen.progress = progress
             self.db.commit()
             self.db.refresh(gen)
@@ -68,7 +70,10 @@ class AIGenerationRepository(BaseRepository[AIGeneration]):
 
     # ── Logs ──────────────────────────────────────────────────────────────
 
-    def add_log(self, generation_id: int, step: str, message: str, progress: int) -> AILog:
+    def add_log(self, generation_id: int, step: str, message: str, progress: int) -> Optional[AILog]:
+        gen = self.get_by_id(generation_id)
+        if not gen or gen.status == "cancelled":
+            return None
         log = AILog(
             generation_id=generation_id,
             step=step,
@@ -94,7 +99,10 @@ class AIGenerationRepository(BaseRepository[AIGeneration]):
         story_points: Optional[int] = None,
         sprint: Optional[int] = None,
         duration: Optional[str] = None,
-    ) -> AIGeneratedItem:
+    ) -> Optional[AIGeneratedItem]:
+        gen = self.get_by_id(generation_id)
+        if not gen or gen.status == "cancelled":
+            return None
         item = AIGeneratedItem(
             generation_id=generation_id,
             type=type_,
@@ -159,6 +167,16 @@ class AIGenerationRepository(BaseRepository[AIGeneration]):
             AIGeneratedItem.generation_id == generation_id
         ).delete()
         self.db.commit()
+
+    def delete_logs_by_generation(self, generation_id: int) -> None:
+        self.db.query(AILog).filter(
+            AILog.generation_id == generation_id
+        ).delete()
+        self.db.commit()
+
+    def cleanup_generation_data(self, generation_id: int) -> None:
+        self.delete_items_by_generation(generation_id)
+        self.delete_logs_by_generation(generation_id)
 
 
 # ─── AIPromptLog repository ───────────────────────────────────────────────────

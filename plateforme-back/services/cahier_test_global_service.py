@@ -28,7 +28,7 @@ from core.rbac.constants import ROLE_DEVELOPPEUR, ROLE_TESTEUR_QA
 from models.notification import TypeNotification
 from models.ai_generation import AIGeneration
 from models.rapports import RapportQA, IndicateurQualite, RecommandationQualite
-from models.scrum import Projet, Sprint, UserStory, Module, Epic
+from models.scrum import Projet, Sprint, UserStory, Epic, Module
 from models.cahier_test_global import CahierTestGlobal, CasTest
 from models.user import Utilisateur
 from repositories.ai_generation_repository import AIGenerationRepository
@@ -55,8 +55,8 @@ Règles strictes :
 2. Chaque cas de test doit contenir :
     - user_story_id   : identifiant numérique exact de la user story source (obligatoire)
    - sprint          : nom du sprint (ex: "Sprint 1")
-    - module          : nom du module lié à la user story (optionnel)
-    - sous_module     : sous-composant ou fonctionnalité précise (optionnel)
+    - epic            : nom de l'epic lié à la user story (optionnel)
+    - sous_epic       : sous-composant ou fonctionnalité précise (optionnel)
    - test_ref        : référence unique au format TC-XXX (ex: TC-001)
    - test_case       : titre court et descriptif du cas de test
    - test_purpose    : objectif du test en une phrase
@@ -75,8 +75,8 @@ Structure JSON attendue :
     {
             "user_story_id": 14,
       "sprint": "Sprint 1",
-      "module": "Authentification",
-      "sous_module": "Connexion",
+      "epic": "Authentification",
+      "sous_epic": "Connexion",
       "test_ref": "TC-001",
       "test_case": "Connexion avec identifiants valides",
       "test_purpose": "Vérifier que l'utilisateur peut se connecter avec des identifiants corrects",
@@ -115,7 +115,7 @@ Génère des cas de tests UNIQUEMENT pour cette user story :
 - description: {user_story_description}
 - criteres_acceptation: {user_story_criteres}
 - sprint: {sprint_nom}
-- module: {module_nom}
+- epic: {epic_nom}
 - epic: {epic_nom}
 
 Contraintes supplémentaires :
@@ -205,8 +205,8 @@ class CahierTestGlobalService:
         self,
         projet_id: int,
         user_story_id: Optional[int],
-        module: Optional[str] = None,
-        sous_module: Optional[str] = None,
+        epic: Optional[str] = None,
+        sous_epic: Optional[str] = None,
         test_case: Optional[str] = None,
     ) -> int:
         us_query = (
@@ -232,15 +232,15 @@ class CahierTestGlobalService:
                 detail="Aucune user story disponible dans ce projet pour lier le cas de test.",
             )
 
-        module_l = (module or "").strip().lower()
-        sous_module_l = (sous_module or "").strip().lower()
+        module_l = (epic or "").strip().lower()
+        sous_module_l = (sous_epic or "").strip().lower()
         test_case_l = (test_case or "").strip().lower()
         for us in user_stories:
             title_l = (us.titre or "").lower()
             desc_l = (us.description or "").lower()
-            module_name_l = ((us.epic.module.nom if us.epic and us.epic.module else "") or "").lower()
+            epic_name_l = ((us.epic.titre if us.epic else "") or "").lower()
 
-            if module_l and module_l in module_name_l:
+            if module_l and module_l in epic_name_l:
                 return us.id
             if sous_module_l and sous_module_l in title_l:
                 return us.id
@@ -266,9 +266,23 @@ class CahierTestGlobalService:
 
     def _resolve_projet_id_from_case(self, cas: CasTest) -> Optional[int]:
         user_story = getattr(cas, "user_story", None)
-        if user_story and user_story.epic and user_story.epic.module:
-            return user_story.epic.module.projet_id
+        if user_story and user_story.epic:
+            return user_story.epic.projet_id
         return None
+
+    @staticmethod
+    def _parse_sprint_number(value: Optional[str]) -> int:
+        if not value:
+            return 10**9
+        match = re.search(r"(\d+)", value)
+        return int(match.group(1)) if match else 10**9
+
+    @staticmethod
+    def _parse_test_ref_number(value: Optional[str]) -> int:
+        if not value:
+            return 10**9
+        match = re.search(r"(\d+)", value)
+        return int(match.group(1)) if match else 10**9
 
     def _attach_user_story_display(
         self,
@@ -276,6 +290,10 @@ class CahierTestGlobalService:
         number_map: Optional[dict[int, int]] = None,
     ) -> CasTest:
         user_story = getattr(cas, "user_story", None)
+        if user_story and user_story.sprints:
+            current_sprint_name = user_story.sprints[0].nom
+            if current_sprint_name:
+                cas.sprint = current_sprint_name
         if user_story and number_map is not None:
             numero = number_map.get(user_story.id)
             if numero:
@@ -287,15 +305,54 @@ class CahierTestGlobalService:
         else:
             cas.user_story_reference = user_story.reference if user_story else None
         cas.user_story_titre = user_story.titre if user_story else None
+        cas.user_story_statut = user_story.statut if user_story else None
         return cas
 
     def _attach_user_story_display_many(self, cases: List[CasTest]) -> List[CasTest]:
         number_map: Optional[dict[int, int]] = None
+        updated_any = False
         if cases:
             projet_id = self._resolve_projet_id_from_case(cases[0])
             if projet_id:
                 number_map = self._build_project_us_number_map(projet_id)
-        return [self._attach_user_story_display(cas, number_map) for cas in cases]
+        enriched = []
+        for cas in cases:
+            old_sprint = cas.sprint
+            enriched.append(self._attach_user_story_display(cas, number_map))
+            if cas.sprint != old_sprint:
+                updated_any = True
+        if updated_any:
+            self.db.commit()
+        return enriched
+
+    def _reorder_cas_tests(self, cahier_id: int):
+        cases = (
+            self.db.query(CasTest)
+            .options(joinedload(CasTest.user_story))
+            .filter(CasTest.cahier_id == cahier_id)
+            .all()
+        )
+        if not cases:
+            return
+
+        ordered = sorted(
+            cases,
+            key=lambda cas: (
+                self._parse_sprint_number(cas.sprint),
+                (cas.sprint or ""),
+                self._parse_test_ref_number(cas.test_ref),
+                cas.id,
+            ),
+        )
+
+        changed = False
+        for index, cas in enumerate(ordered, start=1):
+            if cas.ordre != index:
+                cas.ordre = index
+                changed = True
+
+        if changed:
+            self.db.commit()
 
     def _sync_existing_rapport_if_any(self, cahier_id: int, projet_id: int) -> None:
         """
@@ -417,8 +474,8 @@ class CahierTestGlobalService:
         resolved_user_story_id = self._resolve_user_story_id(
             projet_id=projet_id,
             user_story_id=data.user_story_id,
-            module=data.module,
-            sous_module=data.sous_module,
+            epic=data.epic,
+            sous_epic=data.sous_epic,
             test_case=data.test_case,
         )
 
@@ -426,8 +483,8 @@ class CahierTestGlobalService:
             cahier_id=cahier_id,
             user_story_id=resolved_user_story_id,
             sprint=data.sprint or "",
-            module=data.module or "",
-            sous_module=data.sous_module or "",
+            module=data.epic or "",
+            sous_module=data.sous_epic or "",
             test_ref=f"TC-{next_order:03d}",
             test_case=data.test_case,
             test_purpose=data.test_purpose or "",
@@ -438,6 +495,8 @@ class CahierTestGlobalService:
             type_test=data.type_test,
             ordre=next_order,
         )
+
+        self._reorder_cas_tests(cahier_id)
 
         if data.commentaire is not None:
             cas.commentaire = data.commentaire
@@ -507,6 +566,24 @@ class CahierTestGlobalService:
         if not gen or gen.projet_id != projet_id or gen.type != "generate_tests":
             raise HTTPException(status_code=404, detail="Génération introuvable.")
         return gen
+
+    def cancel_generation(self, generation_id: int, projet_id: int) -> dict:
+        """Annule une génération pendante ou en cours."""
+        gen = self.ai_repo.get_by_id(generation_id)
+        if not gen or gen.projet_id != projet_id or gen.type != "generate_tests":
+            raise HTTPException(status_code=404, detail="Génération introuvable.")
+        
+        if gen.status == "completed":
+            return {"status": "completed", "message": "Génération déjà terminée"}
+        
+        if gen.status == "failed":
+            return {"status": "failed", "message": "Génération déjà échouée"}
+        
+        # Mark as cancelled
+        self.ai_repo.update_status(generation_id, "cancelled", gen.progress)
+        self.ai_repo.add_log(generation_id, "cancelled", "Génération annulée par l'utilisateur", gen.progress)
+        
+        return {"status": "cancelled", "message": "Génération annulée avec succès"}
 
     def list_generations(self, projet_id: int) -> List[AIGeneration]:
         return (
@@ -600,10 +677,98 @@ class CahierTestGlobalService:
                 }
             )
 
+        if (
+            before["statut_test"] != updated.statut_test
+            and updated.statut_test in {"Échoué", "Bloqué"}
+            and updated.user_story
+        ):
+            user_story = updated.user_story
+            if user_story.statut != "a_corriger":
+                user_story.statut = "a_corriger"
+                self.db.commit()
+                self.db.refresh(user_story)
+            
+            # Notify developer about the failure
+            if user_story.developerId:
+                self.notification_service.notify_user(
+                    user_id=user_story.developerId,
+                    titre="Test echoue - Action requise",
+                    message=(
+                        f"Cas de test {updated.test_ref} a echoue pour {user_story.titre}. "
+                        f"Issue: {updated.bug_titre_correction or 'Non specifie'}. "
+                        f"La user story passe en a_corriger."
+                    ),
+                    notification_type=TypeNotification.TEST_FAILED,
+                    priorite="haute",
+                )
+            
+            # Notify project members about test failure
+            self.notification_service.notify_user_story_project_users(
+                user_story_id=updated.user_story.id,
+                titre="Test echoue",
+                message=(
+                    f"Le cas de test {updated.test_ref} pour la user story {user_story.titre} "
+                    f"a echoue. Tache associee: {updated.bug_nom_tache or 'Non assignee'}"
+                ),
+                notification_type=TypeNotification.TEST_FAILED,
+                priorite="haute",
+                exclude_user_id=user_story.developerId,  # Don't duplicate the developer notification
+            )
+
+        # Notify when test passes
+        if (
+            before["statut_test"] != updated.statut_test
+            and updated.statut_test == "Réussi"
+            and updated.user_story
+        ):
+            user_story = updated.user_story
+            
+            # Notify developer about the pass
+            if user_story.developerId:
+                self.notification_service.notify_user(
+                    user_id=user_story.developerId,
+                    titre="Test reussi",
+                    message=(
+                        f"Cas de test {updated.test_ref} pour {user_story.titre} "
+                        f"a ete execute avec succes!"
+                    ),
+                    notification_type=TypeNotification.TEST_PASSED,
+                    priorite="moyenne",
+                )
+
+        if updated.user_story:
+            related_cases = (
+                self.db.query(CasTest)
+                .filter(CasTest.cahier_id == cahier_id, CasTest.user_story_id == updated.user_story.id)
+                .all()
+            )
+            if related_cases and all(case.statut_test == "Réussi" for case in related_cases):
+                if updated.user_story.statut != "done":
+                    updated.user_story.statut = "done"
+                    self.db.commit()
+                    self.db.refresh(updated.user_story)
+                    
+                    # Notify everyone that all tests passed and US is done
+                    user_story = updated.user_story
+                    self.notification_service.notify_user_story_project_users(
+                        user_story_id=user_story.id,
+                        titre="Tous les tests reussis - US completee",
+                        message=(
+                            f"Tous les cas de test de la user story '{user_story.titre}' "
+                            f"ont ete executes avec succes! La user story passe en DONE."
+                        ),
+                        notification_type=TypeNotification.TEST_PASSED,
+                        priorite="moyenne",
+                    )
+
         if data.statut_test is not None:
             self.repo.recalculer_stats(cahier_id)
             if sync_rapport:
                 self._sync_existing_rapport_if_any(cahier_id, projet_id)
+        
+        # Ensure cas object has latest user_story relationship loaded
+        self.db.refresh(updated, ["user_story"])
+        
         return self._attach_user_story_display(updated)
 
     def list_cas_test_history(self, cahier_id: int, cas_id: int, projet_id: int) -> list:
@@ -957,21 +1122,38 @@ class CahierTestGlobalService:
         buf.seek(0)
         return buf.read()
 
-    def list_cas_tests(self, cahier_id: int, projet_id: int) -> list:
+    def list_cas_tests(
+        self,
+        cahier_id: int,
+        projet_id: int,
+        statut_test: Optional[str] = None,
+        us_statut: Optional[str] = None,
+    ) -> list:
         self._verifier_appartenance(cahier_id, projet_id)
         cases = self.repo.list_cas_tests(cahier_id)
-        return self._attach_user_story_display_many(cases)
+        if statut_test:
+            cases = [case for case in cases if case.statut_test == statut_test]
+        if us_statut:
+            cases = [case for case in cases if case.user_story and case.user_story.statut == us_statut]
+        enriched = self._attach_user_story_display_many(cases)
+        self._reorder_cas_tests(cahier_id)
+        return enriched
 
-    def list_user_stories_for_cahier(self, projet_id: int) -> list[dict]:
-        user_stories = (
+    def list_user_stories_for_cahier(
+        self,
+        projet_id: int,
+        statut: Optional[str] = None,
+    ) -> list[dict]:
+        query = (
             self.db.query(UserStory)
             .join(Epic, UserStory.epic_id == Epic.id)
+            .options(joinedload(UserStory.sprints), joinedload(UserStory.epic))
             .join(Module, Epic.module_id == Module.id)
-            .options(joinedload(UserStory.sprints), joinedload(UserStory.epic).joinedload(Epic.module))
             .filter(Module.projet_id == projet_id)
-            .order_by(UserStory.id.asc())
-            .all()
         )
+        if statut:
+            query = query.filter(UserStory.statut == statut)
+        user_stories = query.order_by(UserStory.id.asc()).all()
         prefix = self._project_reference_prefix(projet_id)
 
         return [
@@ -979,8 +1161,9 @@ class CahierTestGlobalService:
                 "id": us.id,
                 "reference": f"{prefix}-{index}",
                 "titre": us.titre,
+                "statut": us.statut,
                 "sprint_nom": us.sprints[0].nom if us.sprints else None,
-                "module_nom": us.epic.module.nom if (us.epic and us.epic.module) else None,
+                "epic_nom": us.epic.titre if us.epic else None,
             }
             for index, us in enumerate(user_stories, start=1)
         ]
@@ -1321,6 +1504,10 @@ class CahierTestGlobalService:
                 f"US {user_story.id}: {len(us_cases)} cas générés.",
                 progress,
             )
+            
+            # Add small delay between sequential API calls to prevent connection drops
+            if us_index < len(user_stories):
+                time.sleep(2)
 
         self.ai_repo.update_progress(generation_id, 65)
         self.ai_repo.add_log(generation_id, "parsing",
@@ -1781,11 +1968,11 @@ class CahierTestGlobalService:
         user_stories = (
             self.db.query(UserStory)
             .join(Epic, UserStory.epic_id == Epic.id)
-            .join(Module, Epic.module_id == Module.id)
             .options(
-                joinedload(UserStory.sprint),
-                joinedload(UserStory.epic).joinedload(Epic.module),
+                joinedload(UserStory.sprints),
+                joinedload(UserStory.epic),
             )
+            .join(Module, Epic.module_id == Module.id)
             .filter(Module.projet_id == projet_id)
             .order_by(UserStory.id.asc())
             .all()
@@ -1803,9 +1990,8 @@ class CahierTestGlobalService:
         projet_description: str,
         user_story: UserStory,
     ) -> str:
-        sprint_nom = user_story.sprint.nom if user_story.sprint else "N/A"
+        sprint_nom = user_story.sprints[0].nom if user_story.sprints else "N/A"
         epic_nom = user_story.epic.titre if user_story.epic else "N/A"
-        module_nom = user_story.epic.module.nom if (user_story.epic and user_story.epic.module) else "N/A"
         us_ref = user_story.reference or str(user_story.id)
 
         return USER_PROMPT_SINGLE_US_TEMPLATE.format(
@@ -1817,7 +2003,6 @@ class CahierTestGlobalService:
             user_story_description=user_story.description or "",
             user_story_criteres=user_story.criteresAcceptation or "",
             sprint_nom=sprint_nom,
-            module_nom=module_nom,
             epic_nom=epic_nom,
         )
 
@@ -1863,10 +2048,24 @@ class CahierTestGlobalService:
 
     @staticmethod
     def _appeler_openrouter(full_prompt: str, api_key: str, system_prompt: str = SYSTEM_PROMPT) -> str:
-        """Appel unique vers l'API OpenRouter (compatible OpenAI)."""
+        """Appel unique vers l'API OpenRouter (compatible OpenAI) avec retry strategy."""
         import requests
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
 
         clean_api_key = api_key.strip().strip('"').strip("'")
+
+        # Setup session with retry strategy for connection errors
+        session = requests.Session()
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["POST"]
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
 
         payload = {
             "model": AI_MODEL,
@@ -1881,7 +2080,11 @@ class CahierTestGlobalService:
             "Authorization": f"Bearer {clean_api_key}",
             "Content-Type":  "application/json",
         }
-        resp = requests.post(AI_API_URL, json=payload, headers=headers, timeout=120)
+        
+        try:
+            resp = session.post(AI_API_URL, json=payload, headers=headers, timeout=120)
+        finally:
+            session.close()
 
         if resp.status_code == 429:
             raise Exception(f"429 Quota dépassé : {resp.text}")

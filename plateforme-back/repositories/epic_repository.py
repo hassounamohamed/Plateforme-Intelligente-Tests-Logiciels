@@ -4,7 +4,7 @@ Repository pour la gestion des epics
 from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
 
-from models.scrum import Epic
+from models.scrum import Epic, Module
 from repositories.base_repository import BaseRepository
 
 # Valeurs autorisées pour le statut
@@ -12,45 +12,49 @@ STATUTS_VALIDES = {"to_do", "in_progress", "done"}
 
 
 class EpicRepository(BaseRepository[Epic]):
-    """Repository pour les epics liés à un module."""
+    """Repository pour les epics liés à un projet."""
 
     def __init__(self, db: Session):
         super().__init__(Epic, db)
 
     # ── Lecture ─────────────────────────────────────────────────────────────
 
-    def get_by_module(self, module_id: int) -> List[Epic]:
-        """Epics d'un module, ordonnés par priorité décroissante."""
+    def get_by_projet(self, projet_id: int) -> List[Epic]:
+        """Epics d'un projet, ordonnés par priorité décroissante."""
         return (
             self.db.query(Epic)
-            .filter(Epic.module_id == module_id)
+            .join(Module, Epic.module_id == Module.id)
+            .filter(Module.projet_id == projet_id)
             .order_by(Epic.priorite.desc())
             .all()
         )
 
-    def get_by_module_with_userstories(self, module_id: int) -> List[Epic]:
+    def get_by_projet_with_userstories(self, projet_id: int) -> List[Epic]:
         """Epics avec leurs user-stories chargées."""
         return (
             self.db.query(Epic)
             .options(joinedload(Epic.userstories))
-            .filter(Epic.module_id == module_id)
+            .join(Module, Epic.module_id == Module.id)
+            .filter(Module.projet_id == projet_id)
             .order_by(Epic.priorite.desc())
             .all()
         )
 
-    def get_by_id_in_module(self, epic_id: int, module_id: int) -> Optional[Epic]:
-        """Récupérer un epic en vérifiant son appartenance au module."""
+    def get_by_id_in_projet(self, epic_id: int, projet_id: int) -> Optional[Epic]:
+        """Récupérer un epic en vérifiant son appartenance au projet."""
         return (
             self.db.query(Epic)
-            .filter(Epic.id == epic_id, Epic.module_id == module_id)
+            .join(Module, Epic.module_id == Module.id)
+            .filter(Epic.id == epic_id, Module.projet_id == projet_id)
             .first()
         )
 
-    def get_by_statut(self, module_id: int, statut: str) -> List[Epic]:
-        """Filtrer les epics d'un module par statut."""
+    def get_by_statut(self, projet_id: int, statut: str) -> List[Epic]:
+        """Filtrer les epics d'un projet par statut."""
         return (
             self.db.query(Epic)
-            .filter(Epic.module_id == module_id, Epic.statut == statut)
+            .join(Module, Epic.module_id == Module.id)
+            .filter(Module.projet_id == projet_id, Epic.statut == statut)
             .order_by(Epic.priorite.desc())
             .all()
         )

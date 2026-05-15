@@ -101,3 +101,14 @@ export const rejectGeneration = async (
   );
   return response.data;
 };
+
+/** Annuler une génération IA en cours */
+export const cancelGeneration = async (
+  projectId: number,
+  generationId: number
+): Promise<{ generation_id: number; status: string }> => {
+  const response = await axiosInstance.post<{ generation_id: number; status: string }>(
+    `${base(projectId)}/generations/${generationId}/cancel`
+  );
+  return response.data;
+};

@@ -355,6 +355,7 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement | null>(null);
   const notificationsContainerRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -495,11 +496,17 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
   };
 
   const handleMarkAllAsRead = async () => {
+    if (unreadCount === 0) return;
+    setIsMarkingAllRead(true);
+    setNotifications((prev) => prev.map((notif) => ({ ...notif, lue: true })));
+    setUnreadCount(0);
     try {
       await markAllNotificationsAsRead();
       await refreshNotifications();
     } catch {
       // Silent fail in header UI.
+    } finally {
+      setIsMarkingAllRead(false);
     }
   };
 
@@ -595,7 +602,9 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleMarkAllAsRead}
-                    className="text-xs text-primary hover:underline"
+                    className={`text-xs text-primary hover:underline ${
+                      unreadCount === 0 || isMarkingAllRead ? "opacity-50 pointer-events-none" : ""
+                    }`}
                   >
                     Tout lire
                   </button>

@@ -75,6 +75,10 @@ class RapportQA(Base):
 
     @property
     def decisionRelease(self) -> str:
+        st = (self.statut or "").strip().lower()
+        if st == "valide":
+            # Rapport officiellement valide par le testeur : prêt côté process release.
+            return "GO"
         executes = self.nombreTestsExecutes or 0
         failed = self.nombreTestsEchoues or 0
         critical = self.indicateurs.nombreAnomaliesCritiques if self.indicateurs else 0
@@ -91,6 +95,12 @@ class RapportQA(Base):
 
     @property
     def observationMessage(self) -> str:
+        st = (self.statut or "").strip().lower()
+        if st == "valide":
+            return (
+                "Rapport QA valide : decision de release GO. "
+                "Les parties prenantes peuvent s'appuyer sur ce document pour la livraison."
+            )
         executes = self.nombreTestsExecutes or 0
         failed = self.nombreTestsEchoues or 0
         critical = self.indicateurs.nombreAnomaliesCritiques if self.indicateurs else 0

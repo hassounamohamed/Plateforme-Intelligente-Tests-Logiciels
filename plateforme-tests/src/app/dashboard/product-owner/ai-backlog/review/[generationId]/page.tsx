@@ -117,7 +117,8 @@ export default function AIBacklogReviewPage() {
           detail.status === "completed" ||
           detail.status === "approved" ||
           detail.status === "failed" ||
-          detail.status === "rejected"
+          detail.status === "rejected" ||
+          detail.status === "cancelled"
         ) {
           if (pollRef.current) clearInterval(pollRef.current);
           if (detail.status === "completed" || detail.status === "approved") {
@@ -545,9 +546,8 @@ export default function AIBacklogReviewPage() {
             </div>
             <div className="grid grid-cols-3 gap-4">
               {[
-                { label: "Modules créés", value: applyResult.modules_created, icon: "view_module" },
                 { label: "Epics créés", value: applyResult.epics_created, icon: "content_cut" },
-                { label: "User Stories", value: applyResult.stories_created, icon: "person" },
+                { label: "User Stories créées", value: applyResult.stories_created, icon: "person" },
               ].map(({ label, value, icon }) => (
                 <div
                   key={label}

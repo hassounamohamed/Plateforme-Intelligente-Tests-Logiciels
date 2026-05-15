@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from db.database import get_db
 from models.user import Utilisateur
 from models.attachment import Attachment
-from models.scrum import Projet, Epic, UserStory
+from models.scrum import Projet, Epic, UserStory, Module
 from core.rbac.dependencies import get_current_user_with_role
 from schemas.attachment import AttachmentResponse
 
@@ -135,20 +135,24 @@ async def list_projet_attachments(
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post(
-    "/projets/{projet_id}/modules/{module_id}/epics/{epic_id}/attachments",
+    "/projets/{projet_id}/epics/{epic_id}/attachments",
     response_model=AttachmentResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Ajouter une pièce jointe à un epic",
 )
 async def upload_epic_attachment(
     projet_id: int,
-    module_id: int,
     epic_id: int,
     file: UploadFile = File(...),
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)] = None,
     db: Session = Depends(get_db),
 ):
-    epic = db.query(Epic).filter(Epic.id == epic_id, Epic.module_id == module_id).first()
+    epic = (
+        db.query(Epic)
+        .join(Module, Epic.module_id == Module.id)
+        .filter(Epic.id == epic_id, Module.projet_id == projet_id)
+        .first()
+    )
     if not epic:
         raise HTTPException(status_code=404, detail=f"Epic {epic_id} introuvable.")
 
@@ -169,13 +173,12 @@ async def upload_epic_attachment(
 
 
 @router.get(
-    "/projets/{projet_id}/modules/{module_id}/epics/{epic_id}/attachments",
+    "/projets/{projet_id}/epics/{epic_id}/attachments",
     response_model=List[AttachmentResponse],
     summary="Lister les pièces jointes d'un epic",
 )
 async def list_epic_attachments(
     projet_id: int,
-    module_id: int,
     epic_id: int,
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)] = None,
     db: Session = Depends(get_db),
@@ -188,21 +191,26 @@ async def list_epic_attachments(
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.post(
-    "/projets/{projet_id}/modules/{module_id}/epics/{epic_id}/userstories/{us_id}/attachments",
+    "/projets/{projet_id}/epics/{epic_id}/userstories/{us_id}/attachments",
     response_model=AttachmentResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Ajouter une pièce jointe à une user story",
 )
 async def upload_userstory_attachment(
     projet_id: int,
-    module_id: int,
     epic_id: int,
     us_id: int,
     file: UploadFile = File(...),
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)] = None,
     db: Session = Depends(get_db),
 ):
-    us = db.query(UserStory).filter(UserStory.id == us_id, UserStory.epic_id == epic_id).first()
+    us = (
+        db.query(UserStory)
+        .join(Epic, UserStory.epic_id == Epic.id)
+        .join(Module, Epic.module_id == Module.id)
+        .filter(UserStory.id == us_id, UserStory.epic_id == epic_id, Module.projet_id == projet_id)
+        .first()
+    )
     if not us:
         raise HTTPException(status_code=404, detail=f"User story {us_id} introuvable.")
 
@@ -223,13 +231,12 @@ async def upload_userstory_attachment(
 
 
 @router.get(
-    "/projets/{projet_id}/modules/{module_id}/epics/{epic_id}/userstories/{us_id}/attachments",
+    "/projets/{projet_id}/epics/{epic_id}/userstories/{us_id}/attachments",
     response_model=List[AttachmentResponse],
     summary="Lister les pièces jointes d'une user story",
 )
 async def list_userstory_attachments(
     projet_id: int,
-    module_id: int,
     epic_id: int,
     us_id: int,
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)] = None,

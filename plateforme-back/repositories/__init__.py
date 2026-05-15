@@ -5,7 +5,6 @@ from repositories.base_repository import BaseRepository
 from repositories.user_repository import UserRepository, RoleRepository, PermissionRepository
 from repositories.scrum_repository import (
     ProjetRepository,
-    ModuleRepository,
     EpicRepository,
     SprintRepository,
     UserStoryRepository
@@ -35,7 +34,6 @@ __all__ = [
     "PermissionRepository",
     # Scrum
     "ProjetRepository",
-    "ModuleRepository",
     "EpicRepository",
     "SprintRepository",
     "UserStoryRepository",

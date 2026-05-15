@@ -215,19 +215,21 @@ export default function ProjectManagementModal({
       title={mode === "create" ? "Créer un Projet" : "Modifier le Projet"}
     >
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="rounded-xl border border-[#3b4754] bg-linear-to-r from-[#0f172a] via-[#111827] to-[#0b1220] p-4">
+        <div className="rounded-xl border border-border bg-(--surface-2) p-4 dark:border-[#3b4754] dark:bg-linear-to-r dark:from-[#0f172a] dark:via-[#111827] dark:to-[#0b1220]">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs uppercase tracking-wider text-[#9dabb9]">Progression formulaire</p>
-              <p className="text-sm font-semibold text-white">{completionPercent}% complété</p>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                Progression formulaire
+              </p>
+              <p className="text-sm font-semibold text-foreground">{completionPercent}% complété</p>
             </div>
-            <span className="rounded-full border border-[#3b4754] bg-[#1e293b] px-2.5 py-1 text-xs font-medium text-[#cbd5e1]">
+            <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm dark:border-[#3b4754] dark:bg-[#1e293b] dark:text-[#cbd5e1]">
               {completedCount}/5 champs
             </span>
           </div>
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[#1e293b]">
+          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200/90 dark:bg-[#1e293b]">
             <div
-              className="h-full rounded-full bg-linear-to-r from-[#0ea5e9] to-[#2563eb] transition-all duration-500"
+              className="h-full rounded-full bg-linear-to-r from-primary-400 to-primary-600 transition-all duration-500"
               style={{ width: `${completionPercent}%` }}
             />
           </div>
@@ -240,10 +242,10 @@ export default function ProjectManagementModal({
         )}
 
         {mode === "create" && (
-          <div className="rounded-xl border border-[#3b4754] bg-[#0f172a]/80 p-4 space-y-3">
+          <div className="rounded-xl border border-border bg-(--surface-2) p-4 space-y-3 dark:border-[#3b4754] dark:bg-[#0f172a]/80">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-white">Assistant IA</p>
-              <span className="rounded-full bg-[#1e293b] px-2.5 py-1 text-[11px] text-[#9dabb9]">
+              <p className="text-sm font-semibold text-foreground">Assistant IA</p>
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary dark:bg-[#1e293b] dark:font-normal dark:text-[#9dabb9]">
                 Pré-remplissage intelligent
               </span>
             </div>
@@ -252,23 +254,23 @@ export default function ProjectManagementModal({
               onChange={(e) => setAiPrompt(e.target.value)}
               rows={3}
               placeholder="Ex: Plateforme e-commerce B2B pour gérer catalogue, commandes et support SAV..."
-              className="w-full px-3 py-2 bg-[#1e293b] border border-[#3b4754] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-[#1e293b] dark:border-[#3b4754] dark:text-white dark:placeholder:text-[#9dabb9]"
             />
             {aiPrompt.trim() && (
-              <div className="rounded-lg border border-[#3b4754] bg-[#111827] p-3">
+              <div className="rounded-lg border border-border bg-background/80 p-3 dark:border-[#3b4754] dark:bg-[#111827]">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] uppercase tracking-wide text-[#9dabb9]">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
                     Suggestion IA ({getThemeLabel(detectedTheme)})
                   </p>
                   <button
                     type="button"
                     onClick={() => setAiPrompt(aiSingleSuggestion)}
-                    className="rounded-md border border-[#3b4754] px-2 py-1 text-[11px] font-medium text-[#cbd5e1] hover:text-white hover:border-[#4b5a6a]"
+                    className="rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:bg-muted hover:text-foreground dark:border-[#3b4754] dark:text-[#cbd5e1] dark:hover:border-[#4b5a6a] dark:hover:text-white"
                   >
                     Utiliser
                   </button>
                 </div>
-                <p className="mt-2 text-sm leading-6 text-[#dbe5ef]">
+                <p className="mt-2 text-sm leading-6 text-foreground dark:text-[#dbe5ef]">
                   {aiSingleSuggestion}
                 </p>
               </div>
@@ -278,7 +280,7 @@ export default function ProjectManagementModal({
                 type="button"
                 onClick={handleAISuggest}
                 disabled={aiLoading}
-                className="px-3 py-2 text-xs font-semibold bg-[#2563eb] hover:bg-primary-700 text-white rounded-md disabled:opacity-60"
+                className="px-3 py-2 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
               >
                 {aiLoading ? "Génération..." : "Aider avec IA"}
               </button>
@@ -286,11 +288,11 @@ export default function ProjectManagementModal({
           </div>
         )}
 
-        <div className="rounded-xl border border-[#3b4754] bg-[#111827]/80 p-4 space-y-4">
-          <p className="text-sm font-semibold text-white">Informations du projet</p>
+        <div className="rounded-xl border border-border bg-(--surface-2) p-4 space-y-4 dark:border-[#3b4754] dark:bg-[#111827]/80">
+          <p className="text-sm font-semibold text-foreground">Informations du projet</p>
 
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-white mb-2">
               Nom du projet
             </label>
             <Input
@@ -303,7 +305,7 @@ export default function ProjectManagementModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-white mb-2">
               Description
             </label>
             <textarea
@@ -313,13 +315,13 @@ export default function ProjectManagementModal({
               }
               placeholder="Décrivez les objectifs et le contexte du projet..."
               rows={4}
-              className="w-full px-3 py-2 bg-[#1e293b] border border-[#3b4754] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-[#1e293b] dark:border-[#3b4754] dark:text-white dark:placeholder:text-[#9dabb9]"
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-white mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-white mb-2">
                 Date de début
               </label>
               <Input
@@ -332,7 +334,7 @@ export default function ProjectManagementModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-white mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-white mb-2">
                 Date de fin
               </label>
               <Input
@@ -346,13 +348,13 @@ export default function ProjectManagementModal({
           </div>
 
           {isDateRangeInvalid && (
-            <p className="text-xs text-amber-400">
+            <p className="text-xs text-amber-600 dark:text-amber-400">
               Vérifiez les dates: la date de fin ne peut pas être antérieure à la date de début.
             </p>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-white mb-2">
               Objectif principal
             </label>
             <textarea
@@ -362,31 +364,35 @@ export default function ProjectManagementModal({
               }
               placeholder="Ex: Augmenter le taux de conversion de 15%"
               rows={2}
-              className="w-full px-3 py-2 bg-[#1e293b] border border-[#3b4754] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-white text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-[#1e293b] dark:border-[#3b4754] dark:text-white dark:placeholder:text-[#9dabb9]"
             />
           </div>
         </div>
 
         {mode === "create" && (
-          <div className="rounded-xl border border-dashed border-[#3b4754] bg-[#0b1220]/70 p-4">
-            <label className="block text-sm font-semibold text-white mb-2">
+          <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 dark:border-[#3b4754] dark:bg-[#0b1220]/70">
+            <label
+              htmlFor="project-initial-attachment"
+              className="block text-sm font-semibold text-foreground mb-2"
+            >
               Fichier initial (photo, PDF, DOCX, etc.)
             </label>
             <input
+              id="project-initial-attachment"
               type="file"
               onChange={(e) => setInitialAttachment(e.target.files?.[0] || null)}
               accept=".png,.jpg,.jpeg,.webp,.pdf,.doc,.docx,.txt"
-              className="w-full px-3 py-2 bg-[#1e293b] border border-[#3b4754] rounded-lg text-white text-sm file:mr-3 file:px-3 file:py-1.5 file:rounded-md file:border-0 file:bg-[#283039] file:text-white"
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm file:mr-3 file:px-3 file:py-1.5 file:rounded-md file:border-0 file:bg-slate-200 file:text-slate-900 dark:bg-[#1e293b] dark:border-[#3b4754] dark:text-white dark:file:bg-[#283039] dark:file:text-white"
             />
             {initialAttachment && (
-              <div className="mt-3 flex items-center justify-between rounded-lg border border-[#3b4754] bg-[#111827] px-3 py-2">
-                <p className="text-xs text-[#9dabb9] truncate pr-3">
+              <div className="mt-3 flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2 dark:border-[#3b4754] dark:bg-[#111827]">
+                <p className="text-xs text-muted-foreground truncate pr-3">
                   {initialAttachment.name}
                 </p>
                 <button
                   type="button"
                   onClick={() => setInitialAttachment(null)}
-                  className="text-xs text-red-300 hover:text-red-200"
+                  className="text-xs text-red-600 hover:text-red-700 dark:text-red-300 dark:hover:text-red-200"
                 >
                   Retirer
                 </button>
@@ -395,17 +401,17 @@ export default function ProjectManagementModal({
           </div>
         )}
 
-        <div className="rounded-xl border border-[#3b4754] bg-[#0f172a]/80 p-4">
-          <p className="text-sm font-semibold text-white mb-2">Aperçu rapide</p>
-          <p className="text-lg font-semibold text-white/95">{formData.nom || "Nom du projet"}</p>
-          <p className="text-sm text-[#9dabb9] mt-1 line-clamp-2">
+        <div className="rounded-xl border border-border bg-(--surface-2) p-4 dark:border-[#3b4754] dark:bg-[#0f172a]/80">
+          <p className="text-sm font-semibold text-foreground mb-2">Aperçu rapide</p>
+          <p className="text-lg font-semibold text-foreground">{formData.nom || "Nom du projet"}</p>
+          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
             {formData.description || "La description du projet apparaîtra ici..."}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-full bg-[#1e293b] px-2.5 py-1 text-xs text-[#cbd5e1]">
+            <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground dark:border-transparent dark:bg-[#1e293b] dark:text-[#cbd5e1]">
               Début: {formData.dateDebut || "Non défini"}
             </span>
-            <span className="rounded-full bg-[#1e293b] px-2.5 py-1 text-xs text-[#cbd5e1]">
+            <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground dark:border-transparent dark:bg-[#1e293b] dark:text-[#cbd5e1]">
               Fin: {formData.dateFin || "Non défini"}
             </span>
           </div>
@@ -415,14 +421,14 @@ export default function ProjectManagementModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-[#9dabb9] hover:bg-[#283039] rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground dark:hover:bg-[#283039]"
           >
             Annuler
           </button>
           <button
             type="submit"
             disabled={isLoading}
-            className="px-4 py-2 text-sm font-medium bg-primary hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading
               ? "Enregistrement..."

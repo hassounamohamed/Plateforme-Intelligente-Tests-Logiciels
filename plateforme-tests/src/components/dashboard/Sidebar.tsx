@@ -66,7 +66,6 @@ export function Sidebar({ title, subtitle, icon, links }: SidebarProps) {
   // Derive groups from link labels
   const gestionLabels = [
     "Équipe",
-    "Cahier de Tests",
     "Mon Profil",
     "Paramètres",
     "Utilisateurs",

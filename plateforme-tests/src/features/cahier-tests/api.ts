@@ -63,6 +63,19 @@ export const getGeneration = async (
 };
 
 /**
+ * Annuler une génération en cours ou en attente
+ */
+export const cancelGeneration = async (
+  projectId: number,
+  generationId: number
+): Promise<{ generation_id: number; status: string }> => {
+  const response = await axiosInstance.post<{ generation_id: number; status: string }>(
+    `${getCahierBase(projectId)}/generations/${generationId}/cancel`
+  );
+  return response.data;
+};
+
+/**
  * ─── RÉCUPÉRATION DU CAHIER ────────────────────────────────────────────────
  */
 

@@ -108,7 +108,7 @@ class ProjetStatistiquesResponse(BaseModel):
     projet_id: int
     nom: str
     nb_sprints: int
-    nb_modules: int
+    nb_epics: int
     statut: str
 
 # Rebuild ProjetResponse to resolve forward references

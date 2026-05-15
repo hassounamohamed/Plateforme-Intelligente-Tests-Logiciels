@@ -31,7 +31,7 @@ from core.config import AI_API_KEY, AI_MODEL, AI_API_URL
 from models.notification import TypeNotification
 from models.ai_generation import AIGeneration
 from models.execution import ExecutionTest, ResultatTest
-from models.scrum import Epic, Module, UserStory
+from models.scrum import Epic, UserStory, Module
 from models.tests import (
     CahierDeTests,
     ScenarioTest,
@@ -247,8 +247,8 @@ class UnitTestService:
     def _get_us(self, us_id: int, projet_id: int) -> UserStory:
         us = (
             self.db.query(UserStory)
-            .join(Epic,   UserStory.epic_id   == Epic.id)
-            .join(Module, Epic.module_id       == Module.id)
+            .join(Epic, UserStory.epic_id == Epic.id)
+            .join(Module, Epic.module_id == Module.id)
             .filter(UserStory.id == us_id, Module.projet_id == projet_id)
             .first()
         )

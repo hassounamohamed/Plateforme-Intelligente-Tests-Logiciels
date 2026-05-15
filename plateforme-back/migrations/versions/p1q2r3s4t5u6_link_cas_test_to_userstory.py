@@ -32,8 +32,7 @@ def upgrade() -> None:
             SELECT ct2.id AS cas_id, MIN(us.id) AS us_id
             FROM cas_test ct2
             JOIN cahier_test_global c ON c.id = ct2.cahier_id
-            JOIN module m ON m.projet_id = c.projet_id
-            JOIN epic e ON e.module_id = m.id
+            JOIN epic e ON e.projet_id = c.projet_id
             JOIN userstory us ON us.epic_id = e.id
             GROUP BY ct2.id
         ) AS mapped

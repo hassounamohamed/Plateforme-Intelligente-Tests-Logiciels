@@ -34,20 +34,18 @@ async def get_backlog(
     projet_id: int,
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: BacklogService = Depends(get_backlog_service),
-    module_id: Optional[int] = Query(None, description="Filtrer par module"),
     epic_id: Optional[int] = Query(None, description="Filtrer par epic"),
-    statut: Optional[str] = Query(None, description="to_do | in_progress | done"),
+    statut: Optional[str] = Query(None, description="to_do | in_progress | ready_for_test | done"),
     priorite: Optional[str] = Query(None, description="must_have | should_have | could_have | wont_have"),
     non_planifiees: bool = Query(False, description="True = uniquement les stories sans sprint"),
     tri: str = Query("priorite", description="priorite | points | ordre | statut"),
 ):
     """
-    Vue backlog du projet — toutes les user stories de tous les epics/modules.
+    Vue backlog du projet — toutes les user stories de tous les epics.
 
     **Filtres disponibles :**
-    - `module_id` — limiter à un module
     - `epic_id` — limiter à un epic
-    - `statut` — `to_do` / `in_progress` / `done`
+    - `statut` — `to_do` / `in_progress` / `ready_for_test` / `done`
     - `priorite` — MoSCoW : `must_have` / `should_have` / `could_have` / `wont_have`
     - `non_planifiees` — uniquement les stories non affectées à un sprint
 
@@ -55,7 +53,6 @@ async def get_backlog(
     """
     return svc.get_backlog(
         projet_id=projet_id,
-        module_id=module_id,
         epic_id=epic_id,
         statut=statut,
         priorite=priorite,

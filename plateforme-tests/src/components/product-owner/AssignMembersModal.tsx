@@ -48,7 +48,10 @@ export function AssignMembersModal({
       const eligibleUsers = normalizedUsers.filter((user) => {
         const isActive = typeof user.actif === "boolean" ? user.actif : true;
         const isNotCurrentUser = currentUserId ? user.id !== currentUserId : true;
-        return isActive && isNotCurrentUser;
+        const roleCode = user.role?.code?.toUpperCase();
+        const roleName = user.role?.nom?.toUpperCase();
+        const isProductOwner = roleCode === "PRODUCT_OWNER" || roleName === "PRODUCT OWNER";
+        return isActive && isNotCurrentUser && !isProductOwner;
       });
 
       setUsers(eligibleUsers);

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -6,14 +6,15 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
+import time
 
 from core.config import ENVIRONMENT, SESSION_COOKIE_NAME, SESSION_SAME_SITE, SESSION_SECRET_KEY
-from db.database import engine, get_db, Base
+from db.database import engine, get_db, Base, SessionLocal
 
 # Import all models to register them with SQLAlchemy
 from models import (
     Utilisateur, Role, Permission,
-    Projet, Module, Epic, UserStory, Sprint,
+    Projet, Epic, UserStory, Sprint,
     Attachment,
     CahierDeTests, Test, TestUnitaire, TestAutomatise, TestManuel, ScenarioTest, ValidationTest,
     ExecutionTest, ResultatTest,
@@ -32,7 +33,6 @@ from api.roles import router as roles_router
 from api.logs import router as logs_router
 from api.users import router as users_router
 from api.projets import router as projets_router
-from api.modules import router as modules_router
 from api.epics import router as epics_router
 from api.userstories import router as userstories_router
 from api.sprints import router as sprints_router
@@ -41,9 +41,11 @@ from api.attachments import router as attachments_router
 from api.ai_generation import router as ai_generation_router
 from api.cahier_test_global import router as cahier_test_global_router
 from api.rapport import router as rapport_router
+from api.anomalies import router as anomalies_router, cas_router as anomalies_cas_router
 from api.notifications import router as notifications_router
 from api.unit_tests import router as unit_tests_router
 from api.dashboard import router as dashboard_router
+from api.product_owner_dashboard import router as product_owner_dashboard_router
 from api.contact import router as contact_router
 
 
@@ -52,6 +54,65 @@ app = FastAPI(
     description="API pour la gestion intelligente des tests logiciels avec approche Scrum",
     version="1.0.0"
 )
+
+
+@app.middleware("http")
+async def log_system_requests(request: Request, call_next):
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+    except Exception as exc:
+        status_code = 500
+        _write_system_log(
+            niveau="ERROR",
+            message=f"HTTP {request.method} {request.url.path} -> 500",
+            details=str(exc),
+        )
+        raise
+    else:
+        duration_ms = (time.perf_counter() - start) * 1000
+        if status_code >= 500:
+            level = "ERROR"
+        elif status_code >= 400:
+            level = "WARNING"
+        else:
+            level = "INFO"
+
+        details = (
+            f"status={status_code} method={request.method} path={request.url.path} "
+            f"duration_ms={duration_ms:.2f}"
+        )
+        _write_system_log(
+            niveau=level,
+            message=f"HTTP {request.method} {request.url.path} -> {status_code}",
+            details=details,
+        )
+        return response
+
+
+def _write_system_log(niveau: str, message: str, details: str | None = None) -> None:
+    try:
+        from models.log_systems import LogSystems
+
+        db = SessionLocal()
+        db.add(
+            LogSystems(
+                niveau=niveau,
+                message=message,
+                source="api",
+                details=details,
+            )
+        )
+        db.commit()
+    except Exception:
+        # Avoid breaking requests if logging fails.
+        pass
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 
 app.add_middleware(
     SessionMiddleware,
@@ -74,6 +135,7 @@ app.add_middleware(
         "http://127.0.0.1:8081",
         "http://127.0.0.1:19006",
     ],
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -87,6 +149,44 @@ if ENVIRONMENT == "production":
         TrustedHostMiddleware,
         allowed_hosts=["*"],  # Restreindre en prod : ["mondomaine.com", "www.mondomaine.com"]
     )
+
+
+def _ensure_anomalie_cas_test_id_column() -> None:
+    """Ajoute cas_test_id sur anomalie si la colonne manque (idempotent)."""
+    statements = [
+        "ALTER TABLE anomalie ADD COLUMN IF NOT EXISTS cas_test_id INTEGER",
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint WHERE conname = 'fk_anomalie_cas_test_id'
+            ) THEN
+                ALTER TABLE anomalie
+                ADD CONSTRAINT fk_anomalie_cas_test_id
+                FOREIGN KEY (cas_test_id) REFERENCES cas_test(id) ON DELETE CASCADE;
+            END IF;
+        END $$;
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_anomalie_cas_test_id ON anomalie (cas_test_id)",
+    ]
+    try:
+        with engine.begin() as connection:
+            for stmt in statements:
+                connection.execute(text(stmt))
+        print("[OK] Colonne anomalie.cas_test_id verifiee.")
+    except Exception as exc:
+        err = str(exc).lower()
+        if "insufficientprivilege" in err or "must be owner" in err or "permission denied" in err:
+            print("[WARNING] Impossible d'alterer la table anomalie (droits insuffisants).")
+            print(
+                "[WARNING] Executez en tant que proprietaire PostgreSQL :\n"
+                "  ALTER TABLE anomalie ADD COLUMN IF NOT EXISTS cas_test_id INTEGER;\n"
+                "  ALTER TABLE anomalie ADD CONSTRAINT fk_anomalie_cas_test_id "
+                "FOREIGN KEY (cas_test_id) REFERENCES cas_test(id) ON DELETE CASCADE;\n"
+                "  CREATE INDEX IF NOT EXISTS ix_anomalie_cas_test_id ON anomalie (cas_test_id);"
+            )
+        else:
+            print(f"[WARNING] Schema anomalie non mis a jour : {exc}")
 
 
 # 🔹 Initialize database and create tables on startup
@@ -111,6 +211,8 @@ def startup():
             else:
                 raise
 
+        _ensure_anomalie_cas_test_id_column()
+
     except Exception as e:
         print(f"[ERROR] Database initialization failed: {e}")
         raise
@@ -122,13 +224,29 @@ def read_root():
     return {"message": "FastAPI is running"}
 
 
+@app.get("/health")
+def health_check():
+    status = "OK"
+    db_status = "OK"
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception:
+        status = "DEGRADED"
+        db_status = "ERROR"
+
+    return {
+        "status": status,
+        "db": db_status,
+    }
+
+
 # Include routers
 app.include_router(auth_router)
 app.include_router(roles_router)
 app.include_router(logs_router)
 app.include_router(users_router)
 app.include_router(projets_router)
-app.include_router(modules_router)
 app.include_router(epics_router)
 app.include_router(userstories_router)
 app.include_router(sprints_router)
@@ -137,9 +255,12 @@ app.include_router(attachments_router)
 app.include_router(ai_generation_router)
 app.include_router(cahier_test_global_router)
 app.include_router(rapport_router)
+app.include_router(anomalies_router)
+app.include_router(anomalies_cas_router)
 app.include_router(notifications_router)
 app.include_router(unit_tests_router)
 app.include_router(dashboard_router)
+app.include_router(product_owner_dashboard_router)
 app.include_router(contact_router)
 # Test DB route
 @app.get("/test-db")

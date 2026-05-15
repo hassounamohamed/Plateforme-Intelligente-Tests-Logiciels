@@ -21,10 +21,9 @@ import {
   addUserStoriesToSprint,
   removeUserStoriesFromSprint,
 } from "@/features/sprints/api";
-import { getModules } from "@/features/modules/api";
 import { getEpics } from "@/features/epics/api";
 import { getUserStories } from "@/features/userstories/api";
-import { Project, Sprint, Module, Epic, UserStory, SprintVelocite } from "@/types";
+import { Project, Sprint, Epic, UserStory, SprintVelocite } from "@/types";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialogProvider";
 
 export default function SprintsPage() {
@@ -69,6 +68,17 @@ export default function SprintsPage() {
     if (selectedProject) {
       loadSprints(selectedProject);
     }
+    if (!selectedProject) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      loadSprints(selectedProject);
+    }, 15000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, [selectedProject]);
 
   useEffect(() => {
@@ -111,10 +121,19 @@ export default function SprintsPage() {
   const handleStartSprint = async (sprintId: number) => {
     if (!selectedProject) return;
     setActionLoading(sprintId);
+    const previousSprints = sprints;
+    setSprints((prev) =>
+      prev.map((sprint) =>
+        sprint.id === sprintId
+          ? { ...sprint, statut: "en_cours" }
+          : sprint
+      )
+    );
     try {
       await startSprint(selectedProject, sprintId);
       await loadSprints(selectedProject);
     } catch (error: any) {
+      setSprints(previousSprints);
       alert("Erreur lors du démarrage du sprint: " + (error.response?.data?.detail || error.message));
     } finally {
       setActionLoading(null);
@@ -145,9 +164,28 @@ export default function SprintsPage() {
 
   const handleDeleteSprint = async (sprintId: number) => {
     if (!selectedProject) return;
+    const sprintToDelete = sprints.find((sprint) => sprint.id === sprintId) || null;
+    const nextSprint = sprintToDelete ? getNextSprint(sprintId) : null;
+    const storyIds = sprintToDelete?.userstories?.map((story) => story.id) || [];
+
+    if (storyIds.length > 0 && !nextSprint) {
+      alert("Aucun sprint suivant disponible pour transférer les user stories.");
+      return;
+    }
+
+    const nextSprintIndex = nextSprint
+      ? visibleSprints.findIndex((sprint) => sprint.id === nextSprint.id)
+      : -1;
+    const nextSprintLabel = nextSprint
+      ? getSprintDisplayName(nextSprint, Math.max(nextSprintIndex, 0))
+      : "";
+    const description = nextSprint && storyIds.length > 0
+      ? `Êtes-vous sûr de vouloir supprimer ce sprint ? Les user stories seront transférées vers ${nextSprintLabel}.`
+      : "Êtes-vous sûr de vouloir supprimer ce sprint ?";
+
     const confirmed = await confirmDialog({
       title: "Supprimer le sprint",
-      description: "Êtes-vous sûr de vouloir supprimer ce sprint ?",
+      description,
       confirmText: "Supprimer",
       cancelText: "Annuler",
       confirmVariant: "destructive",
@@ -157,6 +195,14 @@ export default function SprintsPage() {
 
     setActionLoading(sprintId);
     try {
+      if (storyIds.length > 0 && nextSprint) {
+        await removeUserStoriesFromSprint(selectedProject, sprintId, {
+          userstory_ids: storyIds,
+        });
+        await addUserStoriesToSprint(selectedProject, nextSprint.id, {
+          userstory_ids: storyIds,
+        });
+      }
       await deleteSprint(selectedProject, sprintId);
       await loadSprints(selectedProject);
     } catch (error: any) {
@@ -239,22 +285,23 @@ export default function SprintsPage() {
 
     setIsEditDataLoading(true);
     try {
-      const modulesData: Module[] = await getModules(selectedProject);
       const allEpics: Epic[] = [];
       const allStories: UserStory[] = [];
 
-      for (const module of modulesData) {
-        const epicsData = await getEpics(selectedProject, module.id);
+      try {
+        const epicsData = await getEpics(selectedProject);
         allEpics.push(...epicsData);
 
         for (const epic of epicsData) {
           try {
-            const storiesData = await getUserStories(selectedProject, module.id, epic.id);
+            const storiesData = await getUserStories(selectedProject, epic.id);
             allStories.push(...storiesData);
           } catch (err) {
             console.warn("Erreur chargement stories pour epic:", epic.id);
           }
         }
+      } catch (err) {
+        console.warn("Erreur chargement epics:", err);
       }
 
       const uniqueStories = Array.from(new Map(allStories.map((story) => [story.id, story])).values());
@@ -361,8 +408,22 @@ export default function SprintsPage() {
     { href: `${ROUTES.SCRUM_MASTER}/profile`, icon: "account_circle", label: "Mon Profil" },
   ];
 
+  const normalizeSprintStatus = (statut: string | null | undefined) => {
+    const value = (statut || "").trim().toLowerCase();
+    if (value.startsWith("planif")) {
+      return "planifie";
+    }
+    if (value === "en cours" || value === "en_cours" || value === "encours") {
+      return "en_cours";
+    }
+    if (value.startsWith("term")) {
+      return "termine";
+    }
+    return value || "planifie";
+  };
+
   const getStatusColor = (statut: string) => {
-    switch (statut) {
+    switch (normalizeSprintStatus(statut)) {
       case "en_cours":
         return "bg-primary/20 text-primary";
       case "termine":
@@ -374,7 +435,7 @@ export default function SprintsPage() {
   };
 
   const getStatusLabel = (statut: string) => {
-    switch (statut) {
+    switch (normalizeSprintStatus(statut)) {
       case "en_cours":
         return "En cours";
       case "termine":
@@ -421,6 +482,81 @@ export default function SprintsPage() {
       default:
         return "text-[#9dabb9]";
     }
+  };
+
+  const getSprintProgress = (sprint: Sprint) => {
+    if (!sprint.userstories || sprint.userstories.length === 0) {
+      return 0;
+    }
+
+    const doneCount = sprint.userstories.filter((us) => us.statut === "done").length;
+    return Math.round((doneCount / sprint.userstories.length) * 100);
+  };
+
+  const isSprintCompletedByProgress = (sprint: Sprint) => {
+    if (!sprint.userstories || sprint.userstories.length === 0) {
+      return false;
+    }
+
+    return sprint.userstories.every((us) => us.statut === "done");
+  };
+
+  const getComputedStatus = (sprint: Sprint) =>
+    isSprintCompletedByProgress(sprint) ? "termine" : normalizeSprintStatus(sprint.statut);
+
+  const isSprintExpired = (sprint: Sprint) => {
+    if (!sprint.dateFin) {
+      return false;
+    }
+
+    if (getComputedStatus(sprint) === "termine") {
+      return false;
+    }
+
+    const endDate = new Date(sprint.dateFin);
+    return endDate < new Date();
+  };
+
+  const getOrderedSprints = (items: Sprint[]) =>
+    [...items].sort((a, b) => {
+      if (a.dateDebut && b.dateDebut) {
+        return new Date(a.dateDebut).getTime() - new Date(b.dateDebut).getTime();
+      }
+
+      if (a.dateDebut && !b.dateDebut) {
+        return -1;
+      }
+
+      if (!a.dateDebut && b.dateDebut) {
+        return 1;
+      }
+
+      return a.id - b.id;
+    });
+
+  const orderedSprints = getOrderedSprints(sprints);
+  const visibleSprints = orderedSprints;
+
+  const getSprintDisplayName = (sprint: Sprint, index: number) => {
+    return `Sprint ${index + 1}`;
+  };
+
+  const getSprintDisplayNameById = (sprintId: number, fallback?: string) => {
+    const sprintIndex = visibleSprints.findIndex((sprint) => sprint.id === sprintId);
+    if (sprintIndex >= 0) {
+      return getSprintDisplayName(visibleSprints[sprintIndex], sprintIndex);
+    }
+
+    return fallback || "Sprint";
+  };
+
+  const getNextSprint = (sprintId: number) => {
+    const index = visibleSprints.findIndex((sprint) => sprint.id === sprintId);
+    if (index === -1) {
+      return null;
+    }
+
+    return visibleSprints[index + 1] ?? null;
   };
 
   return (
@@ -533,10 +669,12 @@ export default function SprintsPage() {
           </div>
         )}
 
-        {!isLoading && selectedProject && sprints.length > 0 && (
+
+
+        {!isLoading && selectedProject && visibleSprints.length > 0 && (
           <>
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-slate-900 dark:text-white text-xl font-bold">Sprints ({sprints.length})</h2>
+              <h2 className="text-slate-900 dark:text-white text-xl font-bold">Sprints ({visibleSprints.length})</h2>
               {selectedProject && (
                 <Link
                   href={`${ROUTES.SCRUM_MASTER}/sprints/new?project=${selectedProject}`}
@@ -548,7 +686,7 @@ export default function SprintsPage() {
               )}
             </div>
             <div className="space-y-4">
-            {sprints.map((sprint) => (
+            {visibleSprints.map((sprint, index) => (
               <div
                 key={sprint.id}
                 className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6 hover:border-primary/50 transition-colors"
@@ -556,10 +694,21 @@ export default function SprintsPage() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-slate-900 dark:text-white text-lg font-bold">{sprint.nom}</h3>
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(sprint.statut)}`}>
-                        {getStatusLabel(sprint.statut)}
+                      <h3 className="text-slate-900 dark:text-white text-lg font-bold">
+                        {getSprintDisplayName(sprint, index)}
+                      </h3>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(
+                          getComputedStatus(sprint)
+                        )}`}
+                      >
+                        {getStatusLabel(getComputedStatus(sprint))}
                       </span>
+                      {isSprintExpired(sprint) && (
+                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-500/20 text-red-400">
+                          Expiré
+                        </span>
+                      )}
                     </div>
                     {sprint.objectifSprint && (
                       <p className="text-slate-500 dark:text-[#9dabb9] text-sm mb-3">{sprint.objectifSprint}</p>
@@ -568,7 +717,7 @@ export default function SprintsPage() {
                       {sprint.dateDebut && sprint.dateFin && (
                         <div className="flex items-center gap-1 text-slate-500 dark:text-[#9dabb9]">
                           <span className="material-symbols-outlined text-[16px]">event</span>
-                          <span>
+                          <span className={isSprintExpired(sprint) ? "text-red-400 font-semibold" : undefined}>
                             {new Date(sprint.dateDebut).toLocaleDateString("fr-FR")} -{" "}
                             {new Date(sprint.dateFin).toLocaleDateString("fr-FR")}
                           </span>
@@ -587,8 +736,28 @@ export default function SprintsPage() {
                         </div>
                       )}
                     </div>
+                    {isSprintExpired(sprint) && sprint.dateFin && (
+                      <p className="text-red-400 text-xs font-semibold mt-2">
+                        Date expirée le {new Date(sprint.dateFin).toLocaleDateString("fr-FR")}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
+                      {(() => {
+                        const canStart = getComputedStatus(sprint) === "planifie";
+                        return (
+                    <button
+                      onClick={() => handleStartSprint(sprint.id)}
+                        disabled={actionLoading === sprint.id}
+                        className={`p-2 rounded-lg transition-colors ${
+                          canStart ? "hover:bg-[#0bda5b]/20" : "opacity-70"
+                        }`}
+                      title="Démarrer"
+                    >
+                      <span className="material-symbols-outlined text-[#0bda5b]">play_arrow</span>
+                    </button>
+                        );
+                      })()}
                     <button
                       onClick={() => openDetailsModal(sprint)}
                       className="p-2 hover:bg-primary/20 rounded-lg transition-colors"
@@ -605,17 +774,7 @@ export default function SprintsPage() {
                     >
                       <span className="material-symbols-outlined text-primary">edit</span>
                     </button>
-                    {sprint.statut === "planifie" && (
-                      <button
-                        onClick={() => handleStartSprint(sprint.id)}
-                        disabled={actionLoading === sprint.id}
-                        className="p-2 hover:bg-[#0bda5b]/20 rounded-lg transition-colors disabled:opacity-50"
-                        title="Démarrer"
-                      >
-                        <span className="material-symbols-outlined text-[#0bda5b]">play_arrow</span>
-                      </button>
-                    )}
-                    {sprint.statut === "en_cours" && (
+                    {getComputedStatus(sprint) === "en_cours" && (
                       <button
                         onClick={() => handleCloseSprint(sprint.id)}
                         disabled={actionLoading === sprint.id}
@@ -625,16 +784,14 @@ export default function SprintsPage() {
                         <span className="material-symbols-outlined text-yellow-500">check_circle</span>
                       </button>
                     )}
-                    {sprint.statut === "planifie" && (
-                      <button
-                        onClick={() => handleDeleteSprint(sprint.id)}
-                        disabled={actionLoading === sprint.id}
-                        className="p-2 hover:bg-red-500/20 rounded-lg transition-colors disabled:opacity-50"
-                        title="Supprimer"
-                      >
-                        <span className="material-symbols-outlined text-red-400">delete</span>
-                      </button>
-                    )}
+                    <button
+                      onClick={() => handleDeleteSprint(sprint.id)}
+                      disabled={actionLoading === sprint.id}
+                      className="p-2 hover:bg-red-500/20 rounded-lg transition-colors disabled:opacity-50"
+                      title="Supprimer"
+                    >
+                      <span className="material-symbols-outlined text-red-400">delete</span>
+                    </button>
                   </div>
                 </div>
 
@@ -652,11 +809,7 @@ export default function SprintsPage() {
                       <div
                         className="h-full bg-primary rounded-full transition-all"
                         style={{
-                          width: `${
-                            (sprint.userstories.filter((us) => us.statut === "done").length /
-                              sprint.userstories.length) *
-                            100
-                          }%`,
+                          width: `${getSprintProgress(sprint)}%`,
                         }}
                       ></div>
                     </div>
@@ -672,7 +825,11 @@ export default function SprintsPage() {
       <Modal
         isOpen={Boolean(detailsSprint)}
         onClose={closeDetailsModal}
-        title={detailsSprint ? `Détails - ${detailsSprint.nom}` : "Détails du sprint"}
+        title={
+          detailsSprint
+            ? `Détails - ${getSprintDisplayNameById(detailsSprint.id, detailsSprint.nom)}`
+            : "Détails du sprint"
+        }
         size="lg"
       >
         {isDetailsLoading && (

@@ -23,7 +23,7 @@ import re
 import unicodedata
 from typing import Annotated, List, Optional, Union
 
-from fastapi import APIRouter, Body, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Body, BackgroundTasks, Depends, File, HTTPException, UploadFile, Query, status
 from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
@@ -285,6 +285,27 @@ async def get_generation(
     return svc.get_generation(gen_id, projet_id)
 
 
+@router.post(
+    "/generations/{generation_id}/cancel",
+    response_model=dict,
+    summary="Annuler une génération en cours",
+)
+async def cancel_generation(
+    projet_id: int,
+    generation_id: int,
+    current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
+    svc: CahierTestGlobalService = Depends(get_service),
+):
+    """Annule une génération pendante ou en cours."""
+    _ensure_cahier_allowed_role(current_user)
+    result = svc.cancel_generation(generation_id, projet_id)
+    return {
+        "generation_id": generation_id,
+        "status": result.get("status", "cancelled"),
+        "message": result.get("message", "Génération annulée")
+    }
+
+
 # ─── Récupérer le cahier ──────────────────────────────────────────────────────
 
 @router.get(
@@ -354,9 +375,13 @@ async def list_user_stories_for_cahier(
     projet_id: int,
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: CahierTestGlobalService = Depends(get_service),
+    statut: Optional[str] = Query(
+        None,
+        description="Filtrer : to_do | in_progress | ready_for_test | a_corriger | done",
+    ),
 ):
     _ensure_cahier_allowed_role(current_user)
-    return svc.list_user_stories_for_cahier(projet_id)
+    return svc.list_user_stories_for_cahier(projet_id, statut)
 
 
 @router.get(
@@ -369,9 +394,14 @@ async def list_cas_tests(
     cahier_id: int,
     current_user: Annotated[Utilisateur, Depends(get_current_user_with_role)],
     svc: CahierTestGlobalService = Depends(get_service),
+    statut_test: Optional[str] = Query(None, description="Filtrer par statut de test"),
+    us_statut: Optional[str] = Query(
+        None,
+        description="Filtrer par statut user story : to_do | in_progress | ready_for_test | a_corriger | done",
+    ),
 ):
     _ensure_cahier_allowed_role(current_user)
-    return svc.list_cas_tests(cahier_id, projet_id)
+    return svc.list_cas_tests(cahier_id, projet_id, statut_test, us_statut)
 
 
 @router.get(

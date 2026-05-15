@@ -9,7 +9,7 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { ROUTES } from "@/lib/constants";
 import { getMyProjects } from "@/features/projects/api";
-import { startGeneration, getGenerationDetail } from "@/features/ai-generation/api";
+import { startGeneration, getGenerationDetail, cancelGeneration } from "@/features/ai-generation/api";
 import { Project, AIGenerationDetail, AILog } from "@/types";
 
 const POLL_INTERVAL = 2500;
@@ -41,6 +41,7 @@ function AIBacklogContent() {
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
   const [generation, setGeneration] = useState<AIGenerationDetail | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
 
@@ -95,7 +96,8 @@ function AIBacklogContent() {
         detail.status === "completed" ||
         detail.status === "failed" ||
         detail.status === "approved" ||
-        detail.status === "rejected";
+        detail.status === "rejected" ||
+        detail.status === "cancelled";
 
       if (!isFinished) {
         startPoll(projectId, generationId);
@@ -115,7 +117,8 @@ function AIBacklogContent() {
           detail.status === "completed" ||
           detail.status === "failed" ||
           detail.status === "approved" ||
-          detail.status === "rejected"
+          detail.status === "rejected" ||
+          detail.status === "cancelled"
         ) {
           if (pollRef.current) clearInterval(pollRef.current);
         }
@@ -145,6 +148,25 @@ function AIBacklogContent() {
     }
   };
 
+  const handleCancel = async () => {
+    if (!selectedProject || !generation) return;
+    setIsCanceling(true);
+    try {
+      await cancelGeneration(selectedProject, generation.id);
+      // Clear the poll interval after cancellation
+      if (pollRef.current) clearInterval(pollRef.current);
+      setGeneration(null);
+      setError(null);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } };
+      setError(
+        e.response?.data?.detail || "Erreur lors de l'annulation de la génération."
+      );
+    } finally {
+      setIsCanceling(false);
+    }
+  };
+
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "pending": return "En attente…";
@@ -153,6 +175,7 @@ function AIBacklogContent() {
       case "failed": return "Échec de la génération";
       case "approved": return "Appliqué au backlog";
       case "rejected": return "Tentative refusée";
+      case "cancelled": return "Génération annulée";
       default: return status;
     }
   };
@@ -165,6 +188,7 @@ function AIBacklogContent() {
       case "failed": return "text-red-400";
       case "approved": return "text-purple-400";
       case "rejected": return "text-red-300";
+      case "cancelled": return "text-amber-400";
       default: return "text-gray-400";
     }
   };
@@ -296,7 +320,7 @@ function AIBacklogContent() {
         {generation && (
           <div className="bg-white dark:bg-surface-dark border border-slate-200 dark:border-[#3b4754] rounded-xl p-6 flex flex-col gap-5">
             {/* Status row */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 {isRunning && (
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
@@ -317,9 +341,32 @@ function AIBacklogContent() {
                   {getStatusLabel(generation.status)}
                 </span>
               </div>
-              <span className="text-slate-500 dark:text-[#9dabb9] text-sm font-mono">
-                {generation.progress}%
-              </span>
+              <div className="flex items-center gap-4">
+                <span className="text-slate-500 dark:text-[#9dabb9] text-sm font-mono">
+                  {generation.progress}%
+                </span>
+                {isRunning && (
+                  <button
+                    onClick={handleCancel}
+                    disabled={isCanceling}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:border-red-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-medium"
+                  >
+                    {isCanceling ? (
+                      <>
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current" />
+                        <span>Annulation...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-[14px]">
+                          close
+                        </span>
+                        <span>Annuler</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Progress bar */}
