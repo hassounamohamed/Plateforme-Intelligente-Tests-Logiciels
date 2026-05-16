@@ -46,8 +46,15 @@ jobs:
             set -e
 
             mkdir -p ~/deploy/app
-            rm -rf ~/deploy/app/*
-            tar -xzf ~/deploy/app.tar.gz -C ~/deploy/app
+            rm -rf ~/deploy/app/* ~/deploy/app.tar.gz
+
+            ARCHIVE_PATH=$(find ~/deploy -maxdepth 2 -name app.tar.gz | head -n 1)
+            if [ -z "$ARCHIVE_PATH" ]; then
+              echo "app.tar.gz was not found under ~/deploy"
+              exit 1
+            fi
+
+            tar -xzf "$ARCHIVE_PATH" -C ~/deploy/app
 
             cd ~/deploy/app
             export NGINX_PORT=80
