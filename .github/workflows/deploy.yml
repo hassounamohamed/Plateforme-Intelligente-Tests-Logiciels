@@ -46,6 +46,12 @@ jobs:
             set -e
 
             mkdir -p ~/deploy/app
+            if [ ! -f ~/deploy/backend.env ]; then
+              echo "Missing backend env file at ~/deploy/backend.env"
+              echo "Create it once on the VPS, then rerun the deploy."
+              exit 1
+            fi
+
             rm -rf ~/deploy/app/* ~/deploy/app.tar.gz
 
             ARCHIVE_PATH=$(find ~/deploy -maxdepth 2 -name app.tar.gz | head -n 1)
@@ -55,13 +61,21 @@ jobs:
             fi
 
             tar -xzf "$ARCHIVE_PATH" -C ~/deploy/app
+            cp ~/deploy/backend.env ~/deploy/app/plateforme-back/.env
 
             cd ~/deploy/app
             export NGINX_PORT=80
 
             if [ -f docker-compose.yml ]; then
-              docker compose down || docker-compose down
-              docker compose up -d --build || docker-compose up -d --build
+              if command -v docker-compose >/dev/null 2>&1; then
+                docker-compose down --remove-orphans || true
+                docker rm -f frontend backend nginx postgres_db || true
+                docker-compose up -d --build --force-recreate
+              else
+                docker compose down --remove-orphans || true
+                docker rm -f frontend backend nginx postgres_db || true
+                docker compose up -d --build --force-recreate
+              fi
 
             elif command -v docker >/dev/null 2>&1 && [ -f plateforme-back/Dockerfile ]; then
               docker build -t plateforme-back ./plateforme-back
