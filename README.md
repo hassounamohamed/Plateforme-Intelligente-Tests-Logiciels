@@ -218,6 +218,18 @@ cd ../plateforme-tests
 npm install
 ```
 
+### 4. Démarrage avec Docker Compose
+
+Nginx expose maintenant un port hôte configurable via `NGINX_PORT`.
+
+```bash
+# local, évite le port 80 si déjà utilisé
+docker compose up -d --build
+
+# pour exposer Nginx sur le port 80
+NGINX_PORT=80 docker compose up -d --build
+```
+
 ### 4. Option Docker
 
 ```bash

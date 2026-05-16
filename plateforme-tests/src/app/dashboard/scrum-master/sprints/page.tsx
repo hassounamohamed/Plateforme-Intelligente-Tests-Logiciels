@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -26,7 +27,7 @@ import { getUserStories } from "@/features/userstories/api";
 import { Project, Sprint, Epic, UserStory, SprintVelocite } from "@/types";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialogProvider";
 
-export default function SprintsPage() {
+function SprintsPageContent() {
   const confirmDialog = useConfirmDialog();
   const searchParams = useSearchParams();
   const projectFromQuery = searchParams.get("project");
@@ -1170,5 +1171,13 @@ export default function SprintsPage() {
         </form>
       </Modal>
     </DashboardLayout>
+  );
+}
+
+export default function SprintsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <SprintsPageContent />
+    </Suspense>
   );
 }

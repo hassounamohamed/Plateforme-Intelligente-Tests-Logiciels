@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Project } from "@/types";
@@ -11,7 +12,7 @@ import { ProjectSelectorCard } from "@/components/dashboard/ProjectSelectorCard"
 import { ROUTES } from "@/lib/constants";
 import CahierTestsManager from "@/features/cahier-tests/CahierTestsManager";
 
-export default function RapportsQAPage() {
+function RapportsQAPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -151,5 +152,13 @@ export default function RapportsQAPage() {
         ) : null}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function RapportsQAPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <RapportsQAPageContent />
+    </Suspense>
   );
 }

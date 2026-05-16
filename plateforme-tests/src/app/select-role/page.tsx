@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -26,7 +27,8 @@ function getRoleRoute(role?: string): string {
 	return role ? roleRoutes[role] ?? ROUTES.DASHBOARD : ROUTES.DASHBOARD;
 }
 
-export default function SelectRolePage() {
+
+function SelectRolePageContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const { signIn } = useAuthStore();
@@ -148,5 +150,13 @@ export default function SelectRolePage() {
 				</button>
 			</form>
 		</main>
+	);
+}
+
+export default function SelectRolePage() {
+	return (
+		<Suspense fallback={<div className="min-h-screen" />}>
+			<SelectRolePageContent />
+		</Suspense>
 	);
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import Link from "next/link";
@@ -10,7 +11,7 @@ import { ROUTES } from "@/lib/constants";
 import { getUserStoryById, updateUserStory } from "@/features/userstories/api";
 import { PrioriteUS } from "@/types";
 
-export default function EditUserStoryPage() {
+function EditUserStoryPageContent() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -375,5 +376,13 @@ export default function EditUserStoryPage() {
         </form>
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function EditUserStoryPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <EditUserStoryPageContent />
+    </Suspense>
   );
 }

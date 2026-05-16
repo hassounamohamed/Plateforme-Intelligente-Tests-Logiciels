@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/Sidebar";
@@ -20,7 +21,7 @@ const sidebarLinks = [
   { href: `${ROUTES.QA}/profile`, icon: "account_circle", label: "Mon Profil" },
 ];
 
-export default function QAAnomaliesPage() {
+function QAAnomaliesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -162,5 +163,13 @@ export default function QAAnomaliesPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function QAAnomaliesPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <QAAnomaliesPageContent />
+    </Suspense>
   );
 }

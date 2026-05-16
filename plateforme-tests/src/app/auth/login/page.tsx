@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { LoginForm } from "@/features/auth/components/LoginForm";
 import { API_URL } from "@/lib/constants";
 import Image from "next/image";
@@ -33,7 +34,9 @@ export default function LoginPage() {
             </div>
             {/* Login Form */}
             <div className="mt-10">
-                <LoginForm />
+                <Suspense fallback={<div className="h-[520px]" />}>
+                    <LoginForm />
+                </Suspense>
                 {/* Divider */}
                 <div className="mt-10">
                     <div className="relative">

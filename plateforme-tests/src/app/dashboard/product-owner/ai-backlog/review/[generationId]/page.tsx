@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { useCallback, useRef } from "react";
@@ -77,7 +78,7 @@ function parseAcceptanceCriteria(ac: string | null): string[] {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function AIBacklogReviewPage() {
+function AIBacklogReviewPageContent() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -901,5 +902,13 @@ export default function AIBacklogReviewPage() {
         </div>
       )}
     </DashboardLayout>
+  );
+}
+
+export default function AIBacklogReviewPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <AIBacklogReviewPageContent />
+    </Suspense>
   );
 }
