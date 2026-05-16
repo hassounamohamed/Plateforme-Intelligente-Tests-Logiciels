@@ -26,8 +26,6 @@ services:
       POSTGRES_USER: mohamedtaha
       POSTGRES_PASSWORD: mou7@peha
       POSTGRES_DB: plateforme
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
