@@ -1,4 +1,4 @@
-﻿import { Suspense } from "react";
+import { Suspense } from "react";
 import { ResetPasswordForm } from "@/features/auth/components/ResetPasswordForm";
 import Image from "next/image";
 
@@ -15,19 +15,19 @@ export default function ResetPasswordPage() {
 				<div className="w-full max-w-105 flex flex-col gap-6">
 					{/* Brand / Logo Area */}
 					<div className="flex justify-center">
-						<div className="flex items-center gap-3 text-white">
+						<a href="/" className="flex items-center gap-3 text-white">
 							<Image
 								src="/favicon-32x32.png"
 								alt="FlowPilot logo"
 								width={40}
 								height={40}
-								className="rounded-xl shadow-lg shadow-primary/25"
+								className=""
 								priority
 							/>
 							<span className="text-lg font-semibold tracking-tight">
 								FlowPilot
 							</span>
-						</div>
+						</a>
 					</div>
 
 					{/* Main Card */}

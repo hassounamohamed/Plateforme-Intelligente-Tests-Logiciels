@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { API_URL } from "@/lib/constants";
+import { ThemeModeToggle } from "@/components/theme/ThemeModeToggle";
 
 function ContactForm() {
   const [formData, setFormData] = useState({ name: "", email: "", message: "" });
@@ -87,6 +88,81 @@ function ContactForm() {
 }
 
 
+interface PlatformStats {
+  utilisateurs: number;
+  projets: number;
+  cas_tests: number;
+  rapports_qa: number;
+}
+
+function useCountUp(target: number, duration = 1800, started = false) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (!started || target === 0) { setValue(target); return; }
+    let startTime: number | null = null;
+    const step = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      setValue(Math.floor(eased * target));
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [target, duration, started]);
+  return value;
+}
+
+function StatCard({ target, label, suffix = "" }: { target: number; label: string; suffix?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [started, setStarted] = useState(false);
+  const value = useCountUp(target, 1800, started);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setStarted(true); observer.disconnect(); } },
+      { threshold: 0.5 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref}>
+      <div className="text-5xl font-black mb-2 bg-clip-text text-transparent bg-linear-to-br from-slate-900 to-slate-500 dark:from-white dark:to-slate-500 tabular-nums">
+        {value.toLocaleString("fr-FR")}{suffix}
+      </div>
+      <div className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</div>
+    </div>
+  );
+}
+
+function StatsSection() {
+  const [stats, setStats] = useState<PlatformStats | null>(null);
+
+  useEffect(() => {
+    fetch(`${API_URL}/stats`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setStats(data); })
+      .catch(() => {});
+  }, []);
+
+  const s = stats ?? { utilisateurs: 0, projets: 0, cas_tests: 0, rapports_qa: 0 };
+
+  return (
+    <div className="py-20 border-y border-slate-200 dark:border-primary-900/50 bg-white/40 dark:bg-black/20">
+      <div className="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
+        <StatCard target={s.utilisateurs} label="utilisateurs inscrits" />
+        <StatCard target={s.projets} label="projets créés" />
+        <StatCard target={s.cas_tests} label="cas de tests générés" />
+        <StatCard target={s.rapports_qa} label="rapports QA générés" />
+      </div>
+    </div>
+  );
+}
+
+
 export default function Home() {
   return (
     <div className="min-h-screen w-full bg-linear-to-b from-primary-50 via-white to-primary-100 dark:from-primary-950 dark:via-[#151219] dark:to-[#0f0b13] text-slate-900 dark:text-white font-sans overflow-x-hidden selection:bg-primary/30">
@@ -100,16 +176,18 @@ export default function Home() {
               alt="FlowPilot logo"
               width={34}
               height={34}
-              className="rounded-xl shadow-sm"
+              className=""
               priority
             />
             FlowPilot
           </Link>
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-4">
             <Link href="#features" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-primary transition-colors">Fonctionnalités</Link>
             <Link href="#how" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-primary transition-colors">Comment ça marche</Link>
             <Link href="#contact" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-primary transition-colors">Contact</Link>
-            <Link href="/auth/login" className="ml-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium px-5 py-2 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95">
+            <Link href="tarifs" className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-primary transition-colors">Tarifs</Link>
+            <ThemeModeToggle />
+            <Link href="/auth/login" className="bg-primary hover:bg-primary/90 text-white text-sm font-medium px-5 py-2 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95">
               Connexion
             </Link>
           </nav>
@@ -263,21 +341,7 @@ export default function Home() {
       </section>
 
       {/* ─── STATS ─── */}
-      <div className="py-20 border-y border-slate-200 dark:border-primary-900/50 bg-white/40 dark:bg-black/20">
-        <div className="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
-          {[
-            { num: "0", label: "Équipes actives" },
-            { num: "0", label: "Tests exécutés" },
-            { num: "0%", label: "Gain de temps moyen" },
-            { num: "0%", label: "Disponibilité SLA" },
-          ].map((s) => (
-            <div key={s.label}>
-              <div className="text-5xl font-black mb-2 bg-clip-text text-transparent bg-linear-to-br from-slate-900 to-slate-500 dark:from-white dark:to-slate-500">{s.num}</div>
-              <div className="text-sm font-medium text-slate-500 dark:text-slate-400">{s.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <StatsSection />
 
       {/* ─── HOW IT WORKS ─── */}
       <section id="how" className="py-24 px-6 relative">
@@ -288,16 +352,16 @@ export default function Home() {
               Opérationnel en<br />moins de 10 minutes
             </h2>
             <p className="text-lg text-slate-600 dark:text-slate-300 mx-auto max-w-xl">
-              Pas de configuration complexe. Connectez votre dépôt et FlowPilot s&apos;occupe du reste.
+              Pas de configuration complexe. Créez votre projet, et FlowPilot s&apos;occupe du reste.
             </p>
           </div>
           
           <div className="space-y-12">
             {[
-              { num: "01", title: "Connectez votre projet", text: "Intégrez FlowPilot à votre dépôt GitHub, GitLab ou Bitbucket en quelques clics. Nos connecteurs natifs synchronisent automatiquement vos branches et pull requests." },
-              { num: "02", title: "L'IA analyse votre code", text: "Notre moteur analyse votre base de code et génère automatiquement des cas de tests pertinents, couvrant les chemins critiques et les régressions potentielles." },
-              { num: "03", title: "Lancez et monitorez", text: "Exécutez vos campagnes de tests depuis le dashboard ou en CI/CD. Recevez des alertes en temps réel et des rapports détaillés à chaque build." },
-              { num: "04", title: "Itérez et améliorez", text: "FlowPilot apprend de vos cycles de test pour affiner ses recommandations et maximiser votre couverture au fil du temps." },
+              { num: "01", title: "Créez votre projet", text: "Créez votre projet sur FlowPilot et décrivez vos user stories. Notre assistant vous guide pour structurer votre backlog en modules, epics et fonctionnalités." },
+              { num: "02", title: "L'IA génère le cahier de tests", text: "Notre moteur IA analyse vos user stories et génère automatiquement un cahier de tests structuré : cas de test, préconditions, étapes et résultats attendus." },
+              { num: "03", title: "Assignez et suivez", text: "Le Scrum Master assigne les cas de test aux développeurs et testeurs. Chaque membre met à jour le statut de ses tests depuis le dashboard ou l'application mobile." },
+              { num: "04", title: "Générez vos rapports QA", text: "FlowPilot génère automatiquement des rapports QA avec KPIs, graphiques et recommandations d'amélioration, exportables en PDF et Word." },
             ].map((step, i) => (
               <div key={step.num} className="flex gap-6 md:gap-8 items-start">
                 <div className="text-3xl font-black text-primary-200 dark:text-primary-900/50 mt-1">{step.num}</div>
@@ -359,14 +423,15 @@ export default function Home() {
               alt="FlowPilot logo"
               width={28}
               height={28}
-              className="rounded-lg"
+              className=""
             />
             FlowPilot
           </Link>
           <div className="flex gap-6">
-            {["Documentation", "Tarifs", "Blog", "Contact"].map((item) => (
+            {["Contact"].map((item) => (
               <Link key={item} href={item === "Contact" ? "#contact" : "#"} className="text-sm text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">{item}</Link>
             ))}
+            <Link key="tarifs" href="tarifs" className="text-sm text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">Tarifs</Link>
           </div>
           <span className="text-sm text-slate-500">© 2026 FlowPilot. Tous droits réservés.</span>
         </div>

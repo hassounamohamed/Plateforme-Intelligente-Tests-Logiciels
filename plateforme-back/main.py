@@ -51,6 +51,7 @@ from api.unit_tests import router as unit_tests_router
 from api.dashboard import router as dashboard_router
 from api.product_owner_dashboard import router as product_owner_dashboard_router
 from api.contact import router as contact_router
+from api.stats import router as stats_router
 
 
 app = FastAPI(
@@ -228,6 +229,7 @@ app.include_router(unit_tests_router)
 app.include_router(dashboard_router)
 app.include_router(product_owner_dashboard_router)
 app.include_router(contact_router)
+app.include_router(stats_router)
 # Test DB route
 @app.get("/test-db")
 def test_db(db: Session = Depends(get_db)):
