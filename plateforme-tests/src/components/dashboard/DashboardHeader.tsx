@@ -653,14 +653,16 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
                             </span>
                           </p>
                           <p className="text-xs text-muted mt-1 line-clamp-2">{notif.message}</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-2 shrink-0 ml-3">
                           <p
-                            className="text-[11px] text-muted mt-1 whitespace-nowrap"
+                            className="text-[11px] text-muted whitespace-nowrap"
                             title={new Date(notif.dateEnvoi).toLocaleString()}
                           >
                             {timeAgo(notif.dateEnvoi)}
                           </p>
+                          {!notif.lue && <span className="w-2 h-2 rounded-full bg-primary"></span>}
                         </div>
-                        {!notif.lue && <span className="mt-1 w-2 h-2 rounded-full bg-primary shrink-0"></span>}
                       </div>
                     </button>
                   ))}

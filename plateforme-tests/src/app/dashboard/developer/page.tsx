@@ -102,6 +102,7 @@ const formatStatusLabel = (status: TaskStatus): string => {
 };
 
 const timeAgo = (isoDate: string): string => {
+  const nbsp = "\u00A0";
   const timestamp = new Date(isoDate).getTime();
   if (!Number.isFinite(timestamp)) {
     return "date inconnue";
@@ -109,14 +110,14 @@ const timeAgo = (isoDate: string): string => {
 
   const diffMs = Date.now() - timestamp;
   const diffMinutes = Math.floor(diffMs / 60000);
-  if (diffMinutes < 1) return "à l'instant";
-  if (diffMinutes < 60) return `il y a ${diffMinutes} min`;
+  if (diffMinutes < 1) return `à l'instant`;
+  if (diffMinutes < 60) return `il${nbsp}y${nbsp}a${nbsp}${diffMinutes}${nbsp}min`;
 
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `il y a ${diffHours} h`;
+  if (diffHours < 24) return `il${nbsp}y${nbsp}a${nbsp}${diffHours}${nbsp}h`;
 
   const diffDays = Math.floor(diffHours / 24);
-  return `il y a ${diffDays} j`;
+  return `il${nbsp}y${nbsp}a${nbsp}${diffDays}${nbsp}j`;
 };
 
 const getNotificationIcon = (type: NotificationType): string => {
@@ -559,9 +560,9 @@ export default function DeveloperDashboard() {
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[#9dabb9] text-xs line-clamp-1">{notification.message}</span>
+                      <span className="text-[#9dabb9] text-xs line-clamp-1 flex-1">{notification.message}</span>
                       <span className="text-[#9dabb9] text-xs">•</span>
-                      <span className="text-xs font-bold text-blue-400">{timeAgo(notification.dateEnvoi)}</span>
+                      <span className="text-xs font-bold text-blue-400 min-w-[4.5rem] text-right whitespace-nowrap">{timeAgo(notification.dateEnvoi)}</span>
                     </div>
                   </div>
                 </button>
