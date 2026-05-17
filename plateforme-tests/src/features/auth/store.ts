@@ -46,7 +46,7 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
 // ─── Context ─────────────────────────────────────────────────────────────────
 
 interface AuthContextValue extends AuthState {
-  signIn: (user: User, accessToken: string, refreshToken: string) => void;
+  signIn: (user: User, accessToken: string, refreshToken: string, remember?: boolean) => void;
   signOut: () => void;
 }
 
@@ -73,9 +73,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = useCallback(
-    (user: User, accessToken: string, refreshToken: string) => {
-      setToken(accessToken);
-      setRefreshToken(refreshToken);
+    (user: User, accessToken: string, refreshToken: string, remember = false) => {
+      setToken(accessToken, remember);
+      setRefreshToken(refreshToken, remember);
       dispatch({ type: "SET_USER", payload: user });
     },
     []

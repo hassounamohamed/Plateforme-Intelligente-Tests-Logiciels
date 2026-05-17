@@ -17,6 +17,7 @@ export function LoginForm() {
   const [email, setEmail] = useState(redirectedEmail);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(false);
   const [showEmailExistsPopup, setShowEmailExistsPopup] = useState(emailAlreadyExistsParam);
   const [showEmailExistsBanner] = useState(emailAlreadyExistsParam);
   const [oauthErrorMessage] = useState(() => {
@@ -42,7 +43,7 @@ export function LoginForm() {
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     // Backend expects 'username' field (which is the email)
-    handleLogin({ username: email, password });
+    handleLogin({ username: email, password }, remember);
   };
 
   // Determine error type for better UX
@@ -136,7 +137,12 @@ export function LoginForm() {
       {/* Options row */}
       <div className="flex items-center justify-between">
         <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer select-none">
-          <input type="checkbox" className="rounded accent-primary" />
+          <input
+            type="checkbox"
+            className="rounded accent-primary"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+          />
           Remember me
         </label>
         <Link

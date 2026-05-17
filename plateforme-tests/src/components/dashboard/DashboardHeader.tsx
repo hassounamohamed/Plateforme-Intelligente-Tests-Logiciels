@@ -339,6 +339,24 @@ function formatNotificationTime(isoDate: string): string {
   });
 }
 
+const timeAgo = (isoDate: string): string => {
+  const timestamp = new Date(isoDate).getTime();
+  if (!Number.isFinite(timestamp)) {
+    return "date inconnue";
+  }
+
+  const diffMs = Date.now() - timestamp;
+  const diffMinutes = Math.floor(diffMs / 60000);
+  if (diffMinutes < 1) return "à l'instant";
+  if (diffMinutes < 60) return `il y a ${diffMinutes} min`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `il y a ${diffHours} h`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `il y a ${diffDays} j`;
+};
+
 interface DashboardHeaderProps {
   title: string;
   subtitle: string;
@@ -511,7 +529,7 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
   };
 
   return (
-    <header className="flex items-center justify-between border-b px-6 py-4 z-10 sticky top-0 backdrop-blur-md bg-(--background)/95 border-border">
+    <header className="flex items-center justify-between border-b px-6 py-4 z-10 sticky top-0 backdrop-blur-md bg-[var(--background)]/95 border-border">
       <div className="flex items-center gap-4">
         <SidebarTrigger className="-ml-3" />
         <div className="flex flex-col">
@@ -526,7 +544,7 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
         <div className="hidden sm:block relative" ref={searchContainerRef}>
           <form
             onSubmit={handleSearchSubmit}
-            className="flex items-center rounded-lg h-10 px-3 w-80 focus-within:ring-2 focus-within:ring-primary/50 transition-all bg-(--surface-2)"
+            className="flex items-center rounded-lg h-10 px-3 w-80 focus-within:ring-2 focus-within:ring-primary/50 transition-all bg-[var(--surface-2)]"
           >
             <span className="material-symbols-outlined text-[20px] text-muted">
               search
@@ -556,7 +574,7 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
           </form>
 
           {isSearchOpen && normalizedQuery && (
-            <div className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-(--surface) shadow-2xl overflow-hidden">
+            <div className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-[var(--surface)] shadow-2xl overflow-hidden">
               {searchResults.length > 0 ? (
                 <div className="py-2">
                   {searchResults.map((item) => (
@@ -564,7 +582,7 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
                       key={item.href}
                       type="button"
                       onClick={() => navigateToSearchResult(item.href)}
-                      className="w-full px-4 py-3 text-left hover:bg-(--surface-2) transition-colors"
+                      className="w-full px-4 py-3 text-left hover:bg-[var(--surface-2)] transition-colors"
                     >
                       <div className="text-sm font-medium text-foreground">{item.title}</div>
                       <div className="text-xs text-muted mt-1">{item.description}</div>
@@ -585,7 +603,7 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
         <div className="relative" ref={notificationsContainerRef}>
           <button
             onClick={() => setIsNotificationsOpen((prev) => !prev)}
-            className="flex items-center justify-center h-10 w-10 rounded-lg relative transition-colors bg-(--surface-2) text-muted hover:text-foreground"
+            className="flex items-center justify-center h-10 w-10 rounded-lg relative transition-colors bg-[var(--surface-2)] text-muted hover:text-foreground"
           >
             <span className="material-symbols-outlined">notifications</span>
             {unreadCount > 0 && (
@@ -596,7 +614,7 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
           </button>
 
           {isNotificationsOpen && (
-            <div className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-(--surface) shadow-2xl overflow-hidden z-20">
+            <div className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-[var(--surface)] shadow-2xl overflow-hidden z-20">
               <div className="px-4 py-3 border-b border-border flex items-center justify-between">
                 <p className="text-sm font-semibold text-foreground">Notifications</p>
                 <div className="flex items-center gap-2">
@@ -622,7 +640,7 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
                       key={notif.id}
                       type="button"
                       onClick={() => handleMarkAsRead(notif.id)}
-                      className="w-full text-left px-4 py-3 border-b border-border/60 hover:bg-(--surface-2) transition-colors"
+                      className="w-full text-left px-4 py-3 border-b border-border/60 hover:bg-[var(--surface-2)] transition-colors"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -635,7 +653,12 @@ export function DashboardHeader({ title, subtitle, actions }: DashboardHeaderPro
                             </span>
                           </p>
                           <p className="text-xs text-muted mt-1 line-clamp-2">{notif.message}</p>
-                          <p className="text-[11px] text-muted mt-1">{formatNotificationTime(notif.dateEnvoi)}</p>
+                          <p
+                            className="text-[11px] text-muted mt-1 whitespace-nowrap"
+                            title={new Date(notif.dateEnvoi).toLocaleString()}
+                          >
+                            {timeAgo(notif.dateEnvoi)}
+                          </p>
                         </div>
                         {!notif.lue && <span className="mt-1 w-2 h-2 rounded-full bg-primary shrink-0"></span>}
                       </div>

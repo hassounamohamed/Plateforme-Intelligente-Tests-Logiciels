@@ -2,10 +2,12 @@ from datetime import datetime
 from typing import List
 
 from pydantic import BaseModel, ConfigDict
+from datetime import timezone
 
 
 class NotificationResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    # Ensure datetimes are serialized as UTC ISO strings with trailing Z
+    model_config = ConfigDict(from_attributes=True, json_encoders={datetime: lambda v: v.replace(tzinfo=timezone.utc).isoformat().replace('+00:00','Z')})
 
     id: int
     titre: str

@@ -1,4 +1,5 @@
 from typing import Optional
+from datetime import datetime, timezone
 import logging
 from urllib.parse import urlencode
 
@@ -26,6 +27,11 @@ class AuthService:
         self.db = db
         self.user_repo = UserRepository(db)
         self.audit_repo = AuditLogRepository(db)
+
+    def _format_dt(self, dt: datetime | None) -> str | None:
+        if not dt:
+            return None
+        return dt.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z")
 
     # =========================================================
     # PASSWORD
@@ -443,7 +449,7 @@ class AuthService:
                 "telephone": u.telephone if u.telephone else None,
                 "actif": u.actif,
                 "dateCreation": u.dateCreation,
-                "derniereConnexion": u.derniereConnexion,
+                "derniereConnexion": self._format_dt(u.derniereConnexion),
                 "role": {"id": u.role.id, "nom": u.role.nom, "code": u.role.code} if u.role else None,
             }
             for u in users
@@ -460,7 +466,7 @@ class AuthService:
                 "telephone": u.telephone if u.telephone else None,
                 "actif": u.actif,
                 "dateCreation": u.dateCreation,
-                "derniereConnexion": u.derniereConnexion,
+                "derniereConnexion": self._format_dt(u.derniereConnexion),
                 "role": {"id": u.role.id, "nom": u.role.nom, "code": u.role.code} if u.role else None,
             }
             for u in users
@@ -517,6 +523,7 @@ class AuthService:
             "telephone": telephone,
             "role_id": user.role_id,
             "actif": user.actif,
+            "derniereConnexion": self._format_dt(user.derniereConnexion),
         }
 
         if user.role:

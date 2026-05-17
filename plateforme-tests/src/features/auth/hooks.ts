@@ -43,7 +43,7 @@ export function useLogin() {
   const { signIn } = useAuthStore();
   const router = useRouter();
 
-  const handleLogin = async (payload: LoginPayload) => {
+  const handleLogin = async (payload: LoginPayload, remember = false) => {
     setIsLoading(true);
     setError(null);
     setInfoMessage(null);
@@ -61,7 +61,7 @@ export function useLogin() {
         actif: true
       };
       
-      signIn(user, response.access_token, ""); // No refresh token in backend
+      signIn(user, response.access_token, "", remember); // No refresh token in backend
       
       // Redirect based on role code
       const roleRoutes: Record<string, string> = {
