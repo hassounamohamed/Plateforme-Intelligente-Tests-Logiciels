@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { TOKEN_KEY, ROUTES } from "@/lib/constants";
 
-// ─── Public paths (no auth required) ────────────────────────────────────────
 const PUBLIC_PATHS = [
   ROUTES.LOGIN,
   ROUTES.REGISTER,
@@ -10,7 +9,6 @@ const PUBLIC_PATHS = [
   ROUTES.RESET_PASSWORD,
 ];
 
-// ─── Role-gated paths ────────────────────────────────────────────────────────
 const ROLE_PATHS: Record<string, string[]> = {
   [ROUTES.DEVELOPER]: ["DEVELOPPEUR", "SUPER_ADMIN"],
   [ROUTES.PRODUCT_OWNER]: ["PRODUCT_OWNER", "SUPER_ADMIN"],
@@ -19,7 +17,6 @@ const ROLE_PATHS: Record<string, string[]> = {
   [ROUTES.SUPER_ADMIN]: ["SUPER_ADMIN"],
 };
 
-// ─── JWT decode (Edge-compatible, no verify) ─────────────────────────────────
 interface JwtPayload {
   sub?: string;
   role?: string;
@@ -39,16 +36,13 @@ function isExpired(payload: JwtPayload): boolean {
   return Date.now() >= payload.exp * 1000;
 }
 
-// ─── Middleware ───────────────────────────────────────────────────────────────
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Always allow public auth pages
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+  if (PUBLIC_PATHS.some((path) => pathname.startsWith(path))) {
     return NextResponse.next();
   }
 
-  // Read token from cookie (set by lib/auth.ts on login)
   const token = request.cookies.get(TOKEN_KEY)?.value;
 
   if (!token) {
@@ -59,22 +53,18 @@ export function middleware(request: NextRequest) {
 
   const payload = parseJwt(token);
 
-  // Invalid or expired — redirect to login
   if (!payload || isExpired(payload)) {
     const url = new URL(ROUTES.LOGIN, request.url);
     const response = NextResponse.redirect(url);
-    response.cookies.delete(TOKEN_KEY); // clear stale cookie
+    response.cookies.delete(TOKEN_KEY);
     return response;
   }
 
-  // Role-based access control
   for (const [path, allowedRoles] of Object.entries(ROLE_PATHS)) {
     if (pathname.startsWith(path)) {
       if (!payload.role || !allowedRoles.includes(payload.role)) {
-        // Redirect to login (access denied)
         const url = new URL(ROUTES.LOGIN, request.url);
-        const response = NextResponse.redirect(url);
-        return response;
+        return NextResponse.redirect(url);
       }
       break;
     }
@@ -83,7 +73,6 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// ─── Matcher: only protect /dashboard routes ─────────────────────────────────
 export const config = {
   matcher: ["/dashboard/:path*"],
 };

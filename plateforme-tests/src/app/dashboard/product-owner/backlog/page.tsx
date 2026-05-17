@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
@@ -24,7 +25,7 @@ import {
 
 const POLL_INTERVAL = 2500;
 
-export default function BacklogPage() {
+function BacklogPageContent() {
   const searchParams = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
@@ -836,6 +837,14 @@ export default function BacklogPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function BacklogPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <BacklogPageContent />
+    </Suspense>
   );
 }
 

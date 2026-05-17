@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/Sidebar";
@@ -11,7 +12,7 @@ import { getMyProjectsAsMember } from "@/features/projects/api";
 import { Project } from "@/types";
 import CahierTestsManager from "@/features/cahier-tests/CahierTestsManager";
 
-export default function ScrumMasterRapportsQAPage() {
+function ScrumMasterRapportsQAPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -107,5 +108,13 @@ export default function ScrumMasterRapportsQAPage() {
         ) : null}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function ScrumMasterRapportsQAPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <ScrumMasterRapportsQAPageContent />
+    </Suspense>
   );
 }

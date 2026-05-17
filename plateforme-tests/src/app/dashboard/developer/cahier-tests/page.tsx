@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/Sidebar";
@@ -13,7 +14,7 @@ import { Project } from "@/types";
 import CahierTestsManager from "@/features/cahier-tests/CahierTestsManager";
 import type { Sprint } from "@/types";
 
-export default function CahierTestsDeveloperPage() {
+function CahierTestsDeveloperPageContent() {
   const searchParams = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -186,5 +187,13 @@ export default function CahierTestsDeveloperPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function CahierTestsDeveloperPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <CahierTestsDeveloperPageContent />
+    </Suspense>
   );
 }

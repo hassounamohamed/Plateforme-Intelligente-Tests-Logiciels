@@ -34,7 +34,9 @@ export default function LoginPage() {
             </div>
             {/* Login Form */}
             <div className="mt-10">
-                <LoginForm />
+                <Suspense fallback={<div className="h-[520px]" />}>
+                    <LoginForm />
+                </Suspense>
                 {/* Divider */}
                 <div className="mt-10">
                     <div className="relative">

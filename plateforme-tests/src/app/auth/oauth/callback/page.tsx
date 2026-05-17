@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -17,7 +18,7 @@ function getRoleRoute(role?: string): string {
   return role ? roleRoutes[role] ?? ROUTES.DASHBOARD : ROUTES.DASHBOARD;
 }
 
-export default function OAuthCallbackPage() {
+function OAuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { signIn } = useAuthStore();
@@ -128,5 +129,21 @@ export default function OAuthCallbackPage() {
         <p className="text-sm text-slate-600">Finalizing OAuth login...</p>
       </div>
     </main>
+  );
+}
+
+export default function OAuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen grid place-items-center px-6">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+            <p className="text-sm text-slate-600">Finalizing OAuth login...</p>
+          </div>
+        </main>
+      }
+    >
+      <OAuthCallbackContent />
+    </Suspense>
   );
 }
