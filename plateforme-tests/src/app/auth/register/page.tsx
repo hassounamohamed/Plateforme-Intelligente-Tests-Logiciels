@@ -8,19 +8,19 @@ export default function RegisterPage() {
 		<div className="min-h-screen bg-linear-to-b from-primary-50 via-white to-primary-100 dark:from-primary-950 dark:via-[#151219] dark:to-[#0f0b13]">
 			{/* Navbar */}
 			<header className="w-full flex items-center justify-between border-b border-primary-100/70 dark:border-primary-900/50 px-6 py-4 lg:px-40 bg-white/90 dark:bg-[#151219]">
-				<div className="flex items-center gap-3">
+				<a href="/" className="flex items-center gap-3">
 					<Image
 						src="/favicon-32x32.png"
 						alt="FlowPilot logo"
 						width={32}
 						height={32}
-						className="rounded-lg"
+						className=""
 						priority
 					/>
 					<h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
 						FlowPilot
 					</h2>
-				</div>
+				</a>
 				<div className="flex items-center gap-4">
 					<span className="hidden sm:inline text-sm text-slate-500 dark:text-slate-400">
 						Already have an account?

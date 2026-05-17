@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LoginForm } from "@/features/auth/components/LoginForm";
 import { API_URL } from "@/lib/constants";
 import Image from "next/image";
@@ -9,19 +10,19 @@ export default function LoginPage() {
     <div className="flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 lg:flex-none lg:px-20 xl:px-24 w-full lg:w-[45%] xl:w-[40%] bg-linear-to-b from-primary-50 via-white to-primary-100 dark:from-primary-950 dark:via-[#151219] dark:to-[#0f0b13] border-r border-primary-100/70 dark:border-primary-900/50">
         <div className="mx-auto w-full max-w-sm lg:w-96">
             {/* Logo */}
-            <div className="flex items-center gap-3 mb-12">
+            <Link href="/" className="flex items-center gap-3 mb-12">
                 <Image
                     src="/favicon-32x32.png"
                     alt="FlowPilot logo"
                     width={48}
                     height={48}
-                    className="rounded-2xl shadow-lg"
+                    className=""
                     priority
                 />
                 <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                     FlowPilot
                 </span>
-            </div>
+            </Link>
             {/* Heading */}
             <div className="mb-10">
                 <h2 className="text-4xl font-bold leading-tight tracking-tight text-slate-900 dark:text-white">
