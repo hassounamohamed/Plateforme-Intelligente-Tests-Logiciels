@@ -7,8 +7,22 @@ from core.config import SMTP_FROM, SMTP_HOST, SMTP_PASSWORD, SMTP_PORT, SMTP_USE
 logger = logging.getLogger(__name__)
 
 
-def send_email(to_email: str, subject: str, body: str, html_body: str | None = None) -> None:
-	"""Send a generic email via SMTP using environment-based configuration."""
+def send_email(
+	to_email: str,
+	subject: str,
+	body: str,
+	html_body: str | None = None,
+	display_name: str | None = None,
+	reply_to: str | None = None,
+	display_email: str | None = None,
+) -> None:
+	"""Send a generic email via SMTP using environment-based configuration.
+
+	- `display_name` will be used as the visible name in the From header
+	  (e.g. "Jean Dupont <no-reply@domain>").
+	- `reply_to` will set the Reply-To header so replies go to the sender's
+	  address while the SMTP envelope still uses `SMTP_FROM` for authentication.
+	"""
 	if not SMTP_HOST or not SMTP_USER or not SMTP_PASSWORD or not SMTP_FROM:
 		raise RuntimeError(
 			"SMTP is not configured. Please set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM."
@@ -16,8 +30,18 @@ def send_email(to_email: str, subject: str, body: str, html_body: str | None = N
 
 	msg = EmailMessage()
 	msg["Subject"] = subject
-	msg["From"] = SMTP_FROM
+	# Visible From header. If a specific display_email is provided use it
+	# (e.g. contact@flowpilot.tn), otherwise fall back to SMTP_FROM.
+	from_email = display_email or SMTP_FROM
+	if display_name:
+		msg["From"] = f"{display_name} <{from_email}>"
+	else:
+		msg["From"] = from_email
+
 	msg["To"] = to_email
+	if reply_to:
+		msg["Reply-To"] = reply_to
+
 	msg.set_content(body)
 
 	if html_body:
@@ -28,7 +52,9 @@ def send_email(to_email: str, subject: str, body: str, html_body: str | None = N
 			if SMTP_USE_TLS:
 				server.starttls()
 			server.login(SMTP_USER, SMTP_PASSWORD)
-			server.send_message(msg)
+			# Ensure SMTP envelope sender is the configured SMTP_FROM to avoid
+			# authentication/refusal issues; still set a friendly From header above.
+			server.send_message(msg, from_addr=SMTP_FROM)
 	except smtplib.SMTPAuthenticationError as exc:
 		logger.exception("SMTP authentication failed for user %s", SMTP_USER)
 		raise RuntimeError(
@@ -70,11 +96,17 @@ def send_reset_email(to_email: str, reset_link: str) -> None:
 	</html>
 	"""
 
+	# Show the email as coming from contact@flowpilot.tn to match branding
+	# and make it clear to recipients, while the SMTP envelope still uses
+	# the authenticated SMTP_FROM.
 	send_email(
 		to_email=to_email,
-		subject="Password Reset",
+		subject="FlowPilot - Reset Your Password",
 		body=text_body,
 		html_body=html_body,
+		display_name="FlowPilot",
+		display_email="contact@flowpilot.tn",
+		reply_to="contact@flowpilot.tn",
 	)
 
 	logger.info("Password reset email sent to %s", to_email)

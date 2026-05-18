@@ -47,25 +47,17 @@ export default function ForgotPasswordPage() {
               {/* Form */}
               <ForgotPasswordForm />
             </div>
-            {/* Footer / Back Link */}
-            <div className="border-t border-white/10 bg-[#141820] p-4 text-center">
-              <a className="inline-flex items-center justify-center gap-2 text-slate-400 hover:text-primary-200 text-sm font-semibold transition-colors duration-200 group" href="/auth/login">
-                <span className="material-symbols-outlined text-[18px] transition-transform duration-200 group-hover:-translate-x-1">
-                  arrow_back
-                </span>
-                Back to Login
-              </a>
-            </div>
+            {/* Footer / Back Link removed because the form shows a back link after success */}
           </div>
           {/* Helper Links (Optional contextual help) */}
           <div className="flex justify-center gap-6 text-xs text-slate-500">
-            <a className="hover:text-primary-200 transition-colors" href="#">
+            <a className="hover:text-primary-200 transition-colors" href="/privacy">
               Privacy Policy
             </a>
-            <a className="hover:text-primary-200 transition-colors" href="#">
+            <a className="hover:text-primary-200 transition-colors" href="/terms">
               Terms of Service
             </a>
-            <a className="hover:text-primary-200 transition-colors" href="#">
+            <a className="hover:text-primary-200 transition-colors" href="/support">
               Contact Support
             </a>
           </div>

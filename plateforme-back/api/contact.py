@@ -18,11 +18,15 @@ def send_contact_message(request: ContactRequest):
         subject = f"Nouveau message de contact de {request.name}"
         text_body = f"Nom: {request.name}\nEmail: {request.email}\n\nMessage:\n{request.message}"
         
-        # Send to the contact email
+        # Send to the contact email. Use the sender's name as the visible From
+        # and set Reply-To so replies go directly to the user who submitted
+        # the contact form.
         send_email(
-            to_email="contact.pilt1@gmail.com",
+            to_email="contact@flowpilot.tn",
             subject=subject,
-            body=text_body
+            body=text_body,
+            display_name=request.name,
+            reply_to=request.email,
         )
         return {"message": "Message sent successfully"}
     except Exception as e:

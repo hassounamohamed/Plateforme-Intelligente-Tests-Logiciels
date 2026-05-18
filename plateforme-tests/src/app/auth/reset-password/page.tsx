@@ -69,15 +69,15 @@ export default function ResetPasswordPage() {
 
 					{/* Helper Links */}
 					<div className="flex justify-center gap-6 text-xs text-slate-500">
-						<a className="hover:text-primary-200 transition-colors" href="#">
-							Privacy Policy
-						</a>
-						<a className="hover:text-primary-200 transition-colors" href="#">
-							Terms of Service
-						</a>
-						<a className="hover:text-primary-200 transition-colors" href="#">
-							Contact Support
-						</a>
+						<a className="hover:text-primary-200 transition-colors" href="/privacy">
+								Privacy Policy
+							</a>
+							<a className="hover:text-primary-200 transition-colors" href="/terms">
+								Terms of Service
+							</a>
+							<a className="hover:text-primary-200 transition-colors" href="/support">
+								Contact Support
+							</a>
 					</div>
 				</div>
 			</div>
