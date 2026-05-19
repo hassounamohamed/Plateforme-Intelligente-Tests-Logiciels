@@ -31,8 +31,11 @@ class PasswordResetService:
 
     def _build_reset_link(self, token: str) -> str:
         if MOBILE_APP_BASE_URL:
-            return f"{MOBILE_APP_BASE_URL.rstrip('/')}{MOBILE_RESET_PASSWORD_PATH}?token={token}"
-        return f"{FRONTEND_BASE_URL}{FRONTEND_RESET_PASSWORD_PATH}?token={token}"
+            return f"{MOBILE_APP_BASE_URL.rstrip('/')}" \
+                   f"{MOBILE_RESET_PASSWORD_PATH}?token={token}"
+        # Ensure we don't produce a double-slash when FRONTEND_BASE_URL ends with '/'
+        return f"{FRONTEND_BASE_URL.rstrip('/')}" \
+               f"{FRONTEND_RESET_PASSWORD_PATH}?token={token}"
 
     def _raise_password_reset_db_unavailable(self) -> None:
         raise HTTPException(
